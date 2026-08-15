@@ -60,6 +60,9 @@ export interface ViewportDeps {
 /** Wie lange eine Szenenfahrt dauert, wenn die Szene nichts vorgibt. */
 const DEFAULT_SCENE_TRANSITION_S = 0.8
 
+/** Kleinster Abstand zwischen zwei FPS-Aktualisierungen der Statuszeile. */
+const STATS_INTERVAL_MS = 1000
+
 export class Viewport implements ViewportApi {
   readonly overlay: OverlayRenderer
 
@@ -95,7 +98,10 @@ export class Viewport implements ViewportApi {
   private disposed = false
   private lastFrameTime = 0
   private fps = 0
-  private lastStatsPush = 0
+  /** Kennwerte des letzten Modell-Pushs, als Vergleichsschluessel */
+  private lastStatsKey = ''
+  private lastFpsPush = 0
+  private fpsTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(canvas: HTMLCanvasElement, private readonly store: StoreHandle) {
     this.canvas = canvas
@@ -337,22 +343,66 @@ export class Viewport implements ViewportApi {
       triangles: stats.triangles,
     })
 
-    // Statistik hoechstens einmal pro Sekunde in den Store schreiben, damit die
-    // Oberflaeche nicht bei jedem Frame neu rendert.
-    if (now - this.lastStatsPush > 1000) {
-      this.lastStatsPush = now
-      attempt(
-        'store.setStats',
-        () =>
-          this.store.getState().setStats({
-            faces: stats.triangles,
-            edges: stats.edges,
-            instances: stats.instances,
-            fps: Math.round(this.fps),
-          }),
-        undefined,
-      )
+    this.pushModelStats()
+    this.pushFps(now)
+  }
+
+  /* ================================================================ */
+  /* Statuszeile                                                      */
+  /* ================================================================ */
+
+  /**
+   * Modellkennwerte in den Store schreiben.
+   *
+   * Bewusst NICHT zeitgedrosselt, sondern an den Inhalt gehaengt: die Werte
+   * aendern sich nur, wenn `sceneSync` neu gebaut hat, also hoechstens einmal
+   * pro Bearbeitungsschritt. Eine Zeitdrosselung wuerde hier die letzte
+   * Aktualisierung verschlucken, weil nach einer Aenderung genau EIN Frame
+   * laeuft und danach keiner mehr kommt, der sie nachholen koennte.
+   */
+  private pushModelStats(): void {
+    const stats = this.sync.stats
+    const key = `${stats.faces}|${stats.edges}|${stats.instances}`
+    if (key === this.lastStatsKey) return
+    this.lastStatsKey = key
+    this.writeStats({ faces: stats.faces, edges: stats.edges, instances: stats.instances })
+  }
+
+  /**
+   * FPS getrennt und gedrosselt schreiben (hoechstens einmal pro Sekunde),
+   * damit die Oberflaeche nicht bei jedem Frame neu rendert. Greift die
+   * Drosselung, wird der Push per Timer ans Ende des Fensters NACHGEHOLT -
+   * verworfen wird er nie.
+   */
+  private pushFps(now: number): void {
+    const wait = STATS_INTERVAL_MS - (now - this.lastFpsPush)
+    if (wait > 0) {
+      this.scheduleFpsPush(wait)
+      return
     }
+    this.clearFpsTimer()
+    this.lastFpsPush = now
+    this.writeStats({ fps: Math.round(this.fps) })
+  }
+
+  private scheduleFpsPush(delayMs: number): void {
+    if (this.fpsTimer !== null || this.disposed) return
+    this.fpsTimer = setTimeout(() => {
+      this.fpsTimer = null
+      if (this.disposed) return
+      this.lastFpsPush = nowMs()
+      this.writeStats({ fps: Math.round(this.fps) })
+    }, Math.max(0, delayMs))
+  }
+
+  private clearFpsTimer(): void {
+    if (this.fpsTimer === null) return
+    clearTimeout(this.fpsTimer)
+    this.fpsTimer = null
+  }
+
+  private writeStats(patch: { faces?: number; edges?: number; instances?: number; fps?: number }): void {
+    attempt('store.setStats', () => this.store.getState().setStats(patch), undefined)
   }
 
   private draw2dLayer(): void {
@@ -640,6 +690,7 @@ export class Viewport implements ViewportApi {
     this.disposed = true
     if (this.rafHandle !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.rafHandle)
     this.rafHandle = 0
+    this.clearFpsTimer()
 
     for (const off of this.unsubscribe) {
       try {

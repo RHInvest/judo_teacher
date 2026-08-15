@@ -375,10 +375,18 @@ export class Picker {
         const localTolerance = worldTolerance / scale
 
         const geom = doc.definitions[record.definitionId]?.geometry
+        const kernelHits = geom
+          ? kernelRaycast(geom, localRay, localTolerance, geometryKinds, options?.ignore, options?.includeHidden === true)
+          : null
+        // Der Kernel prueft Flaechen EXAKT gegen die Triangulierung (siehe
+        // core/query/raycast.ts) - die Toleranz gilt dort nur fuer Kanten und
+        // Vertices. Genau am Flaechenrand kann er deshalb leer ausgehen, wo der
+        // Puffer-Raycast noch trifft. Bei leerem Ergebnis wird deshalb der
+        // Puffer nachgeschlagen, damit beide Pfade dasselbe liefern.
         const hits =
-          (geom
-            ? kernelRaycast(geom, localRay, localTolerance, geometryKinds, options?.ignore, options?.includeHidden === true)
-            : null) ?? bufferRaycast(build, localRay, localTolerance, geometryKinds, options?.ignore, options?.includeHidden === true)
+          kernelHits && kernelHits.length > 0
+            ? kernelHits
+            : bufferRaycast(build, localRay, localTolerance, geometryKinds, options?.ignore, options?.includeHidden === true)
 
         const local = pickBest(hits, localTolerance)
         if (!local) continue

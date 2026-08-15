@@ -83,7 +83,21 @@ describe('orbit', () => {
     expect(up.z).toBeCloseTo(1, 9)
   })
 
-  it('kippt nicht ueber den Pol', () => {
+  it('kippt nicht unter die Bodenebene, solange das Modell darueber liegt', () => {
+    cam.setSceneBounds({ min: { x: -1, y: -1, z: 0 }, max: { x: 1, y: 1, z: 2 } })
+    cam.setState({ eye: { x: 0, y: -10, z: 4 }, target: { x: 0, y: 0, z: 1 } })
+
+    cam.orbit(0, 100000)
+    const bottom = cam.getState()
+    expect(bottom.eye.z).toBeGreaterThanOrEqual(-1e-9)
+    expect(bottom.eye.z).toBeLessThan(0.001)
+    expect(cam.distance).toBeCloseTo(V.distance({ x: 0, y: -10, z: 4 }, { x: 0, y: 0, z: 1 }), 6)
+    // und der Horizont bleibt dabei waagerecht
+    expect(bottom.up.z).toBeCloseTo(1, 9)
+  })
+
+  it('laesst den Blick von unten zu, wenn Geometrie unter dem Boden liegt', () => {
+    cam.setSceneBounds({ min: { x: -1, y: -1, z: -3 }, max: { x: 1, y: 1, z: 1 } })
     cam.setState({ eye: { x: 0, y: -10, z: 0 }, target: { x: 0, y: 0, z: 0 } })
 
     // Ziehen nach unten senkt die Kamera bis genau auf den Suedpol - und nicht darueber hinaus
@@ -92,8 +106,11 @@ describe('orbit', () => {
     expect(bottom.eye.z).toBeGreaterThan(-10)
     expect(bottom.eye.z).toBeLessThan(-9.99)
     expect(cam.distance).toBeCloseTo(10, 6)
+  })
 
-    // und zurueck bis genau auf den Nordpol
+  it('kippt nicht ueber den Nordpol', () => {
+    cam.setState({ eye: { x: 0, y: -10, z: 0 }, target: { x: 0, y: 0, z: 0 } })
+
     cam.orbit(0, -100000)
     const top = cam.getState()
     expect(top.eye.z).toBeLessThan(10)
@@ -102,6 +119,21 @@ describe('orbit', () => {
 
     // am Pol wird der Up-Vektor waagerecht gefuehrt, damit die Ansicht nicht springt
     expect(Math.abs(top.up.z)).toBeLessThan(0.01)
+  })
+
+  it('holt eine Untersicht ohne Sprung zurueck', () => {
+    // Untersicht ist ueber die Standardansicht weiter erreichbar; der Orbit
+    // darf sie dann nicht schlagartig ueber den Boden ziehen.
+    cam.setSceneBounds({ min: { x: -1, y: -1, z: 0 }, max: { x: 1, y: 1, z: 2 } })
+    cam.setState({ eye: { x: 0, y: -7, z: -7 }, target: { x: 0, y: 0, z: 0 } })
+    const before = cam.getState().eye.z
+
+    cam.orbit(0, 5)
+    expect(cam.getState().eye.z).toBeCloseTo(before, 1)
+
+    cam.orbit(0, -100000)
+    // bis fast an den Nordpol: eye.z geht gegen den Abstand (hier 7*sqrt(2))
+    expect(cam.getState().eye.z).toBeGreaterThan(cam.distance - 0.01)
   })
 })
 

@@ -88,7 +88,8 @@ describe('Aufbau', () => {
     const build = fixture.sync.getBuild('root')
     expect(build).toBeDefined()
     expect(build?.faceGroups.length).toBe(1)
-    expect(build?.faceGroups[0].faceIds.length).toBe(build?.faceGroups[0].indices.length ?? 0 / 3)
+    // je Dreieck genau eine Flaechen-Id
+    expect(build?.faceGroups[0].faceIds.length).toBe((build?.faceGroups[0].indices.length ?? 0) / 3)
     expect(build?.vertexIds.length).toBe(4)
     expect(fixture.sync.records.length).toBe(1)
     expect(fixture.sync.modelBounds.min.x).toBeCloseTo(-1, 6)

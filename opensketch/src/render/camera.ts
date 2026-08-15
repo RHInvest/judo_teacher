@@ -22,6 +22,9 @@ import { clamp, easeInOut, fromVector3, toVector3 } from './util'
 
 const ORBIT_SPEED = 0.0045
 const MIN_POLAR = 0.0015
+/** Hoehe der Bodenebene und Toleranz, ab der Geometrie als "unter dem Boden" gilt. */
+const GROUND_Z = 0
+const GROUND_TOL = 1e-6
 const MIN_DISTANCE = 1e-3
 const MAX_DISTANCE = 1e7
 const DEFAULT_TRANSITION_MS = 400
@@ -227,9 +230,10 @@ export class CameraController {
           : Math.atan2(s.up.y, s.up.x)
     let phi = Math.acos(clamp(offset.z / r, -1, 1))
 
+    const phiBefore = phi
     theta += dx * ORBIT_SPEED
     phi += dy * ORBIT_SPEED
-    phi = clamp(phi, MIN_POLAR, Math.PI - MIN_POLAR)
+    phi = clamp(phi, MIN_POLAR, this.maxPolar(s.target, r, phiBefore))
 
     const sinPhi = Math.sin(phi)
     s.eye = {
@@ -247,6 +251,35 @@ export class CameraController {
           : { x: 0, y: 0, z: 1 }
     this.animation = null
     this.commit(s)
+  }
+
+  /**
+   * Obergrenze des Polarwinkels beim Orbit.
+   *
+   * Solange das Modell vollstaendig ueber dem Boden liegt, darf der Blick nicht
+   * unter die Bodenebene kippen (SketchUp-Verhalten): aus
+   * `eye.z = target.z + r * cos(phi) >= 0` folgt `phi <= acos(-target.z / r)`.
+   * Der Horizont bleibt dabei automatisch waagerecht, weil der Up-Vektor in
+   * diesem Bereich nie auf die Polbehandlung umschaltet.
+   *
+   * Zwei Ausnahmen, damit nichts blockiert oder springt:
+   *  - Liegt Geometrie unter dem Boden oder der Drehpunkt selbst, gilt nur die
+   *    Polgrenze - sonst waere das Modell von unten nicht mehr erreichbar.
+   *  - Steht die Kamera bereits tiefer (z.B. nach `setStandardView('bottom')`),
+   *    wird der aktuelle Winkel zur Grenze. Weiter nach unten geht es nicht,
+   *    zurueck nach oben jederzeit - ohne Sprung.
+   */
+  private maxPolar(target: Vec3Like, r: number, current: number): number {
+    const hard = Math.PI - MIN_POLAR
+    if (target.z < GROUND_Z || !this.modelAboveGround()) return hard
+    const limit = Math.acos(clamp((GROUND_Z - target.z) / r, -1, 1))
+    return Math.min(hard, Math.max(limit, Math.min(current, hard)))
+  }
+
+  /** true, wenn keine bekannte Geometrie unter der Bodenebene liegt. */
+  private modelAboveGround(): boolean {
+    if (B.isEmpty(this.sceneBounds)) return true
+    return this.sceneBounds.min.z >= GROUND_Z - GROUND_TOL
   }
 
   /** Bildschirmparalleles Schwenken, distanzabhaengig skaliert. */

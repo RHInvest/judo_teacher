@@ -13,6 +13,7 @@
 import type { AppState, StoreHandle, ViewportApi } from '@/shared/store-api'
 import { emptyChange } from '@/shared/store-api'
 import type {
+  BBox3Like,
   Edge,
   Face,
   Geometry,
@@ -135,7 +136,33 @@ export interface FakeStore {
   /** Aufrufe der Geometrieaenderungen */
   calls: { name: string; args: unknown[] }[]
   geometry: Geometry
+  /** Text der zuletzt gesetzten Statuszeile ('' wenn nie gesetzt) */
+  lastStatus(): string
+  /** Texte aller Kurzmeldungen mit der Dringlichkeit `warn` */
+  warnings(): string[]
+  /** Hat das Werkzeug Geometrie erzeugt oder veraendert? */
+  changedGeometry(): boolean
 }
+
+export interface FakeStoreOptions {
+  /** Rueckgabe von `getSelectionBounds` - Skalieren braucht eine echte Box */
+  selectionBounds?: BBox3Like | null
+}
+
+/** Aufrufe, die das Modell veraendern - fuer "es darf nichts entstanden sein". */
+const GEOMETRY_CALLS: ReadonlySet<string> = new Set([
+  'addEdge',
+  'addPolyline',
+  'addFace',
+  'deletePrimitives',
+  'moveVertices',
+  'transformPrimitives',
+  'transformEntities',
+  'pushPull',
+  'followMe',
+  'offsetFace',
+  'offsetEdges',
+])
 
 /**
  * Baut einen Store, der nur das kann, was Werkzeuge wirklich benutzen.
@@ -143,7 +170,10 @@ export interface FakeStore {
  * `AppState` ist bewusst - ein vollstaendiger Nachbau waere hunderte Zeilen
  * toter Code und wuerde nichts zusaetzlich absichern.
  */
-export function createFakeStore(geometry: Geometry = emptyGeometry()): FakeStore {
+export function createFakeStore(
+  geometry: Geometry = emptyGeometry(),
+  options: FakeStoreOptions = {},
+): FakeStore {
   const operations: string[] = []
   const calls: { name: string; args: unknown[] }[] = []
   let selection: Selection = emptySelection()
@@ -183,7 +213,7 @@ export function createFakeStore(geometry: Geometry = emptyGeometry()): FakeStore
     getFace: (id: Id) => geometry.faces[id],
     getEntity: () => undefined,
     getMaterial: () => undefined,
-    getSelectionBounds: () => null,
+    getSelectionBounds: () => options.selectionBounds ?? null,
     getDefinitionBounds: () => ({ min: { x: 0, y: 0, z: 0 }, max: { x: 1, y: 1, z: 1 } }),
 
     operation: <T,>(name: string, fn: () => T): T => {
@@ -267,7 +297,22 @@ export function createFakeStore(geometry: Geometry = emptyGeometry()): FakeStore
     subscribe: () => () => {},
   }
 
-  return { handle, state, operations, calls, geometry }
+  return {
+    handle,
+    state,
+    operations,
+    calls,
+    geometry,
+    lastStatus: () => {
+      for (let i = calls.length - 1; i >= 0; i--) {
+        if (calls[i].name === 'setStatus') return String(calls[i].args[0] ?? '')
+      }
+      return ''
+    },
+    warnings: () =>
+      calls.filter((c) => c.name === 'toast' && c.args[1] === 'warn').map((c) => String(c.args[0] ?? '')),
+    changedGeometry: () => calls.some((c) => GEOMETRY_CALLS.has(c.name)),
+  }
 }
 
 /* ------------------------------------------------------------------ */

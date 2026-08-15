@@ -430,6 +430,40 @@ export class InferenceEngine implements InferenceApi {
       return { ...emptyResult(raw), plane: workPlane, hit }
     }
 
+    /*
+     * REIHENFOLGE - bitte nicht "aufraeumen".
+     *
+     * Sie sieht nach einer beliebigen Kette von Fallunterscheidungen aus, ist
+     * aber die Rangordnung, die das SketchUp-Gefuehl ausmacht. Jede Stufe hat
+     * einen Grund:
+     *
+     *  1. STARKE PUNKTE (Endpunkt, Mittelpunkt, Zentrum, Schnittpunkt) zuerst.
+     *     Sie haben einen kleinen Fangradius, der Nutzer zielt bewusst auf sie,
+     *     und sie sind exakt - eine Richtung darf sie nie ueberstimmen.
+     *
+     *  2. RICHTUNGEN (Achsen, parallel, senkrecht, Verlaengerung, von Punkt).
+     *     Innerhalb dieser Stufe gilt: erst der Schnittpunkt der
+     *     Richtungsgeraden mit der Kante unter dem Cursor - das ist die
+     *     Kombination aus beidem und schlaegt jede Einzelinferenz. Danach
+     *     schlaegt ECHTE GEOMETRIE ("Auf Kante", "Auf Hilfslinie") die
+     *     Richtung, wenn sie naeher am Cursor liegt.
+     *
+     *     Diese letzte Regel ist eine Reparatur, keine Feinheit: vorher gewann
+     *     eine Achsengerade auch dann, wenn der Cursor sichtbar auf einer Kante
+     *     stand. Der Nutzer zielt auf etwas Sichtbares und bekommt einen Punkt
+     *     auf etwas Unsichtbarem - das ist der Fehler, den niemand meldet, weil
+     *     er sich nicht beschreiben laesst.
+     *
+     *     `onFace` und `onPlane` bleiben bewusst UNTER den Richtungen. Sie
+     *     haben einen unendlichen Fangradius und einen Bildschirmabstand von
+     *     null; wuerden sie mitspielen, waere das Zeichnen entlang einer Achse
+     *     auf einer Flaeche tot - also fast jedes Zeichnen ueberhaupt.
+     *
+     *  3. SCHWACHE PUNKTE, wenn keine Richtung gefangen hat.
+     *  4. Die Zeichenebene als letzter Rueckfall - irgendeinen Punkt braucht
+     *     das Werkzeug immer.
+     */
+
     /* ---- 1. Punktinferenzen ---- */
     const candidates: PointCandidate[] = []
     this.collectPointCandidates(state, hit, x, y, candidates)
