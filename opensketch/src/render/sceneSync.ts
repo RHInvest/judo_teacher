@@ -375,6 +375,7 @@ export class SceneSync {
       vertexIds,
       localBounds: bounds,
       triangles: faceResult.triangles,
+      faceCount: faceResult.faces,
       edgeCount: edges.total,
       hasChildInstances,
     }
@@ -416,13 +417,19 @@ export class SceneSync {
     }
 
     let triangles = 0
+    let faceCount = 0
     let edgeCount = 0
+    let instanceCount = 0
     const modelBounds = B.empty()
 
     for (const record of records) {
+      // Die Modellwurzel ist ein Datensatz ohne Entity - sie ist KEINE
+      // platzierte Instanz und darf die Statuszeile nicht auf 1 hochziehen.
+      if (record.entityId !== null) instanceCount++
       const build = this.builds.get(record.definitionId)
       if (!build) continue
       triangles += build.triangles
+      faceCount += build.faceCount
       edgeCount += build.edgeCount
       if (!B.isEmpty(record.bounds)) {
         B.expandByPointMut(modelBounds, record.bounds.min)
@@ -435,8 +442,9 @@ export class SceneSync {
     this.modelBounds = modelBounds
     this.stats = {
       triangles,
+      faces: faceCount,
       edges: edgeCount,
-      instances: records.length,
+      instances: instanceCount,
       definitions: this.builds.size,
       drawCalls,
     }
@@ -749,7 +757,10 @@ interface GroupAccum {
 
 interface FaceBuildResult {
   groups: FaceGroup[]
+  /** Dreiecke der Triangulierung */
   triangles: number
+  /** gezeichnete `Face`-Objekte */
+  faces: number
   bounds: BBox3Like
 }
 
@@ -758,6 +769,7 @@ function buildFaceGroups(geom: Geometry, snapshot: RenderSnapshot, doc: SketchDo
   const groups = new Map<string, GroupAccum>()
   const bounds = B.empty()
   let triangles = 0
+  let faces = 0
 
   const smoothNormals = buildSmoothNormals(geom)
   const vertexByKey = smoothNormals ? buildVertexKeyMap(geom) : null
@@ -834,6 +846,7 @@ function buildFaceGroups(geom: Geometry, snapshot: RenderSnapshot, doc: SketchDo
     for (let i = 0; i < faceTriangles; i++) group.faceIds.push(faceId)
     group.vertexCount += count
     triangles += faceTriangles
+    faces++
   }
 
   const out: FaceGroup[] = []
@@ -863,7 +876,7 @@ function buildFaceGroups(geom: Geometry, snapshot: RenderSnapshot, doc: SketchDo
     })
   }
 
-  return { groups: out, triangles, bounds }
+  return { groups: out, triangles, faces, bounds }
 }
 
 /* ------------------------------------------------------------------ */

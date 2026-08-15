@@ -49,6 +49,38 @@ klemmen, klärt das direkt und haltet den Lead in Kopie.
   betroffen sind.
 - Prioritäten aktiv setzen, damit der kritische Pfad nie stillsteht.
 
+## Projektstandards, die aus Befunden entstanden sind
+
+Diese Regeln stehen hier, weil ihre Verletzung uns bereits Zeit gekostet hat.
+Sie gelten für alle Module.
+
+**Kein stilles Scheitern.** Bricht eine Operation ab, weil die Eingabe entartet
+ist, muss der Nutzer es erfahren — Statuszeile **und** Toast. Ein `reset(); return`
+ohne Rückmeldung ist ein Fehler, kein Schutz. Gefunden am Rechteckwerkzeug: Die
+Inferenz rastete den zweiten Eckpunkt auf eine Achse durch den ersten, die Breite
+wurde 0, das Werkzeug setzte wortlos zurück. Für den Nutzer sah es aus, als sei
+die Anwendung kaputt. In der Werkzeugschicht heisst der Weg dorthin
+`BaseTool.abortDegenerate(grund)`.
+
+**Echte Geometrie schlägt gedachte Hilfslinien.** Eine Inferenz auf etwas
+Sichtbarem (Kante, Endpunkt, Hilfslinie) muss gegen eine unsichtbare
+Achsengerade gewinnen, wenn sie näher am Cursor liegt. Ausnahme sind `onFace`
+und `onPlane`, sonst wäre Achsenzeichnen auf einer Fläche unmöglich. Die
+Reihenfolge in `inference/engine.ts:compute` ist deshalb bewusst gewählt und
+kommentiert — nicht „aufräumen".
+
+**Zähler und Anzeigen brauchen einen nachlaufenden Push.** Gerendert wird nur
+bei Bedarf. Wer eine Aktualisierung drosselt und den letzten Aufruf verwirft,
+friert die Anzeige dauerhaft ein, weil kein weiterer Frame kommt. Gefunden an
+der Modellstatistik in der Statuszeile.
+
+**Was der Nutzer sieht, muss heissen, was es heisst.** Dieselbe Statistik zeigte
+die Dreieckszahl der Triangulierung unter der Beschriftung „Flächen".
+
+**Voreinstellungen sind Teil der Bedienbarkeit.** Millimeter als Grundeinheit
+liess „2" im Massfeld zu einer unsichtbaren 2-mm-Extrusion werden. Eine
+Voreinstellung, die den ersten Versuch scheitern lässt, ist falsch gewählt.
+
 ## Dateieigentum
 
 Siehe `ARCHITECTURE.md`, Abschnitt 4. Kurz: `src/shared/**`, `src/core/math/**`,

@@ -82,7 +82,10 @@ export class Viewport implements ViewportApi {
   private readonly unsubscribe: (() => void)[] = []
 
   private snapshot: RenderSnapshot
+  /** Stand, den `syncScene` zuletzt VERARBEITET hat */
   private lastRevisions: Revisions = zeroRevisions()
+  /** Stand, den das Store-Abonnement zuletzt GESEHEN hat (nur zur Frame-Anforderung) */
+  private seenRevisions: Revisions = zeroRevisions()
 
   private width = 1
   private height = 1
@@ -170,8 +173,10 @@ export class Viewport implements ViewportApi {
             style: state.styleRevision ?? 0,
             selection: state.selectionRevision ?? 0,
           }
-          if (revisionsEqual(revisions, this.lastRevisions)) return
-          this.lastRevisions = revisions
+          // NICHT `lastRevisions` schreiben: der Vergleich in `syncScene` waere
+          // sonst immer schon erfuellt, bevor der Frame ueberhaupt laeuft.
+          if (revisionsEqual(revisions, this.seenRevisions)) return
+          this.seenRevisions = revisions
           this.requestRender()
         }),
       null,
