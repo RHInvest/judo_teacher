@@ -214,7 +214,8 @@ export class PushPullTool extends BaseTool {
     const distance = this.distance
     if (!faceId || Math.abs(distance) < POINT_TOL) {
       this.reset()
-      this.status(this.hint)
+      if (faceId) this.abortDegenerate('Nichts gedrückt oder gezogen - die Distanz ist 0')
+      else this.status(this.hint)
       return
     }
     const createNewStartingFace = this.newStartingFace

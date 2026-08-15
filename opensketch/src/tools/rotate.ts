@@ -246,8 +246,10 @@ export class RotateTool extends BaseTool {
   private commit(): void {
     const center = this.center
     if (!center || Math.abs(this.angle) < 1e-6) {
+      const hadCenter = center !== null
       this.reset()
-      this.status(this.hint)
+      if (hadCenter) this.abortDegenerate('Nichts gedreht - Winkel 0, der Endschenkel liegt auf dem Startschenkel')
+      else this.status(this.hint)
       return
     }
     const selection = cloneSelection(this.rotating)

@@ -324,7 +324,6 @@ export class ScaleTool extends BaseTool {
     const f = this.factors
     const degenerate = Math.abs(f.x) < 1e-6 || Math.abs(f.y) < 1e-6 || Math.abs(f.z) < 1e-6
     const unchanged = Math.abs(f.x - 1) < 1e-6 && Math.abs(f.y - 1) < 1e-6 && Math.abs(f.z - 1) < 1e-6
-    if (degenerate) this.notify('Skalierungsfaktor 0 ist nicht möglich', 'warn')
     if (!degenerate && !unchanged) {
       const selection = cloneSelection(this.scaling)
       this.applyMatrix('Skalieren', selection, M.scalingAbout(this.anchor, f), false)
@@ -334,7 +333,9 @@ export class ScaleTool extends BaseTool {
     this.scaling = emptySelection()
     this.refreshBox()
     this.clearVcb()
-    this.status(this.hint)
+    // Der Grund muss als Letztes stehen, sonst ueberschreibt ihn der Hinweistext.
+    if (degenerate) this.abortDegenerate('Nicht skaliert - der Faktor 0 würde die Auswahl flach drücken')
+    else this.status(this.hint)
   }
 
   private factorText(): string {

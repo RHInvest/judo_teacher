@@ -247,8 +247,10 @@ export class OffsetTool extends BaseTool {
   private commit(): void {
     const distance = this.distance
     if (Math.abs(distance) < POINT_TOL) {
+      const hadOutline = this.outline.length > 0
       this.reset()
-      this.status(this.hint)
+      if (hadOutline) this.abortDegenerate('Kein Versatz erzeugt - der Abstand ist 0')
+      else this.status(this.hint)
       return
     }
     const faceId = this.faceId
