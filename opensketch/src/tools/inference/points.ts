@@ -63,6 +63,20 @@ export function isStrongPoint(type: InferenceType): boolean {
   return pointPriority(type) <= pointPriority('intersection')
 }
 
+/**
+ * True fuer Punkte, die auf ECHTER Geometrie mit einem eigenen Fangradius
+ * liegen: die starken Punkte plus "Auf Hilfslinie" und "Auf Kante".
+ *
+ * Diese Punkte duerfen eine Richtungsinferenz schlagen, wenn sie naeher am
+ * Cursor liegen - der Nutzer zeigt sichtbar auf vorhandene Geometrie, und die
+ * darf nicht von einer unsichtbaren Achsengeraden ueberstimmt werden.
+ * `onFace` und `onPlane` gehoeren NICHT dazu: die haben einen unendlichen
+ * Fangradius und wuerden jede Richtungsinferenz auf einer Flaeche ausschalten.
+ */
+export function isGeometryPoint(type: InferenceType): boolean {
+  return pointPriority(type) <= pointPriority('onEdge')
+}
+
 export function snapRadiusFor(type: InferenceType): number {
   const r = SNAP_RADIUS[type]
   return r === undefined ? 7 : r

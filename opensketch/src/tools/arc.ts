@@ -182,7 +182,12 @@ export class ArcTool extends BaseTool {
   protected commit(): void {
     const points = this.previewPoints()
     if (!points || !this.center) {
+      const reason =
+        this.center && this.radius > POINT_TOL
+          ? `${this.name}: Winkel 0 - der Endschenkel liegt auf dem Startschenkel`
+          : `${this.name}: Radius 0 - der Punkt liegt auf dem Mittelpunkt`
       this.reset()
+      this.abortDegenerate(reason)
       return
     }
     if (this.closeToCenter) {

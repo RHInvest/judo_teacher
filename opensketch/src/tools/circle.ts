@@ -135,7 +135,9 @@ export class CircleTool extends BaseTool {
   protected commit(): void {
     const points = this.previewPoints()
     if (!points) {
+      const hadCenter = this.center !== null
       this.cancel()
+      if (hadCenter) this.abortDegenerate(`${this.name}: Radius 0 - der Punkt liegt auf dem Mittelpunkt`)
       return
     }
     this.modify(`${this.name} zeichnen`, (state) => state.addFace(points))

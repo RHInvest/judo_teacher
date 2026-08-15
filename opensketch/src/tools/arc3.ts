@@ -100,10 +100,25 @@ export class Arc3Tool extends BaseTool {
   }
 
   private commit(): void {
-    const arc = arc3Points(this.points[0], this.points[1], this.points[2], this.segments)
-    if (arc.length >= 2) {
-      this.modify('Bogen zeichnen', (state) => state.addPolyline(arc, false))
+    /*
+     * Kollineare Punkte haben keinen Umkreis. `arc3Points` gibt dann die drei
+     * Punkte unveraendert zurueck - daraus wuerde ein gerader Streckenzug, der
+     * sich Bogen nennt. Das ist keine Geometrie, die jemand gewollt hat:
+     * meistens ist der dritte Punkt auf eine Achsengerade durch den zweiten
+     * gerastet, die zufaellig durch den ersten laeuft.
+     */
+    if (!circumcenter(this.points[0], this.points[1], this.points[2])) {
+      this.reset()
+      this.abortDegenerate('3-Punkt-Bogen: die drei Punkte liegen auf einer Geraden')
+      return
     }
+    const arc = arc3Points(this.points[0], this.points[1], this.points[2], this.segments)
+    if (arc.length < 2) {
+      this.reset()
+      this.abortDegenerate('3-Punkt-Bogen: aus diesen drei Punkten lässt sich kein Bogen bilden')
+      return
+    }
+    this.modify('Bogen zeichnen', (state) => state.addPolyline(arc, false))
     this.reset()
     this.status(this.hint)
   }

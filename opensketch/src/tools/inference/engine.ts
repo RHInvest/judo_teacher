@@ -51,6 +51,7 @@ import { axisDirections } from '../modelAxes'
 import { circumcenter } from '../geom'
 import { colorFor, labelFor, markerFor, LABEL_ARC_CENTER, LABEL_FACE_CENTER } from './labels'
 import {
+  isGeometryPoint,
   isStrongPoint,
   pickBestPoint,
   pushCandidate,
@@ -72,6 +73,19 @@ export interface InferOptions {
   lastDirection?: Vec3Like | null
   disabled?: boolean
   ignore?: Id[]
+  /**
+   * Richtungsinferenzen (Achsen, parallel, senkrecht, Verlaengerung, von
+   * Punkt) zulassen. Standard `true`.
+   *
+   * Werkzeuge setzen das auf `false`, wenn eine Richtung durch den
+   * Referenzpunkt die Form zwangslaeufig entarten laesst - beim zweiten Eckpunkt
+   * des Rechtecks etwa liegt jede Achsengerade durch die erste Ecke in einer
+   * der beiden Rechteckrichtungen, das Rechteck haette also immer die Breite
+   * oder die Hoehe null. Eine vom Nutzer per Pfeiltaste GESETZTE Sperre bleibt
+   * davon unberuehrt: die wird vor dieser Stufe ausgewertet und ist eine
+   * bewusste Ansage.
+   */
+  allowDirections?: boolean
 }
 
 interface RefEdge {
@@ -427,7 +441,8 @@ export class InferenceEngine implements InferenceApi {
     }
 
     /* ---- 2. Richtungsinferenzen ---- */
-    const directions = this.collectDirections(state, hit, from, raw, workPlane, opts, x, y)
+    const directions =
+      opts.allowDirections === false ? [] : this.collectDirections(state, hit, from, raw, workPlane, opts, x, y)
     const bestDirection = pickBestDirection(directions, DIRECTION_TOL_PX)
 
     if (bestDirection) {
@@ -449,6 +464,17 @@ export class InferenceEngine implements InferenceApi {
           },
           opts,
         )
+      }
+      /*
+       * Echte Geometrie schlaegt die Richtung, wenn sie naeher am Cursor
+       * liegt. Ohne diese Regel gewinnt eine Achsengerade durch den
+       * Referenzpunkt selbst dann, wenn der Cursor sichtbar auf einer Kante
+       * steht - und der Nutzer bekommt einen Punkt, auf den er nicht gezeigt
+       * hat.
+       */
+      if (bestPoint && isGeometryPoint(bestPoint.type) && bestPoint.screenDist < bestDirection.screenDist) {
+        this.trackDwell(bestPoint.type, bestPoint.point)
+        return this.finishResult(this.resultFromPoint(bestPoint, hit), opts)
       }
       return this.finishResult(this.resultFromDirection(bestDirection, hit), opts)
     }

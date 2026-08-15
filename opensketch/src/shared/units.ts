@@ -64,13 +64,24 @@ export const VOLUME_SUFFIX: Record<VolumeUnit, string> = {
   ft3: 'ft³',
 }
 
+/**
+ * Voreinstellung fuer metrische Dokumente.
+ *
+ * Die Laengeneinheit ist METER, nicht Millimeter: die Anwendung ist fuer
+ * Haeuser, Moebel und Architektur gedacht, und dort tippt man "3" fuer eine
+ * drei Meter hohe Wand. Mit Millimetern als Grundeinheit erzeugt dieselbe
+ * Eingabe eine unsichtbare 3-mm-Extrusion - ein Stolperstein direkt beim
+ * ersten Kontakt (im Browsertest genau so passiert). Millimetergenauigkeit
+ * bleibt ueber `precision: 3` erhalten, und die Einheit ist in der Modellinfo
+ * jederzeit umstellbar.
+ */
 export const DEFAULT_UNITS: UnitSettings = {
   format: 'decimal',
-  lengthUnit: 'mm',
+  lengthUnit: 'm',
   angleUnit: 'deg',
   areaUnit: 'm2',
   volumeUnit: 'm3',
-  precision: 1,
+  precision: 3,
   fractionDenominator: 16,
   displayUnitSuffix: true,
   lengthSnap: 0.001,

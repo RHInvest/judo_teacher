@@ -58,7 +58,7 @@ export class RectangleTool extends BaseTool {
       this.infer(e, { from: null })
       return
     }
-    const inf = this.infer(e, { from: this.origin, plane: this.plane })
+    const inf = this.infer(e, this.cornerOptions())
     this.corner = P.projectPoint(this.plane, inf.point)
     this.updateVcb()
   }
@@ -71,7 +71,7 @@ export class RectangleTool extends BaseTool {
       this.started = false
       return
     }
-    const inf = this.infer(e, { from: this.origin, plane: this.plane })
+    const inf = this.infer(e, this.cornerOptions())
     this.corner = P.projectPoint(this.plane, inf.point)
     this.commit()
   }
@@ -123,6 +123,23 @@ export class RectangleTool extends BaseTool {
 
   /* ---------------- Intern ---------------- */
 
+  /**
+   * Inferenzoptionen fuer den zweiten Eckpunkt.
+   *
+   * `allowDirections: false` ist hier kein Geschmack, sondern Notwehr: die
+   * Achsen-, Parallel- und Senkrecht-Inferenzen laufen alle durch die erste
+   * Ecke, und jede von ihnen liegt in Richtung `u` oder `v`. Rastet der zweite
+   * Punkt darauf, ist Breite oder Hoehe exakt null und das Rechteck
+   * verschwindet. SketchUp bietet an dieser Stelle Proportionen (Quadrat,
+   * Goldener Schnitt) und echte Geometrie an - beides bleibt erhalten.
+   *
+   * Eine per Pfeiltaste gesetzte Sperre wertet die Maschine vorher aus und
+   * bleibt gueltig: wer die Achse ausdruecklich verlangt, bekommt sie.
+   */
+  private cornerOptions() {
+    return { from: this.origin, plane: this.plane, allowDirections: false }
+  }
+
   protected reset(): void {
     this.origin = null
     this.plane = null
@@ -147,12 +164,28 @@ export class RectangleTool extends BaseTool {
   protected commit(): void {
     const points = this.previewPoints()
     if (!points) {
+      const reason = this.degenerateReason()
       this.reset()
+      this.abortDegenerate(reason)
       return
     }
     this.modify('Rechteck zeichnen', (state) => state.addFace(points))
     this.reset()
     this.status(this.hint)
+  }
+
+  /** Sagt dem Nutzer, WARUM kein Rechteck entstanden ist. */
+  protected degenerateReason(): string {
+    if (!this.origin || !this.corner) return 'Rechteck abgebrochen - es fehlt eine Ecke'
+    const { width, height } = this.currentSize()
+    const flatWidth = Math.abs(width) < POINT_TOL
+    const flatHeight = Math.abs(height) < POINT_TOL
+    if (flatWidth && flatHeight) {
+      return 'Rechteck hat keine Fläche - beide Ecken liegen aufeinander'
+    }
+    return flatWidth
+      ? 'Rechteck hat keine Fläche - Breite 0, die Ecke liegt auf einer Geraden durch den Startpunkt'
+      : 'Rechteck hat keine Fläche - Höhe 0, die Ecke liegt auf einer Geraden durch den Startpunkt'
   }
 
   private updateVcb(): void {

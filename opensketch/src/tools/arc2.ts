@@ -152,9 +152,19 @@ export class Arc2Tool extends BaseTool {
     return this.plane ? this.plane.n : V.AXIS_Z
   }
 
+  /**
+   * Dritter Schritt: die Bogenhoehe.
+   *
+   * Richtungsinferenzen sind gesperrt. Sie laufen durch den Sehnenendpunkt;
+   * liegt die Sehne achsenparallel - der Normalfall, weil sie meist selbst auf
+   * eine Achse gerastet wurde -, faellt die Achsengerade mit der Sehne
+   * zusammen. Der Punkt rastet darauf, die Bogenhoehe ist exakt null und der
+   * Bogen verschwindet. Die Halbkreis-Inferenz weiter unten bleibt erhalten;
+   * sie ist die Rastung, die an dieser Stelle wirklich hilft.
+   */
   private updateBulge(e: PointerInfo): void {
     if (!this.start || !this.end) return
-    const inf = this.infer(e, { from: this.end, plane: this.plane })
+    const inf = this.infer(e, { from: this.end, plane: this.plane, allowDirections: false })
     const chord = V.sub(this.end, this.start)
     const length = V.length(chord)
     if (length < POINT_TOL) return
@@ -177,7 +187,12 @@ export class Arc2Tool extends BaseTool {
   protected commit(): void {
     const points = this.previewPoints()
     if (!points) {
+      const reason =
+        this.start && this.end && V.distance(this.start, this.end) < POINT_TOL
+          ? 'Bogen: die Sehne hat die Länge 0'
+          : 'Bogen: Bogenhöhe 0 - der Punkt liegt auf der Sehne'
       this.reset()
+      this.abortDegenerate(reason)
       return
     }
     this.modify('Bogen zeichnen', (state) => state.addPolyline(points, false))

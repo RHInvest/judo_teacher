@@ -158,6 +158,27 @@ export abstract class BaseTool implements Tool {
   }
 
   /**
+   * Bricht ab, weil die Eingabe entartet ist - Rechteck ohne Flaeche, Kreis
+   * mit Radius null, Bewegung ueber die Distanz null.
+   *
+   * KEIN STILLES SCHEITERN: bis hierher hat der Nutzer geklickt und erwartet
+   * Geometrie. Bleibt sie aus, muss er den Grund erfahren, sonst klickt er
+   * gegen eine Wand, ohne zu merken, dass eine Inferenz ihm die Form
+   * zusammengezogen hat. Deshalb Statuszeile UND Kurzmeldung: die Statuszeile
+   * bleibt stehen, die Kurzmeldung faellt auch dem auf, der gerade auf den
+   * Cursor schaut.
+   *
+   * Aufrufreihenfolge im Werkzeug: erst den eigenen Zustand zuruecksetzen
+   * (das Zuruecksetzen schreibt oft selbst ins Massfeld), dann diese Methode -
+   * so bleibt der Grund als Letztes stehen.
+   */
+  protected abortDegenerate(reason: string): void {
+    this.notify(reason, 'warn')
+    this.status(reason, this.hint)
+    this.clearLock()
+  }
+
+  /**
    * Wendet eine Matrix auf eine Auswahl an - der gemeinsame Kern von
    * Verschieben, Drehen und Skalieren. Primitive und Entities werden getrennt
    * behandelt, laufen aber in EINER Operation, damit ein Undo alles zurueck-

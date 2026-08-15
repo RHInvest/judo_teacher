@@ -144,9 +144,19 @@ export class RotatedRectangleTool extends BaseTool {
     this.plane = P.fromNormalAndPoint(V.cross(this.u, this.v), this.p0)
   }
 
+  /**
+   * Dritter Klick: die Breite.
+   *
+   * Richtungsinferenzen sind hier gesperrt. Sie laufen durch `p1`, und die
+   * gefaehrlichste von ihnen war die Parallele zur Grundkante (`lastDirection:
+   * u`) - rastet der Punkt darauf, ist `dot(rel, v)` exakt null und das
+   * Rechteck verschwindet. Achsen durch `p1` machen dasselbe, sobald die
+   * Grundkante achsenparallel liegt. Zu gewinnen ist nichts: die Breite wird
+   * ohnehin auf `v` projiziert, eine Richtungsinferenz kann sie nur verkuerzen.
+   */
   private updateHeight(e: PointerInfo): void {
     if (!this.p0 || !this.p1) return
-    const inf = this.infer(e, { from: this.p1, lastDirection: this.u })
+    const inf = this.infer(e, { from: this.p1, plane: this.plane, allowDirections: false })
     this.height = V.dot(V.sub(inf.point, this.p1), this.v)
   }
 
@@ -160,7 +170,12 @@ export class RotatedRectangleTool extends BaseTool {
   private commit(): void {
     const points = this.previewPoints()
     if (!points) {
+      const reason =
+        this.p0 && this.p1 && V.distance(this.p0, this.p1) < POINT_TOL
+          ? 'Gedrehtes Rechteck: die Grundkante hat die Länge 0'
+          : 'Gedrehtes Rechteck hat keine Fläche - die Breite ist 0'
       this.reset()
+      this.abortDegenerate(reason)
       return
     }
     this.modify('Gedrehtes Rechteck zeichnen', (state) => state.addFace(points))

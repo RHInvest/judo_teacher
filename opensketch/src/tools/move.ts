@@ -171,7 +171,12 @@ export class MoveTool extends BaseTool {
     }
     const delta = V.sub(this.target, this.base)
     if (V.length(delta) < POINT_TOL) {
+      // Grund vor dem Zuruecksetzen bestimmen - `reset()` loescht `copyMode`.
+      const reason = this.copyMode
+        ? 'Keine Kopie erzeugt - Zielpunkt und Basispunkt sind derselbe'
+        : 'Nichts verschoben - Zielpunkt und Basispunkt sind derselbe'
       this.reset()
+      this.abortDegenerate(reason)
       return
     }
     const selection = cloneSelection(this.moving)
