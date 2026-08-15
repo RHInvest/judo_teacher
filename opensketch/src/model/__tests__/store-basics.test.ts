@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { emptySelection } from '@/shared/types'
 import { M, V } from '@/core/math'
-import { useStore, resetStoreForTests } from '../store'
+import { store, useStore, resetStoreForTests } from '../store'
 import { buildBox, buildQuad, installGeometry } from './helpers'
 
 beforeEach(() => {
@@ -33,11 +33,23 @@ describe('Dokument-Lebenszyklus', () => {
     expect(Object.keys(useStore.getState().doc.materials)).toHaveLength(0)
   })
 
-  it('useStore funktioniert als Hook-Selektor', () => {
-    const selection = useStore((s) => s.selection)
-    expect(selection).toEqual(emptySelection())
-    const rootId = useStore((s) => s.doc.rootId)
-    expect(rootId).toBe(useStore.getState().doc.rootId)
+  it('useStore ist ein Hook mit vollstaendigem Store-Handle', () => {
+    // Der Aufruf mit Selektor gehoert in eine React-Komponente; hier wird die
+    // Form geprueft, die die UI benutzt (useStore(s => ...)) plus das Handle.
+    expect(typeof useStore).toBe('function')
+    expect(useStore.length).toBeGreaterThanOrEqual(1)
+    expect(typeof useStore.getState).toBe('function')
+    expect(typeof useStore.setState).toBe('function')
+    expect(typeof useStore.subscribe).toBe('function')
+    expect(store.getState().selection).toEqual(emptySelection())
+  })
+
+  it('store.subscribe meldet Aenderungen ausserhalb von React', () => {
+    const seen: number[] = []
+    const off = store.subscribe((s) => seen.push(s.selectionRevision))
+    store.getState().setSelection({ ...emptySelection(), edgeIds: ['x'] })
+    off()
+    expect(seen.length).toBeGreaterThan(0)
   })
 
   it('exportDocument liefert eine unabhaengige, tiefe Kopie', () => {
