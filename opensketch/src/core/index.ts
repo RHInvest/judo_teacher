@@ -2,22 +2,24 @@
  * PUBLIC API DES GEOMETRIEKERNS.
  *
  * Diese Signaturen sind ein vom Lead festgelegter Contract. Der Kernel-
- * Entwickler implementiert sie (Bodies ersetzen, Signaturen NICHT ändern) und
+ * Entwickler implementiert sie (Bodies ersetzen, Signaturen NICHT aendern) und
  * verteilt die Implementierung auf `core/topology`, `core/ops`, `core/query`.
  *
  * Grundregeln:
  *  - Alle Operationen arbeiten auf EINEM `Geometry`-Topf (= ein Kontext).
  *  - Operationen mutieren `geom` IN PLACE und liefern ein `GeometryChange`
- *    zurück, damit Renderer und Undo wissen, was passiert ist.
+ *    zurueck, damit Renderer und Undo wissen, was passiert ist.
  *  - Automatisches Verschmelzen: Vertices naeher als POINT_TOL werden
  *    zusammengefuehrt, sich kreuzende Kanten werden geteilt, geschlossene
  *    planare Schleifen erzeugen automatisch eine Flaeche.
+ *
+ * Diese Datei ist reine Fassade: sie enthaelt keine Geometrie-Logik, sondern
+ * bindet die Untermodule an den Contract und kuemmert sich um die
+ * Cache-Invalidierung nach jeder Aenderung.
  */
 
 import type {
   BBox3Like,
-  Edge,
-  Face,
   Geometry,
   Id,
   Mat4Like,
@@ -27,9 +29,75 @@ import type {
 import type { GeometryChange } from '@/shared/store-api'
 import type { Ray } from '@/core/math'
 
-const NI = (name: string) => {
-  throw new Error(`core: ${name}() ist noch nicht implementiert`)
+import {
+  addEdgeMut,
+  addFacePolygonMut,
+  addPolylineMut,
+  cleanupMut,
+  cloneGeometryDeep,
+  deletePrimitivesMut,
+  finishAcc,
+  mergeCoplanarFacesMut,
+  mergeGeometryMut,
+  moveVerticesMut,
+  newAcc,
+  orientFacesConsistentlyMut,
+  reverseFacesMut,
+  softenEdgesMut,
+  transformGeometryCopy,
+  transformPrimitivesMut,
+  type ChangeAcc,
+} from '@/core/topology'
+import {
+  boundingEdges as boundingEdgesQuery,
+  findConnected as findConnectedQuery,
+  findCoplanarFaces,
+  orderEdgePath as orderEdgePathQuery,
+} from '@/core/topology/connect'
+import {
+  edgeLength as edgeLengthQuery,
+  edgePoints as edgePointsQuery,
+  faceArea as faceAreaQuery,
+  faceHoleVertices as faceHoleVerticesQuery,
+  facePlane as facePlaneQuery,
+  faceVertices as faceVerticesQuery,
+  geometryBounds as geometryBoundsQuery,
+  invalidateFaceCache,
+  invalidateSpatialIndex,
+  isSolid as isSolidQuery,
+  raycast as raycastQuery,
+  solidVolume as solidVolumeQuery,
+  totalArea as totalAreaQuery,
+  triangulateFace as triangulateFaceQuery,
+  triangulatePolygon2D as triangulatePolygon2DQuery,
+  validate as validateQuery,
+} from '@/core/query'
+import * as prim from '@/core/ops/primitives'
+import { pushPullMut } from '@/core/ops/pushpull'
+
+/* ------------------------------------------------------------------ */
+/* Cache-Invalidierung                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Schliesst eine Operation ab: raeumliche Indizes und Flaechen-Cache der
+ * betroffenen Flaechen verwerfen, dann den flachen Change liefern.
+ */
+function commit(geom: Geometry, acc: ChangeAcc): GeometryChange {
+  const change = finishAcc(acc)
+  for (const id of change.removedFaces) invalidateFaceCache(id)
+  for (const id of change.modifiedFaces) invalidateFaceCache(id)
+  invalidateSpatialIndex(geom)
+  return change
 }
+
+/** Verwirft alle Caches einer Geometrie (nach externen Mutationen). */
+export function invalidateCaches(geom?: Geometry, faceId?: Id): void {
+  invalidateFaceCache(faceId)
+  invalidateSpatialIndex(geom)
+}
+
+export { invalidateFaceCache, invalidateSpatialIndex }
 
 /* ------------------------------------------------------------------ */
 /* Aufbau                                                             */
@@ -53,7 +121,9 @@ export interface AddOptions {
 
 /** Kante zwischen zwei Punkten, inklusive Verschmelzen, Teilen, Flaechenbildung. */
 export function addEdge(geom: Geometry, a: Vec3Like, b: Vec3Like, opts?: AddOptions): GeometryChange {
-  return NI('addEdge')
+  const acc = newAcc()
+  addEdgeMut(geom, a, b, opts ?? {}, acc)
+  return commit(geom, acc)
 }
 
 /** Zusammenhaengender Kantenzug. */
@@ -63,7 +133,9 @@ export function addPolyline(
   closed: boolean,
   opts?: AddOptions,
 ): GeometryChange {
-  return NI('addPolyline')
+  const acc = newAcc()
+  addPolylineMut(geom, points, closed, opts ?? {}, acc)
+  return commit(geom, acc)
 }
 
 /** Flaeche direkt aus einer geschlossenen, planaren Punktschleife (plus Loechern). */
@@ -73,12 +145,16 @@ export function addFacePolygon(
   holes?: readonly (readonly Vec3Like[])[],
   opts?: AddOptions,
 ): GeometryChange {
-  return NI('addFacePolygon')
+  const acc = newAcc()
+  addFacePolygonMut(geom, outer, holes, opts ?? {}, acc)
+  return commit(geom, acc)
 }
 
 /** Fuegt eine komplette zweite Geometrie ein (Gruppe aufloesen, Import). */
 export function mergeGeometry(target: Geometry, source: Geometry, transform?: Mat4Like): GeometryChange {
-  return NI('mergeGeometry')
+  const acc = newAcc()
+  mergeGeometryMut(target, source, transform, acc)
+  return commit(target, acc)
 }
 
 /* ------------------------------------------------------------------ */
@@ -89,17 +165,23 @@ export function deletePrimitives(
   geom: Geometry,
   ids: { edgeIds?: Id[]; faceIds?: Id[]; vertexIds?: Id[] },
 ): GeometryChange {
-  return NI('deletePrimitives')
+  const acc = newAcc()
+  deletePrimitivesMut(geom, ids, acc)
+  return commit(geom, acc)
 }
 
 /** Entfernt verwaiste Vertices/Kanten und repariert Flaechenreferenzen. */
 export function cleanup(geom: Geometry): GeometryChange {
-  return NI('cleanup')
+  const acc = newAcc()
+  cleanupMut(geom, acc)
+  return commit(geom, acc)
 }
 
 /** Fuehrt koplanare Nachbarflaechen zusammen und entfernt ueberfluessige Kanten. */
 export function mergeCoplanarFaces(geom: Geometry, faceIds?: Id[]): GeometryChange {
-  return NI('mergeCoplanarFaces')
+  const acc = newAcc()
+  mergeCoplanarFacesMut(geom, faceIds, acc)
+  return commit(geom, acc)
 }
 
 /* ------------------------------------------------------------------ */
@@ -107,7 +189,9 @@ export function mergeCoplanarFaces(geom: Geometry, faceIds?: Id[]): GeometryChan
 /* ------------------------------------------------------------------ */
 
 export function moveVertices(geom: Geometry, vertexIds: readonly Id[], delta: Vec3Like): GeometryChange {
-  return NI('moveVertices')
+  const acc = newAcc()
+  moveVerticesMut(geom, vertexIds, delta, acc)
+  return commit(geom, acc)
 }
 
 /**
@@ -120,16 +204,18 @@ export function transformPrimitives(
   matrix: Mat4Like,
   copy: boolean,
 ): GeometryChange {
-  return NI('transformPrimitives')
+  const acc = newAcc()
+  transformPrimitivesMut(geom, ids, matrix, copy, acc)
+  return commit(geom, acc)
 }
 
 /** Neue, transformierte Kopie der gesamten Geometrie. */
 export function transformGeometry(geom: Geometry, matrix: Mat4Like): Geometry {
-  return NI('transformGeometry')
+  return transformGeometryCopy(geom, matrix)
 }
 
 export function cloneGeometry(geom: Geometry): Geometry {
-  return NI('cloneGeometry')
+  return cloneGeometryDeep(geom)
 }
 
 /* ------------------------------------------------------------------ */
@@ -146,12 +232,14 @@ export interface PushPullOptions {
 }
 
 export function pushPull(geom: Geometry, faceId: Id, distance: number, opts?: PushPullOptions): GeometryChange {
-  return NI('pushPull')
+  const acc = newAcc()
+  pushPullMut(geom, faceId, distance, opts, acc)
+  return commit(geom, acc)
 }
 
 /** Extrudiert ein Profil entlang eines Kantenpfads (Folge-mir). */
 export function followMe(geom: Geometry, profileFaceId: Id, pathEdgeIds: readonly Id[]): GeometryChange {
-  return NI('followMe')
+  throw new Error('core: followMe() ist noch nicht implementiert')
 }
 
 /** Rotationskoerper - Spezialfall von followMe mit Kreispfad. */
@@ -163,17 +251,17 @@ export function revolve(
   angle: number,
   segments: number,
 ): GeometryChange {
-  return NI('revolve')
+  throw new Error('core: revolve() ist noch nicht implementiert')
 }
 
 /** Versatz der Aussenschleife einer Flaeche; positiv = nach aussen. */
 export function offsetFace(geom: Geometry, faceId: Id, distance: number): GeometryChange {
-  return NI('offsetFace')
+  throw new Error('core: offsetFace() ist noch nicht implementiert')
 }
 
 /** Versatz eines zusammenhaengenden, planaren Kantenzugs. */
 export function offsetEdges(geom: Geometry, edgeIds: readonly Id[], distance: number): GeometryChange {
-  return NI('offsetEdges')
+  throw new Error('core: offsetEdges() ist noch nicht implementiert')
 }
 
 /**
@@ -185,17 +273,19 @@ export function intersectFaces(
   sourceFaceIds: readonly Id[],
   targetFaceIds?: readonly Id[],
 ): GeometryChange {
-  return NI('intersectFaces')
+  throw new Error('core: intersectFaces() ist noch nicht implementiert')
 }
 
 /** Dreht die Vorder-/Rueckseite der Flaechen um. */
 export function reverseFaces(geom: Geometry, faceIds: readonly Id[]): void {
-  NI('reverseFaces')
+  reverseFacesMut(geom, faceIds)
+  for (const id of faceIds) invalidateFaceCache(id)
 }
 
 /** Richtet alle zusammenhaengenden Flaechen an der Orientierung von `seedFaceId` aus. */
 export function orientFacesConsistently(geom: Geometry, seedFaceId: Id): void {
-  NI('orientFacesConsistently')
+  orientFacesConsistentlyMut(geom, seedFaceId)
+  invalidateFaceCache()
 }
 
 /** Weichzeichnen/Glaetten anhand des Winkels zwischen Nachbarflaechen. */
@@ -205,7 +295,7 @@ export function softenEdges(
   angleRad: number,
   opts?: { softenCoplanar?: boolean; soften?: boolean; smooth?: boolean },
 ): void {
-  NI('softenEdges')
+  softenEdgesMut(geom, edgeIds, angleRad, opts)
 }
 
 /** Boolesche Operation zwischen zwei geschlossenen Volumen. */
@@ -214,7 +304,7 @@ export function booleanSolid(
   b: Geometry,
   op: 'union' | 'subtract' | 'intersect',
 ): Geometry | null {
-  return NI('booleanSolid')
+  throw new Error('core: booleanSolid() ist noch nicht implementiert')
 }
 
 /* ------------------------------------------------------------------ */
@@ -223,12 +313,12 @@ export function booleanSolid(
 
 /** Punkte der Aussenschleife einer Flaeche, in Umlaufrichtung. */
 export function faceVertices(geom: Geometry, faceId: Id): Vec3Like[] {
-  return NI('faceVertices')
+  return faceVerticesQuery(geom, faceId)
 }
 
 /** Punkte einer Lochschleife. */
 export function faceHoleVertices(geom: Geometry, faceId: Id, holeIndex: number): Vec3Like[] {
-  return NI('faceHoleVertices')
+  return faceHoleVerticesQuery(geom, faceId, holeIndex)
 }
 
 /**
@@ -239,41 +329,41 @@ export function triangulateFace(
   geom: Geometry,
   faceId: Id,
 ): { positions: Float32Array; normals: Float32Array; indices: Uint32Array } {
-  return NI('triangulateFace')
+  return triangulateFaceQuery(geom, faceId)
 }
 
 export function faceArea(geom: Geometry, faceId: Id): number {
-  return NI('faceArea')
+  return faceAreaQuery(geom, faceId)
 }
 
 export function facePlane(geom: Geometry, faceId: Id): PlaneLike {
-  return NI('facePlane')
+  return facePlaneQuery(geom, faceId)
 }
 
 export function edgeLength(geom: Geometry, edgeId: Id): number {
-  return NI('edgeLength')
+  return edgeLengthQuery(geom, edgeId)
 }
 
 export function edgePoints(geom: Geometry, edgeId: Id): [Vec3Like, Vec3Like] {
-  return NI('edgePoints')
+  return edgePointsQuery(geom, edgeId)
 }
 
 export function geometryBounds(geom: Geometry): BBox3Like {
-  return NI('geometryBounds')
+  return geometryBoundsQuery(geom)
 }
 
 /** true, wenn jede Kante genau zwei Flaechen hat (geschlossenes Volumen). */
 export function isSolid(geom: Geometry): boolean {
-  return NI('isSolid')
+  return isSolidQuery(geom)
 }
 
 /** Volumen eines geschlossenen Koerpers, sonst 0. */
 export function solidVolume(geom: Geometry): number {
-  return NI('solidVolume')
+  return solidVolumeQuery(geom)
 }
 
 export function totalArea(geom: Geometry, faceIds?: readonly Id[]): number {
-  return NI('totalArea')
+  return totalAreaQuery(geom, faceIds)
 }
 
 /** Alle ueber Kanten verbundenen Primitive ab einem Startelement. */
@@ -281,17 +371,17 @@ export function findConnected(
   geom: Geometry,
   seed: { edgeIds?: Id[]; faceIds?: Id[] },
 ): { edgeIds: Id[]; faceIds: Id[]; vertexIds: Id[] } {
-  return NI('findConnected')
+  return findConnectedQuery(geom, seed)
 }
 
 /** Alle koplanaren, zusammenhaengenden Flaechen ab einer Startflaeche. */
 export function findCoplanar(geom: Geometry, faceId: Id): Id[] {
-  return NI('findCoplanar')
+  return findCoplanarFaces(geom, faceId)
 }
 
 /** Begrenzungskanten einer Flaechenmenge. */
 export function boundingEdges(geom: Geometry, faceIds: readonly Id[]): Id[] {
-  return NI('boundingEdges')
+  return boundingEdgesQuery(geom, faceIds)
 }
 
 /**
@@ -299,7 +389,7 @@ export function boundingEdges(geom: Geometry, faceIds: readonly Id[]): Id[] {
  * Liefert null, wenn die Kanten keinen einfachen Pfad bilden.
  */
 export function orderEdgePath(geom: Geometry, edgeIds: readonly Id[]): Id[] | null {
-  return NI('orderEdgePath')
+  return orderEdgePathQuery(geom, edgeIds)
 }
 
 export interface RaycastHit {
@@ -319,12 +409,12 @@ export function raycast(
   ray: Ray,
   opts?: { tolerance?: number; kinds?: ('face' | 'edge' | 'vertex')[]; ignore?: Id[]; backfaces?: boolean },
 ): RaycastHit[] {
-  return NI('raycast')
+  return raycastQuery(geom, ray, opts)
 }
 
 /** Prueft die Integritaet und liefert Fehlerbeschreibungen (Tests, Debug). */
 export function validate(geom: Geometry): string[] {
-  return NI('validate')
+  return validateQuery(geom)
 }
 
 /* ------------------------------------------------------------------ */
@@ -332,35 +422,35 @@ export function validate(geom: Geometry): string[] {
 /* ------------------------------------------------------------------ */
 
 export function buildCircle(center: Vec3Like, normal: Vec3Like, radius: number, segments: number, startPoint?: Vec3Like): Vec3Like[] {
-  return NI('buildCircle')
+  return prim.buildCircle(center, normal, radius, segments, startPoint)
 }
 
 export function buildPolygon(center: Vec3Like, normal: Vec3Like, radius: number, sides: number, inscribed?: boolean, startPoint?: Vec3Like): Vec3Like[] {
-  return NI('buildPolygon')
+  return prim.buildPolygon(center, normal, radius, sides, inscribed, startPoint)
 }
 
 /** Bogen ueber Zentrum, Startwinkel, Endwinkel. */
 export function buildArc(center: Vec3Like, normal: Vec3Like, radius: number, startAngle: number, endAngle: number, segments: number, xAxis?: Vec3Like): Vec3Like[] {
-  return NI('buildArc')
+  return prim.buildArc(center, normal, radius, startAngle, endAngle, segments, xAxis)
 }
 
 /** Bogen durch drei Punkte. */
 export function buildArc3Points(a: Vec3Like, b: Vec3Like, c: Vec3Like, segments: number): Vec3Like[] {
-  return NI('buildArc3Points')
+  return prim.buildArc3Points(a, b, c, segments)
 }
 
 /** Bogen ueber Sehne + Bogenhoehe (SketchUp "Arc"-Werkzeug). */
 export function buildArcBulge(start: Vec3Like, end: Vec3Like, bulge: number, normal: Vec3Like, segments: number): Vec3Like[] {
-  return NI('buildArcBulge')
+  return prim.buildArcBulge(start, end, bulge, normal, segments)
 }
 
 export function buildRectangle(origin: Vec3Like, xAxis: Vec3Like, yAxis: Vec3Like, width: number, height: number): Vec3Like[] {
-  return NI('buildRectangle')
+  return prim.buildRectangle(origin, xAxis, yAxis, width, height)
 }
 
 /** Kubische Bezierkurve als Punktzug. */
 export function buildBezier(p0: Vec3Like, p1: Vec3Like, p2: Vec3Like, p3: Vec3Like, segments: number): Vec3Like[] {
-  return NI('buildBezier')
+  return prim.buildBezier(p0, p1, p2, p3, segments)
 }
 
 /**
@@ -371,5 +461,5 @@ export function triangulatePolygon2D(
   outer: readonly { x: number; y: number }[],
   holes?: readonly (readonly { x: number; y: number }[])[],
 ): number[] {
-  return NI('triangulatePolygon2D')
+  return triangulatePolygon2DQuery(outer, holes)
 }

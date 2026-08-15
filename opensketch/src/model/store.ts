@@ -487,6 +487,38 @@ export const useStore = create<AppState>()((set, get) => {
     }
   }
 
+  /**
+   * Transformiert Entities innerhalb EINES `doc`-Objekts.
+   *
+   * Bewusst kein `get().transformEntities(...)`: das wuerde ein zweites,
+   * verschachteltes `editDoc` oeffnen, das seine Kopie von `get().doc` zieht -
+   * die aeussere Operation wuerde die Aenderung beim Zurueckschreiben wieder
+   * verwerfen. `matrix` liegt bereits im Raum der besitzenden Definition.
+   */
+  function transformEntitiesIn(doc: SketchDocument, ids: readonly Id[], matrix: Mat4Like, copy: boolean): Id[] {
+    const contextId = get().context.definitionId
+    const out: Id[] = []
+    for (const id of ids) {
+      const source = doc.entities[id]
+      if (!source) continue
+      if (copy) {
+        const clone = cloneEntity(source)
+        clone.id = newId(entityPrefix(source.type))
+        transformEntityMut(clone, matrix)
+        const owner = ownerDefinitionOf(doc, id)
+        addEntityTo(doc, owner?.id ?? contextId, clone)
+        out.push(clone.id)
+      } else {
+        const entity = touchEntity(doc, id, history.touch)
+        if (!entity) continue
+        transformEntityMut(entity, matrix)
+        out.push(entity.id)
+      }
+    }
+    if (out.length > 0) markScene()
+    return out
+  }
+
   /** Tiefe Kopie einer Definition; verschachtelte Gruppen werden mitkopiert. */
   function cloneDefinitionDeep(doc: SketchDocument, definitionId: Id, nameHint?: string): Definition | null {
     const source = doc.definitions[definitionId]
@@ -1242,7 +1274,7 @@ export const useStore = create<AppState>()((set, get) => {
           }
 
           if (sel.entityIds && sel.entityIds.length > 0) {
-            get().transformEntities(sel.entityIds, matrix, copy)
+            transformEntitiesIn(doc, sel.entityIds, local, copy)
           }
           return change
         }),
@@ -1672,30 +1704,7 @@ export const useStore = create<AppState>()((set, get) => {
     transformEntities(ids, matrix, copy) {
       if (ids.length === 0) return []
       return get().operation(copy ? 'Objekte kopieren' : 'Objekte verschieben', () =>
-        editDoc((doc) => {
-          const local = toLocalMatrix(matrix)
-          const contextId = get().context.definitionId
-          const out: Id[] = []
-          for (const id of ids) {
-            const source = doc.entities[id]
-            if (!source) continue
-            if (copy) {
-              const clone = cloneEntity(source)
-              clone.id = newId(entityPrefix(source.type))
-              transformEntityMut(clone, local)
-              const owner = ownerDefinitionOf(doc, id)
-              addEntityTo(doc, owner?.id ?? contextId, clone)
-              out.push(clone.id)
-            } else {
-              const entity = touchEntity(doc, id, history.touch)
-              if (!entity) continue
-              transformEntityMut(entity, local)
-              out.push(entity.id)
-            }
-          }
-          if (out.length > 0) markScene()
-          return out
-        }),
+        editDoc((doc) => transformEntitiesIn(doc, ids, toLocalMatrix(matrix), copy)),
       )
     },
 
