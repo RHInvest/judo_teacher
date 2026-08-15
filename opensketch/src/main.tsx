@@ -2,10 +2,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from '@/ui/App'
+import { bootstrap } from '@/app/bootstrap'
 import './app.css'
 
 const container = document.getElementById('root')
 if (!container) throw new Error('#root fehlt in index.html')
+
+bootstrap()
 
 createRoot(container).render(
   <StrictMode>
