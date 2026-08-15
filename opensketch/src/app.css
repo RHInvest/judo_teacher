@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* OWNERSHIP: Lead. Modulspezifische Styles gehoeren in die jeweiligen Komponenten. */
+
+:root {
+  color-scheme: dark;
+  --os-bg: #141922;
+  --os-panel: #1b212c;
+  --os-border: #2b3444;
+  --os-text: #dfe4ec;
+  --os-accent: #1e88e5;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--os-bg);
+  color: var(--os-text);
+  font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+canvas {
+  display: block;
+}
+
+/* schlanke Scrollbalken in allen Panels */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a4557 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #3a4557;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #4c5a70;
+  background-clip: padding-box;
+}
+
+input,
+textarea,
+select {
+  user-select: text;
+}
+
+/* Hilfsklassen, die mehrfach gebraucht werden */
+@layer components {
+  .os-btn {
+    @apply flex items-center justify-center rounded transition-colors duration-100;
+  }
+  .os-tool-btn {
+    @apply os-btn h-8 w-8 text-panel-200 hover:bg-panel-700 active:bg-panel-600;
+  }
+  .os-tool-btn-active {
+    @apply bg-accent-600 text-white hover:bg-accent-600;
+  }
+  .os-panel {
+    @apply border border-panel-700 bg-panel-850;
+  }
+  .os-input {
+    @apply rounded border border-panel-700 bg-panel-900 px-2 py-1 text-panel-100 outline-none focus:border-accent-500;
+  }
+  .os-label {
+    @apply text-[11px] uppercase tracking-wide text-panel-400;
+  }
+  .os-divider {
+    @apply my-1 h-px bg-panel-700;
+  }
+}
+
+.os-cursor-none {
+  cursor: none;
+}
