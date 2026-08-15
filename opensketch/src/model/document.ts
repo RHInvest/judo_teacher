@@ -247,8 +247,6 @@ export function cloneEntity(entity: Entity): Entity {
       return { ...entity, position: { ...entity.position }, from: entity.from ? { ...entity.from } : undefined }
     case 'guideLine':
       return { ...entity, origin: { ...entity.origin }, direction: { ...entity.direction } }
-    default:
-      return { ...entity }
   }
 }
 

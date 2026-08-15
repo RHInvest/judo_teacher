@@ -2488,14 +2488,9 @@ export const useStore = create<AppState>()((set, get) => {
       return get().operation('Szene hinzufuegen', () =>
         editDoc((doc) => {
           const hidden = Object.keys(doc.entities).filter((id) => doc.entities[id].hidden)
-          const scene = createSceneFromDocument(
-            doc,
-            lastCamera,
-            name || `Szene ${doc.scenes.length + 1}`,
-            hidden,
-          )
-          doc.scenes = [...doc.scenes, scene]
-          history.touch.maps.add('scenes')
+          const scenes = touchScenes(doc, history.touch)
+          const scene = createSceneFromDocument(doc, lastCamera, name || `Szene ${scenes.length + 1}`, hidden)
+          scenes.push(scene)
           markScene()
           return scene.id
         }),
@@ -2519,8 +2514,8 @@ export const useStore = create<AppState>()((set, get) => {
       get().operation('Szene loeschen', () =>
         editDoc((doc) => {
           if (!doc.scenes.some((s) => s.id === id)) return
+          touchScenes(doc, history.touch)
           doc.scenes = doc.scenes.filter((s) => s.id !== id)
-          history.touch.maps.add('scenes')
           markScene()
         }),
       )
@@ -2531,11 +2526,9 @@ export const useStore = create<AppState>()((set, get) => {
         editDoc((doc) => {
           const current = doc.scenes.findIndex((s) => s.id === id)
           if (current < 0) return
-          const scenes = doc.scenes.slice()
+          const scenes = touchScenes(doc, history.touch)
           const [scene] = scenes.splice(current, 1)
           scenes.splice(Math.max(0, Math.min(scenes.length, index)), 0, scene)
-          doc.scenes = scenes
-          history.touch.maps.add('scenes')
           markScene()
         }),
       )
