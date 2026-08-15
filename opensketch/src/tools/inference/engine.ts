@@ -728,7 +728,7 @@ export class InferenceEngine implements InferenceApi {
   private collectInstanceCandidates(
     state: AppState | null,
     hit: PickHit,
-    xf: readonly number[],
+    xf: Mat4Like,
     x: number,
     y: number,
     out: PointCandidate[],
@@ -738,7 +738,7 @@ export class InferenceEngine implements InferenceApi {
     if (!entity || entity.type !== 'instance') return
     const bounds = safeOrNull(() => state.getDefinitionBounds(entity.definitionId))
     if (!bounds || !V.isFinite3(bounds.min) || !V.isFinite3(bounds.max)) return
-    const world = M.multiply(xf as never, entity.transform)
+    const world = M.multiply(xf, entity.transform)
     const corners = [
       { x: bounds.min.x, y: bounds.min.y, z: bounds.min.z },
       { x: bounds.max.x, y: bounds.min.y, z: bounds.min.z },

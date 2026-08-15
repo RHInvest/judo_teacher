@@ -42,6 +42,24 @@ export interface AppEvents {
   'document:loaded': void
   /** request to place a component instance with the move tool */
   'component:place': { definitionId: Id }
+  /**
+   * Die Oberflaeche hat 3D-Text konfiguriert; das Werkzeug `text3d` erzeugt
+   * daraus extrudierte Geometrie und laesst den Nutzer sie platzieren.
+   * `height` ist die Versalhoehe in Metern, `extrude` die Tiefe in Metern
+   * (0 = flache Buchstabenflaechen ohne Seitenwaende).
+   */
+  'text3d:create': {
+    text: string
+    height: number
+    extrude: number
+    /** Schriftschnitt, vom Werkzeug auf die eingebaute Schrift abgebildet */
+    bold?: boolean
+    italic?: boolean
+    /** true = gefuellte Flaechen, false = nur Umrisskanten */
+    filled?: boolean
+    /** Ausrichtung des Textblocks relativ zum Einfuegepunkt */
+    align?: 'left' | 'center' | 'right'
+  }
   /** request to start an import from a file the user picked */
   'file:import': { file: File }
   /** a long running task reports progress */

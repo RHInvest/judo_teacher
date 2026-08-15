@@ -308,15 +308,13 @@ describe('formatLength - architektonisch', () => {
   /* BLOCKER B-3 - siehe QA-REVIEW.md                                */
   /* -------------------------------------------------------------- */
 
-  it('B-3 (IST-Zustand): der Uebertrag der Bruchrundung erreicht die Fuss-Stelle nicht', () => {
-    // 11,99 Zoll runden bei 1/16 auf 12/12 Zoll - der Uebertrag bleibt im Zollteil stehen
-    expect(formatLength(11.99 * IN, arch)).toBe(`12"`)
-    expect(formatLength(23.99 * IN, arch)).toBe(`1' 12"`)
-  })
-
-  it.fails('B-3 (SOLL): Rundung auf 12 Zoll muss auf den Fuss aufaddieren', () => {
+  it('B-3 (behoben): die Rundung auf 12 Zoll addiert auf den Fuss auf', () => {
+    // 11,99 Zoll runden bei Nenner 1/16 auf 12 Zoll - der Uebertrag muss
+    // die Fuss-Stelle erreichen, sonst steht dort "12"" statt "1'".
     expect(formatLength(11.99 * IN, arch)).toBe(`1'`)
     expect(formatLength(23.99 * IN, arch)).toBe(`2'`)
+    // Gegenprobe: knapp darunter bleibt es beim Zollwert
+    expect(formatLength(11.9 * IN, arch)).toBe(`11 7/8"`)
   })
 
   it('formatLength/parseLength sind fuer architektonische Werte rundlaufend', () => {
@@ -346,15 +344,14 @@ describe('formatLength - bruchweise (fractional)', () => {
   /* WICHTIG W-1 - siehe QA-REVIEW.md                                */
   /* -------------------------------------------------------------- */
 
-  it('W-1 (IST-Zustand): das Vorzeichen geht bei reinen Bruchwerten verloren', () => {
-    // toFraction liefert whole = -0; der Test `whole !== 0` greift nicht,
-    // weil -0 === 0 gilt. Ergebnis: -1/2" wird als 1/2" angezeigt.
-    expect(formatLength(-0.5 * IN, frac)).toBe(`1/2"`)
-    expect(formatLength(-0.25 * IN, frac)).toBe(`1/4"`)
-  })
-
-  it.fails('W-1 (SOLL): negative Brueche unterhalb von 1 behalten ihr Vorzeichen', () => {
+  it('W-1 (behoben): reine Bruchwerte behalten ihr Vorzeichen', () => {
+    // Frueher trug `whole` das Vorzeichen; bei Werten unter 1 ist whole = -0,
+    // und -0 === 0 schluckte das Minus. Jetzt steht das Vorzeichen separat.
     expect(formatLength(-0.5 * IN, frac)).toBe(`-1/2"`)
+    expect(formatLength(-0.25 * IN, frac)).toBe(`-1/4"`)
+    expect(formatLength(-1.5 * IN, frac)).toBe(`-1 1/2"`)
+    // Null darf kein Minus bekommen
+    expect(formatLength(-0, frac)).toBe(`0"`)
   })
 })
 

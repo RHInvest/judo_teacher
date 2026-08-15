@@ -79,6 +79,18 @@ export function emptyHit(point: Vec3Like = { x: 0, y: 0, z: 0 }): PickHit {
 let kernelRaycastUsable = true
 
 /**
+ * Schaltet den Kernel-Raycast ab bzw. wieder an. Wird von den Tests benutzt,
+ * um beide Pfade (Kernel und eigene Puffer) getrennt zu pruefen.
+ */
+export function setKernelRaycastEnabled(enabled: boolean): void {
+  kernelRaycastUsable = enabled
+}
+
+export function isKernelRaycastEnabled(): boolean {
+  return kernelRaycastUsable
+}
+
+/**
  * Versucht den Kernel-Raycast. Liefert null, wenn er (noch) nicht verfuegbar
  * ist - dann uebernimmt der Puffer-Raycast.
  */

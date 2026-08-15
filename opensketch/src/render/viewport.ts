@@ -23,7 +23,7 @@
  */
 
 import * as THREE from 'three'
-import { B, M, V } from '@/core/math'
+import { B, M } from '@/core/math'
 import { bus } from '@/shared/events'
 import type { StoreHandle, ViewportApi } from '@/shared/store-api'
 import type {
@@ -737,7 +737,3 @@ function encodePng(buffer: Uint8Array, width: number, height: number): string {
   ctx.putImageData(image, 0, 0)
   return canvas.toDataURL('image/png')
 }
-
-/** Nur damit ungenutzte Importe nicht auffallen, wenn Untersysteme wachsen. */
-export type { RenderSnapshot }
-export const VIEWPORT_INTERNALS = { V }

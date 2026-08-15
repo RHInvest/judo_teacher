@@ -197,25 +197,29 @@ describe('ray - Punkte und Segmente', () => {
   /* BLOCKER B-2 - siehe QA-REVIEW.md                                  */
   /* ---------------------------------------------------------------- */
 
-  it('B-2 (IST-Zustand): rayToSegment liefert bei parallelen Kanten den Abstand zum Strahl-URSPRUNG', () => {
+  it('B-2 (behoben): rayToSegment misst bei parallelen Kanten den Lotabstand zur Strahlgeraden', () => {
     const r = R.ray(V.ORIGIN, V.AXIS_X)
-    // Kante parallel zum Strahl, echter Lotabstand ist 1 m
-    const res = R.rayToSegment(r, V.v3(5, 0, 1), V.v3(9, 0, 1))
-    // IST: Fallback misst ab dem Strahlursprung -> sqrt(5^2 + 1^2)
-    expect(close(res.distance, Math.hypot(5, 1), 1e-12)).toBe(true)
-    expect(res.rayT).toBe(0)
-  })
-
-  it.fails('B-2 (SOLL): rayToSegment misst bei parallelen Kanten den Lotabstand zur Strahlgeraden', () => {
-    const r = R.ray(V.ORIGIN, V.AXIS_X)
+    // Kante parallel zum Strahl, echter Lotabstand ist 1 m.
+    // Frueher wurde ab dem Strahlursprung gemessen -> sqrt(5^2+1^2) = 5,099.
     const res = R.rayToSegment(r, V.v3(5, 0, 1), V.v3(9, 0, 1))
     expect(close(res.distance, 1, 1e-9)).toBe(true)
+    expect(res.rayT).toBeGreaterThan(0)
   })
 
-  it.fails('B-2 (SOLL): intersectCapsule trifft eine zum Strahl parallele Kante', () => {
+  it('B-2 (behoben): intersectCapsule trifft eine zum Strahl parallele Kante', () => {
     const r = R.ray(V.ORIGIN, V.AXIS_X)
     // Kante liegt 0,05 m neben dem Strahl, Radius ist 0,1 m -> muss treffen
     expect(R.intersectCapsule(r, V.v3(5, 0, 0.05), V.v3(9, 0, 0.05), 0.1)).not.toBeNull()
+    // Gegenprobe: 0,2 m daneben bei Radius 0,1 m -> darf nicht treffen
+    expect(R.intersectCapsule(r, V.v3(5, 0, 0.2), V.v3(9, 0, 0.2), 0.1)).toBeNull()
+  })
+
+  it('B-2: eine Kante hinter dem Strahlursprung wird ab dem Ursprung gemessen', () => {
+    const r = R.ray(V.ORIGIN, V.AXIS_X)
+    const res = R.rayToSegment(r, V.v3(-9, 0, 1), V.v3(-5, 0, 1))
+    // Der Strahl ist eine Halbgerade: naechster Punkt ist der Ursprung selbst
+    expect(res.rayT).toBe(0)
+    expect(close(res.distance, Math.hypot(5, 1), 1e-9)).toBe(true)
   })
 })
 

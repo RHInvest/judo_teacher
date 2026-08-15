@@ -6,7 +6,7 @@
  * von hier - der Contract bleibt also unveraendert.
  */
 
-import type { Definition, Id, Material, Vec3Like } from '@/shared/types'
+import type { Definition, Entity, Id, Material, Vec3Like } from '@/shared/types'
 
 export type ExportFormat = 'osk' | 'obj' | 'stl' | 'stl-ascii' | 'gltf' | 'glb' | 'dae' | 'svg' | 'png'
 export type ImportFormat = 'osk' | 'obj' | 'stl' | 'gltf' | 'glb' | 'svg' | 'image'
@@ -49,6 +49,13 @@ export interface ImportResult {
   materials: Material[]
   textures: { id: Id; name: string; dataUrl: string; width: number; height: number }[]
   warnings: string[]
+  /**
+   * Instanzen, die die Verschachtelung zwischen den Definitionen herstellen
+   * (`Definition.children` verweist auf Entity-Ids, nicht auf Definitionen).
+   * Der Store uebernimmt sie unveraendert in `doc.entities`. Formate ohne
+   * Hierarchie lassen die Liste leer.
+   */
+  entities: Entity[]
 }
 
 export interface ImportOptions {
@@ -56,6 +63,11 @@ export interface ImportOptions {
   unitScale?: number
   /** Name des Imports (Standard: Dateiname) */
   name?: string
+  /**
+   * Beidateien, die der Aufrufer mitgeladen hat - Schluessel ist der in der
+   * Hauptdatei referenzierte Name (`mtllib`, `map_Kd`, glTF-`uri`).
+   */
+  companions?: Record<string, Uint8Array>
 }
 
 export interface ExportResult {

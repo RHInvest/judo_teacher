@@ -13,6 +13,7 @@ import type { AppState, StoreHandle, Tool, ToolContext, ViewportApi } from '@/sh
 import type {
   Cursor,
   InferenceResult,
+  Mat4Like,
   KeyInfo,
   OverlayApi,
   PickHit,
@@ -154,6 +155,29 @@ export abstract class BaseTool implements Tool {
 
   protected notify(text: string, kind: 'info' | 'warn' | 'error' | 'success' = 'info'): void {
     if (this.ctx) toast(this.ctx.store, text, kind)
+  }
+
+  /**
+   * Wendet eine Matrix auf eine Auswahl an - der gemeinsame Kern von
+   * Verschieben, Drehen und Skalieren. Primitive und Entities werden getrennt
+   * behandelt, laufen aber in EINER Operation, damit ein Undo alles zurueck-
+   * nimmt.
+   */
+  protected applyMatrix(name: string, sel: Selection, matrix: Mat4Like, copy: boolean): void {
+    const hasPrimitives = sel.edgeIds.length > 0 || sel.faceIds.length > 0 || sel.vertexIds.length > 0
+    if (!hasPrimitives && sel.entityIds.length === 0) return
+    this.modify(name, (state) => {
+      if (hasPrimitives) {
+        state.transformPrimitives(
+          { edgeIds: sel.edgeIds, faceIds: sel.faceIds, vertexIds: sel.vertexIds, entityIds: [] },
+          matrix,
+          copy,
+        )
+      }
+      if (sel.entityIds.length > 0) {
+        state.transformEntities(sel.entityIds, matrix, copy)
+      }
+    })
   }
 
   protected selection(): Selection {

@@ -7,10 +7,18 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest'
+import type { Id, Mat4Like } from '@/shared/types'
 import { emptySelection } from '@/shared/types'
 import { M } from '@/core/math'
 import { useStore, resetStoreForTests } from '../store'
 import { buildBox, buildQuad, installGeometry } from './helpers'
+
+/** Transform einer Instanz, mit Typpruefung statt Cast. */
+function instanceTransform(id: Id): Mat4Like {
+  const entity = useStore.getState().getEntity(id)
+  if (entity?.type !== 'instance') throw new Error('Instanz erwartet')
+  return entity.transform
+}
 
 beforeEach(() => {
   resetStoreForTests('metric')
@@ -288,19 +296,13 @@ describe('Entities in der Historie', () => {
     useStore.getState().selectAll()
     const instanceId = useStore.getState().makeGroup('Beweglich') as string
 
-    const before = M.getTranslation(
-      (useStore.getState().getEntity(instanceId) as { transform: readonly number[] }).transform,
-    )
+    const before = M.getTranslation(instanceTransform(instanceId))
     useStore.getState().transformEntities([instanceId], M.translation({ x: 5, y: 0, z: 0 }), false)
-    const moved = M.getTranslation(
-      (useStore.getState().getEntity(instanceId) as { transform: readonly number[] }).transform,
-    )
+    const moved = M.getTranslation(instanceTransform(instanceId))
     expect(moved.x).toBeCloseTo(before.x + 5, 9)
 
     useStore.getState().undo()
-    const restored = M.getTranslation(
-      (useStore.getState().getEntity(instanceId) as { transform: readonly number[] }).transform,
-    )
+    const restored = M.getTranslation(instanceTransform(instanceId))
     expect(restored.x).toBeCloseTo(before.x, 9)
   })
 

@@ -322,7 +322,9 @@ export function transformGeometryMut(geom: Geometry, matrix: Mat4Like): void {
     const v = geom.vertices[vid]
     v.p = M.transformPoint(matrix, v.p)
   }
-  for (const fid of Object.keys(geom.faces)) recomputeFacePlaneMut(geom, geom.faces[fid])
+  const faceIds = Object.keys(geom.faces)
+  for (const fid of faceIds) recomputeFacePlaneMut(geom, geom.faces[fid])
+  invalidateGeometryCaches(geom, faceIds)
 }
 
 /** Neue, transformierte Kopie. */
@@ -341,6 +343,7 @@ export function recomputeFacePlaneMut(geom: Geometry, face: Face): void {
   const normal = V.normalize(n)
   face.normal = normal
   face.plane = { n: normal, d: V.dot(normal, points[0]) }
+  invalidateFaceCache(face.id)
 }
 
 export function loopPoints(geom: Geometry, loop: Loop): Vec3Like[] {
@@ -453,6 +456,7 @@ export function mergeGeometryInto(target: Geometry, source: Geometry, transform?
     change.addedFaces.push(id)
   }
 
+  invalidateGeometryCaches(target, change.addedFaces)
   return change
 }
 
@@ -715,6 +719,7 @@ export function buildFaceFromPoints(
   geom.faces[fid] = face
   for (const eid of edgeIds) geom.edges[eid].faces.push(fid)
   change.addedFaces.push(fid)
+  invalidateGeometryCaches(geom, [fid])
   return change
 }
 
@@ -754,6 +759,7 @@ export function buildEdge(
   geom.vertices[va].edges.push(id)
   geom.vertices[vb].edges.push(id)
   change.addedEdges.push(id)
+  invalidateGeometryCaches(geom, [])
   return change
 }
 

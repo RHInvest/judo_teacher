@@ -21,6 +21,7 @@ import {
   loopPoints,
   orderEdgePath,
   pathVertices,
+  removeEdge,
   removeFace,
   vertexPoint,
   type ChangeAcc,
@@ -180,6 +181,18 @@ function profileRing(geom: Geometry, faceId: Id): Vec3Like[] | null {
 }
 
 /**
+ * The profile is consumed by the sweep. When the first section did not land on
+ * the original profile position its edges are left behind without any face -
+ * those get removed so the result stays a clean shell.
+ */
+function dropOrphanedProfileEdges(geom: Geometry, edgeIds: readonly Id[], acc: ChangeAcc): void {
+  for (const id of edgeIds) {
+    const e = geom.edges[id]
+    if (e && e.faces.length === 0) removeEdge(geom, id, acc)
+  }
+}
+
+/**
  * Sweeps the outer loop of `profileFaceId` along the path. Inner loops of the
  * profile are not swept; a profile with holes keeps only its outer boundary.
  */
@@ -213,6 +226,7 @@ export function followMeMut(
   }
 
   // the profile face itself is consumed by the sweep
+  const profileEdges = [...profileFace.outer.edges]
   removeFace(geom, profileFaceId, acc)
 
   const rings = sections.map((sec) => sec.map((q) => getOrCreateVertex(geom, q, acc)))
@@ -227,6 +241,7 @@ export function followMeMut(
     const end = ringFace(geom, rings[rings.length - 1], [], props, acc)
     if (end !== null) created.push(end)
   }
+  dropOrphanedProfileEdges(geom, profileEdges, acc)
   if (created.length > 0) orientComponentOutward(geom, created[0])
 }
 
@@ -265,6 +280,7 @@ export function revolveMut(
     frontMaterialId: profileFace.frontMaterialId,
     backMaterialId: profileFace.backMaterialId,
   }
+  const profileEdges = [...profileFace.outer.edges]
   removeFace(geom, profileFaceId, acc)
 
   const rings = sections.map((sec) => sec.map((q) => getOrCreateVertex(geom, q, acc)))
@@ -279,6 +295,7 @@ export function revolveMut(
     const end = ringFace(geom, rings[rings.length - 1], [], props, acc)
     if (end !== null) created.push(end)
   }
+  dropOrphanedProfileEdges(geom, profileEdges, acc)
   if (created.length > 0) orientComponentOutward(geom, created[0])
 }
 

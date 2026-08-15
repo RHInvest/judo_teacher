@@ -24,7 +24,7 @@ import type {
   Vec3Like,
 } from '@/shared/types'
 import { emptySelection } from '@/shared/types'
-import { DEFAULT_UNITS } from '@/shared/units'
+import { DEFAULT_UNITS, parseLength } from '@/shared/units'
 import { M, P, R, V } from '@/core/math'
 import { COLORS } from './colors'
 
@@ -93,6 +93,24 @@ export function toast(
   } catch {
     console.info(`[tools] ${text}`)
   }
+}
+
+/**
+ * Laenge mit Vorzeichen.
+ *
+ * `parseLength` liest je nach Eingabeform nicht jedes Minus mit; Werkzeuge wie
+ * Druecken/Ziehen und Versatz brauchen aber ein verlaessliches Vorzeichen
+ * ("2 m in die Gegenrichtung"). Deshalb wird das Minus hier abgetrennt und
+ * hinterher wieder angesetzt.
+ */
+export function parseSignedLength(text: string, units: UnitSettings): number | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const negative = trimmed.startsWith('-')
+  const body = negative ? trimmed.slice(1).trim() : trimmed
+  const value = parseLength(body, units)
+  if (value === null || !Number.isFinite(value)) return null
+  return negative ? -Math.abs(value) : value
 }
 
 /* ------------------------------------------------------------------ */

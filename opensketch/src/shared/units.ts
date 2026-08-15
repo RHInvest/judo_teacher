@@ -219,8 +219,18 @@ function trimZeros(s: string): string {
   return s.includes('.') ? s.replace(/\.?0+$/, '') : s
 }
 
-function toFraction(value: number, denominator: number): { whole: number; num: number; den: number } {
-  const sign = value < 0 ? -1 : 1
+/**
+ * Zerlegt eine Zahl in Ganzzahl plus gekuerzten Bruch.
+ *
+ * `whole` ist immer der BETRAG - das Vorzeichen steht separat in `negative`.
+ * Frueher trug `whole` das Vorzeichen, was bei reinen Bruechen (`whole === 0`)
+ * verloren ging und `-1/2` als `1/2` anzeigte.
+ */
+function toFraction(
+  value: number,
+  denominator: number,
+): { negative: boolean; whole: number; num: number; den: number } {
+  const negative = value < 0
   const abs = Math.abs(value)
   let whole = Math.floor(abs)
   let num = Math.round((abs - whole) * denominator)
@@ -233,16 +243,27 @@ function toFraction(value: number, denominator: number): { whole: number; num: n
     num /= 2
     den /= 2
   }
-  return { whole: whole * sign, num, den }
+  return { negative, whole, num, den }
 }
 
 function formatArchitectural(metres: number, units: UnitSettings): string {
   const totalInches = metres / LENGTH_TO_M.in
   const sign = totalInches < 0 ? '-' : ''
   const abs = Math.abs(totalInches)
-  const feet = Math.floor(abs / 12)
+  let feet = Math.floor(abs / 12)
   const rest = abs - feet * 12
-  const { whole, num, den } = toFraction(rest, units.fractionDenominator)
+  const frac = toFraction(rest, units.fractionDenominator)
+  let whole = frac.whole
+  const { num, den } = frac
+  /*
+   * Die Bruchrundung in toFraction kann `whole` auf 12 hochziehen (11,99" mit
+   * Nenner 16 rundet auf 12"). Der Uebertrag muss auf die Fuss-Stelle
+   * weitergereicht werden, sonst steht dort "12"" statt "1'".
+   */
+  if (whole >= 12) {
+    feet += Math.floor(whole / 12)
+    whole %= 12
+  }
   let inchPart = String(whole)
   if (num > 0) inchPart += `${whole > 0 ? ' ' : ''}${num}/${den}`
   if (whole === 0 && num > 0) inchPart = `${num}/${den}`
@@ -260,10 +281,18 @@ export function formatLength(metres: number, units: UnitSettings, opts?: { suffi
     return formatArchitectural(metres, units)
   }
   if (units.format === 'fractional') {
-    const inches = metres / LENGTH_TO_M.in
-    const { whole, num, den } = toFraction(inches, units.fractionDenominator)
-    const body = num > 0 ? (whole !== 0 ? `${whole} ${num}/${den}` : `${num}/${den}`) : `${whole}`
+    const { negative, whole, num, den } = toFraction(metres / LENGTH_TO_M.in, units.fractionDenominator)
+    // Vorzeichen separat setzen - bei reinen Bruechen ist `whole` 0 und wuerde es schlucken.
+    const sign = negative && (whole !== 0 || num !== 0) ? '-' : ''
+    const magnitude = num > 0 ? (whole !== 0 ? `${whole} ${num}/${den}` : `${num}/${den}`) : `${whole}`
+    const body = `${sign}${magnitude}`
     return showSuffix ? `${body}"` : body
+  }
+
+  if (units.format === 'engineering') {
+    // Ingenieurformat ist immer dezimaler Fuss, unabhaengig von `lengthUnit`.
+    const body = trimZeros((metres / LENGTH_TO_M.ft).toFixed(Math.max(0, units.precision)))
+    return showSuffix ? `${body}'` : body
   }
 
   const factor = LENGTH_TO_M[units.lengthUnit]

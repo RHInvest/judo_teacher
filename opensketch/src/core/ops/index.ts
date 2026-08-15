@@ -5,3 +5,8 @@
 
 export * from './primitives'
 export * from './pushpull'
+export * from './orient'
+export * from './followme'
+export * from './offset'
+export * from './intersect'
+export * from './boolean'

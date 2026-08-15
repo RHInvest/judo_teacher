@@ -74,6 +74,10 @@ import {
 } from '@/core/query'
 import * as prim from '@/core/ops/primitives'
 import { pushPullMut } from '@/core/ops/pushpull'
+import { followMeMut, revolveMut } from '@/core/ops/followme'
+import { offsetEdgesMut, offsetFaceMut } from '@/core/ops/offset'
+import { intersectFacesMut } from '@/core/ops/intersect'
+import { booleanSolidOp } from '@/core/ops/boolean'
 
 /* ------------------------------------------------------------------ */
 /* Cache-Invalidierung                                                 */
@@ -239,7 +243,9 @@ export function pushPull(geom: Geometry, faceId: Id, distance: number, opts?: Pu
 
 /** Extrudiert ein Profil entlang eines Kantenpfads (Folge-mir). */
 export function followMe(geom: Geometry, profileFaceId: Id, pathEdgeIds: readonly Id[]): GeometryChange {
-  throw new Error('core: followMe() ist noch nicht implementiert')
+  const acc = newAcc()
+  followMeMut(geom, profileFaceId, pathEdgeIds, acc)
+  return commit(geom, acc)
 }
 
 /** Rotationskoerper - Spezialfall von followMe mit Kreispfad. */
@@ -251,17 +257,23 @@ export function revolve(
   angle: number,
   segments: number,
 ): GeometryChange {
-  throw new Error('core: revolve() ist noch nicht implementiert')
+  const acc = newAcc()
+  revolveMut(geom, profileFaceId, axisOrigin, axisDirection, angle, segments, acc)
+  return commit(geom, acc)
 }
 
 /** Versatz der Aussenschleife einer Flaeche; positiv = nach aussen. */
 export function offsetFace(geom: Geometry, faceId: Id, distance: number): GeometryChange {
-  throw new Error('core: offsetFace() ist noch nicht implementiert')
+  const acc = newAcc()
+  offsetFaceMut(geom, faceId, distance, acc)
+  return commit(geom, acc)
 }
 
 /** Versatz eines zusammenhaengenden, planaren Kantenzugs. */
 export function offsetEdges(geom: Geometry, edgeIds: readonly Id[], distance: number): GeometryChange {
-  throw new Error('core: offsetEdges() ist noch nicht implementiert')
+  const acc = newAcc()
+  offsetEdgesMut(geom, edgeIds, distance, acc)
+  return commit(geom, acc)
 }
 
 /**
@@ -273,7 +285,9 @@ export function intersectFaces(
   sourceFaceIds: readonly Id[],
   targetFaceIds?: readonly Id[],
 ): GeometryChange {
-  throw new Error('core: intersectFaces() ist noch nicht implementiert')
+  const acc = newAcc()
+  intersectFacesMut(geom, sourceFaceIds, targetFaceIds, acc)
+  return commit(geom, acc)
 }
 
 /** Dreht die Vorder-/Rueckseite der Flaechen um. */
@@ -304,7 +318,7 @@ export function booleanSolid(
   b: Geometry,
   op: 'union' | 'subtract' | 'intersect',
 ): Geometry | null {
-  throw new Error('core: booleanSolid() ist noch nicht implementiert')
+  return booleanSolidOp(a, b, op)
 }
 
 /* ------------------------------------------------------------------ */

@@ -107,8 +107,16 @@ export function rayToSegment(
   const ab = V.sub(b, a)
   const res = closestPointsBetweenLines(r.origin, r.dir, a, ab)
   if (!res) {
-    const c = closestPointOnSegment(a, b, r.origin)
-    return { distance: V.distance(c.point, r.origin), pointOnSegment: c.point, t: c.t, rayT: 0 }
+    /*
+     * Segment ist (nahezu) parallel zum Strahl. Gemessen wird der Lotabstand
+     * zur Strahl-HALBGERADEN, nicht der Abstand zum Strahlursprung - sonst
+     * schlaegt das Kantenpicking genau dann fehl, wenn man eine Kante in ihrer
+     * Fluchtrichtung anvisiert (jede Wand, jeder Balken, jede Sockelleiste).
+     */
+    const rt = Math.max(0, V.dot(V.sub(a, r.origin), r.dir))
+    const c = closestPointOnSegment(a, b, at(r, rt))
+    const rayT = Math.max(0, V.dot(V.sub(c.point, r.origin), r.dir))
+    return { distance: V.distance(at(r, rayT), c.point), pointOnSegment: c.point, t: c.t, rayT }
   }
   const t = clamp(res.t2, 0, 1)
   const pointOnSegment = V.lerpV(a, b, t)

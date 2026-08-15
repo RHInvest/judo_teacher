@@ -333,6 +333,20 @@ export const useStore = create<AppState>()((set, get) => {
     if (definitionId) history.marks.definitions.add(definitionId)
   }
 
+  /**
+   * Meldet dem Kern, dass eine Geometrie AM KERNEL VORBEI veraendert wurde.
+   *
+   * `@/core` cached die Triangulierung pro Flaechen-Id und einen BVH pro
+   * `Geometry`-Objekt und verwirft beides nach seinen eigenen Operationen.
+   * Alles, was der Store selbst in `def.geometry` schreibt (Kantenflags,
+   * Materialien, Tags, Sichtbarkeit, UVs, ganze Geometrien), muss die Caches
+   * hier von Hand verwerfen - sonst zeigt der Renderer alte Dreiecke und das
+   * Picking trifft daneben.
+   */
+  function invalidateCaches(geometry: Geometry, faceIds?: Iterable<Id>): void {
+    G.invalidateGeometryCaches(geometry, faceIds)
+  }
+
   function markScene(): void {
     history.marks.scene = true
     history.marks.document = true
@@ -391,6 +405,7 @@ export const useStore = create<AppState>()((set, get) => {
     scene: boolean
     material: boolean
     style: boolean
+    selection: boolean
   }): void {
     if (marks.geometry) {
       if (marks.definitions.size === 0) {
@@ -402,6 +417,10 @@ export const useStore = create<AppState>()((set, get) => {
     if (marks.scene) bus.emit('scene:changed')
     if (marks.material) bus.emit('material:changed', {})
     if (marks.style) bus.emit('style:changed')
+    // Auswahl kann sich INNERHALB einer Operation aendern (z.B. weil Loeschen
+    // verschwundene Ids aus ihr entfernt) - ohne dieses Signal bliebe die
+    // Hervorhebung im Viewport stehen.
+    if (marks.selection) bus.emit('selection:changed')
     bus.emit('render:request')
   }
 
@@ -410,6 +429,7 @@ export const useStore = create<AppState>()((set, get) => {
     scene: boolean
     material: boolean
     style: boolean
+    selection: boolean
   }): void {
     const s = get()
     const patch: Partial<AppState> = {}
@@ -417,17 +437,23 @@ export const useStore = create<AppState>()((set, get) => {
     if (marks.scene) patch.sceneRevision = s.sceneRevision + 1
     if (marks.material) patch.materialRevision = s.materialRevision + 1
     if (marks.style) patch.styleRevision = s.styleRevision + 1
+    if (marks.selection) patch.selectionRevision = s.selectionRevision + 1
     if (Object.keys(patch).length > 0) set(patch)
   }
 
   /** Setzt Dokument + Kontext + Auswahl frisch (neu, laden, undo, redo). */
   function installDocument(doc: SketchDocument, context: EditContext, selection: Selection): void {
+    // Undo/Redo/Laden tauscht ganze Geometrieobjekte aus, die dieselben
+    // Flaechen-Ids tragen wie der bisherige Stand. Der Flaechen-Cache des Kerns
+    // ist nach Id geschluesselt und wird deshalb komplett verworfen.
+    core.invalidateCaches()
     set({
       doc,
       context: validateContext(doc, context),
       selection,
       selectionRevision: get().selectionRevision + 1,
     })
+    bus.emit('selection:changed')
   }
 
   /* ---------------- Entities ---------------- */
@@ -674,6 +700,7 @@ export const useStore = create<AppState>()((set, get) => {
       for (const eid of Object.keys(touched.geometry.edges)) {
         if (touched.geometry.edges[eid].materialId === materialId) touched.geometry.edges[eid].materialId = null
       }
+      invalidateCaches(touched.geometry, [])
       history.marks.definitions.add(defId)
     }
     for (const id of Object.keys(doc.entities)) {
@@ -700,6 +727,7 @@ export const useStore = create<AppState>()((set, get) => {
       for (const eid of Object.keys(touched.geometry.edges)) {
         if (touched.geometry.edges[eid].tagId === from) touched.geometry.edges[eid].tagId = to
       }
+      invalidateCaches(touched.geometry, [])
       history.marks.definitions.add(defId)
     }
     for (const id of Object.keys(doc.entities)) {
@@ -1224,6 +1252,7 @@ export const useStore = create<AppState>()((set, get) => {
                   G.recomputeFacePlaneMut(def.geometry, def.geometry.faces[fid])
                   result.modifiedFaces.push(fid)
                 }
+                invalidateCaches(def.geometry, result.modifiedFaces)
                 return result
               },
               'Punkte verschieben',
@@ -1266,6 +1295,7 @@ export const useStore = create<AppState>()((set, get) => {
                         result.modifiedFaces.push(fid)
                       }
                       result.modifiedEdges.push(...sets.edgeIds)
+                      invalidateCaches(def.geometry, result.modifiedFaces)
                       return result
                     },
                 copy ? 'Kopieren' : 'Transformieren',
@@ -1385,6 +1415,7 @@ export const useStore = create<AppState>()((set, get) => {
                 face.frontMaterialId = face.backMaterialId
                 face.backMaterialId = front
               }
+              invalidateCaches(def.geometry, faceIds)
               return true
             },
             'Flaechen umkehren',
@@ -1448,7 +1479,10 @@ export const useStore = create<AppState>()((set, get) => {
             if (flags.hidden !== undefined) edge.hidden = flags.hidden
             changed = true
           }
-          if (changed) markGeometry(def.id)
+          if (changed) {
+            invalidateCaches(def.geometry, [])
+            markGeometry(def.id)
+          }
         }),
       )
     },
@@ -1476,6 +1510,7 @@ export const useStore = create<AppState>()((set, get) => {
           if (!result) return
 
           targetDef.geometry = result
+          invalidateCaches(targetDef.geometry)
           markGeometry(targetDef.id)
 
           if (op === 'split') {
@@ -1777,6 +1812,7 @@ export const useStore = create<AppState>()((set, get) => {
           }
           for (const eid of Object.keys(def.geometry.edges)) def.geometry.edges[eid].hidden = false
           for (const fid of Object.keys(def.geometry.faces)) def.geometry.faces[fid].hidden = false
+          invalidateCaches(def.geometry, [])
           markGeometry(def.id)
           markScene()
         }),
@@ -1787,12 +1823,16 @@ export const useStore = create<AppState>()((set, get) => {
       get().operation('Definition speichern', () =>
         editDoc((doc) => {
           touchMap(doc, 'definitions', history.touch)
-          doc.definitions[def.id] = {
+          const stored = {
             ...def,
             geometry: G.cloneGeometry(def.geometry),
             children: def.children.slice(),
           }
+          doc.definitions[def.id] = stored
           history.touch.definitions.add(def.id)
+          // Eine komplett ersetzte Geometrie kann dieselben Flaechen-Ids
+          // tragen wie die alte - der Flaechen-Cache muss darum weg.
+          invalidateCaches(stored.geometry)
           markGeometry(def.id)
           markScene()
         }),
@@ -2279,7 +2319,10 @@ export const useStore = create<AppState>()((set, get) => {
               markScene()
             }
           }
-          if (touchedGeometry) markGeometry(def.id)
+          if (touchedGeometry) {
+            invalidateCaches(def.geometry, target.faceIds ?? [])
+            markGeometry(def.id)
+          }
           markMaterial()
         }),
       )
@@ -2313,6 +2356,7 @@ export const useStore = create<AppState>()((set, get) => {
           if (!def || !face) return
           if (side === 'front') face.uvFront = uv
           else face.uvBack = uv
+          invalidateCaches(def.geometry, [faceId])
           markGeometry(def.id)
           markMaterial()
         }),

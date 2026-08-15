@@ -236,6 +236,79 @@ export function bezierPoints(
 }
 
 /* ------------------------------------------------------------------ */
+/* Versatz                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Versetzt einen geschlossenen, ebenen Polygonzug um `distance`.
+ *
+ * Positive Werte gehen nach aussen (bezogen auf die uebergebene Normale und
+ * den Umlaufsinn des Polygons). Die Ecken werden auf Gehrung geschnitten -
+ * das ist genau das Verhalten des Versatz-Werkzeugs. Sehr spitze Ecken
+ * werden begrenzt, damit der Versatz nicht ins Unendliche schiesst.
+ *
+ * Nur fuer die VORSCHAU gedacht; die echte Geometrie erzeugt der Kern ueber
+ * `offsetFace` / `offsetEdges`.
+ */
+export function offsetPolygon(
+  points: readonly Vec3Like[],
+  normal: Vec3Like,
+  distance: number,
+  closed = true,
+): Vec3Like[] {
+  if (points.length < 2 || Math.abs(distance) < 1e-9) return points.map(V.clone)
+  const n = V.normalizeOr(normal, V.AXIS_Z)
+  const count = points.length
+  const out: Vec3Like[] = []
+  const MITER_LIMIT = 8
+
+  for (let i = 0; i < count; i++) {
+    const prev = points[(i - 1 + count) % count]
+    const cur = points[i]
+    const next = points[(i + 1) % count]
+
+    const hasPrev = closed || i > 0
+    const hasNext = closed || i < count - 1
+
+    const inDir = hasPrev ? V.normalizeOr(V.sub(cur, prev), V.AXIS_X) : null
+    const outDir = hasNext ? V.normalizeOr(V.sub(next, cur), V.AXIS_X) : null
+
+    // Aussennormale einer Kante: Kantenrichtung x Flaechennormale
+    const normalOf = (d: Vec3Like): Vec3Like => V.normalizeOr(V.cross(d, n), V.AXIS_Y)
+
+    if (inDir && outDir) {
+      const nA = normalOf(inDir)
+      const nB = normalOf(outDir)
+      const bisector = V.add(nA, nB)
+      const len = V.length(bisector)
+      if (len < 1e-9) {
+        // 180-Grad-Kehre: gerade heraus versetzen
+        out.push(V.addScaled(cur, nA, distance))
+        continue
+      }
+      const unit = V.div(bisector, len)
+      const cos = V.dot(unit, nA)
+      const scale = Math.abs(cos) < 1 / MITER_LIMIT ? MITER_LIMIT : 1 / cos
+      out.push(V.addScaled(cur, unit, distance * scale))
+      continue
+    }
+    const only = inDir ?? outDir
+    if (!only) {
+      out.push(V.clone(cur))
+      continue
+    }
+    out.push(V.addScaled(cur, normalOf(only), distance))
+  }
+  return out
+}
+
+/** Umlaufsinn eines ebenen Polygons relativ zur Normalen: +1 = gegen den Uhrzeigersinn. */
+export function polygonWinding(points: readonly Vec3Like[], normal: Vec3Like): number {
+  const raw = P.polygonNormalRaw(points)
+  return V.dot(raw, V.normalizeOr(normal, V.AXIS_Z)) >= 0 ? 1 : -1
+}
+
+/* ------------------------------------------------------------------ */
 /* Vereinfachung (Freihand)                                            */
 /* ------------------------------------------------------------------ */
 
