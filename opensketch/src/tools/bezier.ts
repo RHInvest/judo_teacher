@@ -99,12 +99,16 @@ export class BezierTool extends BaseTool {
     const control = this.controlPoints()
     if (!control) {
       this.reset()
+      this.abortDegenerate('Bezierkurve: es fehlen Punkte')
       return
     }
     const curve = bezierPoints(control[0], control[1], control[2], control[3], this.segments)
-    if (curve.length >= 2 && V.distance(curve[0], curve[curve.length - 1]) > POINT_TOL) {
-      this.modify('Bezierkurve zeichnen', (state) => state.addPolyline(curve, false))
+    if (curve.length < 2 || V.distance(curve[0], curve[curve.length - 1]) <= POINT_TOL) {
+      this.reset()
+      this.abortDegenerate('Bezierkurve: Start- und Endpunkt liegen aufeinander')
+      return
     }
+    this.modify('Bezierkurve zeichnen', (state) => state.addPolyline(curve, false))
     this.reset()
     this.status(this.hint)
   }

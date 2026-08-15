@@ -84,15 +84,19 @@ export class FreehandTool extends BaseTool {
   private commit(): void {
     if (this.points.length < 2) {
       this.reset()
+      this.abortDegenerate('Freihandlinie zu kurz - der Zug hat keine Länge')
       return
     }
     const tolerance = this.strokeTolerance()
     const simplified = simplifyPolyline(this.points, tolerance)
     const closed = simplified.length > 3 && V.distance(simplified[0], simplified[simplified.length - 1]) < tolerance * 4
     const points = closed ? simplified.slice(0, -1) : simplified
-    if (points.length >= 2) {
-      this.modify('Freihandlinie zeichnen', (state) => state.addPolyline(points, closed))
+    if (points.length < 2) {
+      this.reset()
+      this.abortDegenerate('Freihandlinie zu kurz - nach dem Glätten bleibt kein Zug übrig')
+      return
     }
+    this.modify('Freihandlinie zeichnen', (state) => state.addPolyline(points, closed))
     this.reset()
     this.status(this.hint)
   }

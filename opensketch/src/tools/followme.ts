@@ -128,9 +128,10 @@ export class FollowMeTool extends BaseTool {
     const profileId = this.profileId
     const path = this.orderedPath()
     if (!profileId || path.length === 0) {
-      if (profileId) this.notify('Kein Pfad gewählt', 'warn')
+      const hadProfile = profileId !== null
       this.reset()
-      this.status(this.hint)
+      if (hadProfile) this.abortDegenerate('Folge mir: kein Pfad gewählt - das Profil bleibt unverändert')
+      else this.status(this.hint)
       return
     }
     this.modify('Folge mir', (state) => state.followMe(profileId, path))

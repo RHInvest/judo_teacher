@@ -247,7 +247,9 @@ export function createFakeStore(geometry: Geometry = emptyGeometry()): FakeStore
       calls.push({ name: 'setActiveTool', args: [id] })
       activeTool = id
     },
-    setStatus: () => {},
+    setStatus: (hint: string, modifiers?: string) => {
+      calls.push({ name: 'setStatus', args: [hint, modifiers] })
+    },
     setVcb: () => {},
     toast: (text: string, kind?: string) => {
       calls.push({ name: 'toast', args: [text, kind] })

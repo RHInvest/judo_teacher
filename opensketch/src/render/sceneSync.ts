@@ -87,7 +87,10 @@ export interface DefinitionBuild {
   vertexIds: Id[]
   /** Huelle der EIGENEN Geometrie dieser Definition, in Definitionsraum */
   localBounds: BBox3Like
+  /** Dreiecke der Triangulierung (Zeichenaufwand) */
   triangles: number
+  /** Anzahl der sichtbaren `Face`-Objekte (Modellkennwert, NICHT die Dreiecke) */
+  faceCount: number
   edgeCount: number
   hasChildInstances: boolean
 }
@@ -118,11 +121,19 @@ export interface InstanceRecord {
 }
 
 export interface SceneStats {
+  /** Dreiecke der Triangulierung - Zeichenaufwand, kein Modellkennwert */
   triangles: number
+  /** sichtbare `Face`-Objekte des Modells (das, was die Statuszeile zeigt) */
+  faces: number
   edges: number
+  /** platzierte Instanzen; die Modellwurzel zaehlt NICHT mit */
   instances: number
   definitions: number
   drawCalls: number
+}
+
+function emptyStats(): SceneStats {
+  return { triangles: 0, faces: 0, edges: 0, instances: 0, definitions: 0, drawCalls: 0 }
 }
 
 /* ------------------------------------------------------------------ */
@@ -142,7 +153,7 @@ export class SceneSync {
   private recordList: InstanceRecord[] = []
   private definitionBoundsCache = new Map<Id, BBox3Like>()
 
-  stats: SceneStats = { triangles: 0, edges: 0, instances: 0, definitions: 0, drawCalls: 0 }
+  stats: SceneStats = emptyStats()
   modelBounds: BBox3Like = B.empty()
 
   constructor(
@@ -184,7 +195,7 @@ export class SceneSync {
       if (this.recordList.length > 0 || this.root.children.length > 0) {
         this.disposeTree()
         this.recordList = []
-        this.stats = { triangles: 0, edges: 0, instances: 0, definitions: 0, drawCalls: 0 }
+        this.stats = emptyStats()
         this.modelBounds = B.empty()
         return true
       }
@@ -314,7 +325,7 @@ export class SceneSync {
     const faceResult = attempt(
       `sceneSync.faces(${def.id})`,
       () => buildFaceGroups(geom, snapshot, doc),
-      { groups: [] as FaceGroup[], triangles: 0, bounds: B.empty() },
+      { groups: [] as FaceGroup[], triangles: 0, faces: 0, bounds: B.empty() },
     )
 
     const edges = attempt(`sceneSync.edges(${def.id})`, () =>
