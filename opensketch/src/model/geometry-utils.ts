@@ -33,7 +33,25 @@ import { emptyGeometry } from '@/shared/types'
 import type { GeometryChange } from '@/shared/store-api'
 import { emptyChange } from '@/shared/store-api'
 import { B, M, V, MIN_LENGTH, PLANAR_TOL, POINT_TOL } from '@/core/math'
+import { invalidateFaceCache, invalidateSpatialIndex } from '@/core'
 import { newId } from '@/shared/ids'
+
+/* ------------------------------------------------------------------ */
+/* Cache-Invalidierung                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Der Kern haelt zwei Caches: eine Triangulierung pro Flaechen-Id und einen
+ * BVH pro `Geometry`-Objekt. Nach eigenen Kernel-Operationen verwirft er sie
+ * selbst - die Funktionen HIER mutieren aber am Kernel vorbei. Jede mutierende
+ * Funktion dieser Datei meldet deshalb, was sie angefasst hat. Ohne das zeigt
+ * der Renderer alte Dreiecke und das Picking trifft ins Leere.
+ */
+export function invalidateGeometryCaches(geom: Geometry, faceIds?: Iterable<Id>): void {
+  if (faceIds === undefined) invalidateFaceCache()
+  else for (const id of faceIds) invalidateFaceCache(id)
+  invalidateSpatialIndex(geom)
+}
 
 /* ------------------------------------------------------------------ */
 /* Klonen                                                              */
@@ -290,6 +308,7 @@ export function removePrimitives(
       }
     }
   }
+  invalidateGeometryCaches(geom, change.removedFaces)
   return change
 }
 

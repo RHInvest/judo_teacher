@@ -13,7 +13,6 @@ import {
   boxAt,
   cylinderZ,
   frameXZ,
-  panelXZ,
   prismXZ,
   prismZ,
   rectProfile,
@@ -343,20 +342,18 @@ export const BUILDING: LibraryEntry[] = [
     geometry(g) {
       const w = 1.8
       const d = 1.5
-      // Wangen
+      // Wangen - das Profil muss in (x, z) gegen den Uhrzeigersinn laufen,
+      // sonst zeigen die Normalen nach innen.
       for (const sx of [-1, 1]) {
-        prismXZ(
-          g,
-          [
-            { x: sx * (w / 2 - 0.12), y: 0 },
-            { x: sx * (w / 2), y: 0 },
-            { x: sx * (w / 2), y: 1.6 },
-            { x: sx * (w / 2 - 0.12), y: 1.6 },
-          ].sort(() => 0),
-          -d / 2,
-          d,
-          PLASTER,
-        )
+        const outerX = sx * (w / 2)
+        const innerX = sx * (w / 2 - 0.12)
+        const ring: Pt2[] = [
+          { x: Math.min(outerX, innerX), y: 0 },
+          { x: Math.max(outerX, innerX), y: 0 },
+          { x: Math.max(outerX, innerX), y: 1.6 },
+          { x: Math.min(outerX, innerX), y: 1.6 },
+        ]
+        prismXZ(g, ring, -d / 2, d, PLASTER)
       }
       // Front
       box(g, -w / 2, -d / 2, 0, w / 2, -d / 2 + 0.12, 1.6, PLASTER)
@@ -380,6 +377,3 @@ export const BUILDING: LibraryEntry[] = [
 export function buildingParts(): LibraryEntry[] {
   return BUILDING
 }
-
-/** wird nur zur Typpruefung gebraucht */
-void panelXZ

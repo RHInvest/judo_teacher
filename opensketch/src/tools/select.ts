@@ -111,19 +111,13 @@ export class SelectTool extends BaseTool {
    */
   onDoubleClick(_e: PointerInfo): void {}
 
+  /**
+   * Bricht nur den laufenden Rahmen ab. Das Leeren der Auswahl bzw. das
+   * Verlassen des Kontexts macht der Werkzeugmanager beim zweiten Esc.
+   */
   cancel(): void {
-    if (this.pressed || this.dragging) {
-      this.pressed = false
-      this.dragging = false
-      return
-    }
-    const state = this.read((s) => s)
-    if (!state) return
-    if (!selectionIsEmptySafe(state.selection)) {
-      this.applySelection(emptySelection(), 'replace')
-      return
-    }
-    this.read((s) => s.exitContext())
+    this.pressed = false
+    this.dragging = false
   }
 
   draw(overlay: OverlayApi): void {

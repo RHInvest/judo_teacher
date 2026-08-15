@@ -1,77 +1,132 @@
 /**
- * STUB - wird vom IO-Entwickler ersetzt.
- * Die Signaturen sind Contract.
+ * OEFFENTLICHE API DER IO-SCHICHT.
+ *
+ * Import, Export und die prozedurale Komponenten- und Materialbibliothek.
+ * Die Signaturen sind Contract - die UI und der Store programmieren nur
+ * gegen diese Datei.
  */
 
-import type { Definition, Id, Material, SketchDocument } from '@/shared/types'
+import type { Material, SketchDocument, Texture } from '@/shared/types'
+import type { ExportFormat, ExportOptions, ExportResult, ImportFormat, ImportResult } from './api-types'
+import { exportAs } from './exporters'
+import { importFromBytes } from './importers'
+import { extensionOf } from './common/util'
+import { getLibraryMaterials as libraryMaterials, getLibraryTextures as libraryTextures } from './library'
 
-export type ExportFormat = 'osk' | 'obj' | 'stl' | 'stl-ascii' | 'gltf' | 'glb' | 'dae' | 'svg' | 'png'
-export type ImportFormat = 'osk' | 'obj' | 'stl' | 'gltf' | 'glb' | 'svg' | 'image'
+export type {
+  ExportFormat,
+  ExportOptions,
+  ExportResult,
+  ExportView,
+  ImportFormat,
+  ImportOptions,
+  ImportResult,
+} from './api-types'
 
-export interface ExportOptions {
-  /** nur die aktuelle Auswahl exportieren */
-  selectionOnly?: boolean
-  /** Einheit der Zieldatei (Standard: Meter) */
-  unitScale?: number
-  /** Kanten mitexportieren (OBJ/SVG) */
-  includeEdges?: boolean
-  /** Texturen einbetten */
-  embedTextures?: boolean
-  /** Dreiecke statt N-Gons */
-  triangulate?: boolean
-  /** Projektion fuer SVG-Export */
-  view?: 'top' | 'front' | 'right' | 'iso' | 'current'
+/* ------------------------------------------------------------------ */
+/* Export                                                              */
+/* ------------------------------------------------------------------ */
+
+export function exportDocument(
+  doc: SketchDocument,
+  format: ExportFormat,
+  opts: ExportOptions = {},
+): Promise<ExportResult> {
+  return exportAs(doc, format, opts)
 }
 
-export interface ImportResult {
-  /** neue Definitionen, die in das Dokument uebernommen werden */
-  definitions: Definition[]
-  /** Wurzeldefinition des Imports (wird als Instanz platziert) */
-  rootDefinitionId: Id
-  materials: Material[]
-  textures: { id: Id; name: string; dataUrl: string; width: number; height: number }[]
-  warnings: string[]
+/** Alle Formate, die `exportDocument` beherrscht - fuer das Export-Menue. */
+export function exportableFormats(): { format: ExportFormat; label: string; extension: string }[] {
+  return [
+    { format: 'osk', label: 'OpenSketch-Modell', extension: '.osk' },
+    { format: 'obj', label: 'Wavefront OBJ', extension: '.obj' },
+    { format: 'stl', label: 'STL binär', extension: '.stl' },
+    { format: 'stl-ascii', label: 'STL ASCII', extension: '.stl' },
+    { format: 'gltf', label: 'glTF 2.0', extension: '.gltf' },
+    { format: 'glb', label: 'glTF binär', extension: '.glb' },
+    { format: 'dae', label: 'COLLADA', extension: '.dae' },
+    { format: 'svg', label: 'SVG-Zeichnung', extension: '.svg' },
+    { format: 'png', label: 'PNG-Bild', extension: '.png' },
+  ]
 }
 
-export interface ExportResult {
-  blob: Blob
-  filename: string
+/* ------------------------------------------------------------------ */
+/* Import                                                              */
+/* ------------------------------------------------------------------ */
+
+export async function importFile(file: File, opts: { unitScale?: number } = {}): Promise<ImportResult> {
+  const format = detectFormat(file.name)
+  if (!format) throw new Error(`Unbekanntes Dateiformat: ${file.name}`)
+  const buffer = await file.arrayBuffer()
+  return importFromBytes(new Uint8Array(buffer), file.name, format, opts)
 }
 
-export function exportDocument(doc: SketchDocument, format: ExportFormat, opts?: ExportOptions): Promise<ExportResult> {
-  throw new Error('io/exporters ist noch nicht implementiert')
+/** Import direkt aus einem Puffer - fuer Tests und Drag & Drop. */
+export function importBytes(
+  bytes: Uint8Array,
+  filename: string,
+  opts: { unitScale?: number } = {},
+): Promise<ImportResult> {
+  const format = detectFormat(filename)
+  if (!format) throw new Error(`Unbekanntes Dateiformat: ${filename}`)
+  return importFromBytes(bytes, filename, format, opts)
 }
 
-export function importFile(file: File, opts?: { unitScale?: number }): Promise<ImportResult> {
-  throw new Error('io/importers ist noch nicht implementiert')
-}
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'])
 
 export function detectFormat(filename: string): ImportFormat | null {
-  return null
+  const ext = extensionOf(filename)
+  switch (ext) {
+    case 'osk':
+    case 'json':
+      return 'osk'
+    case 'obj':
+      return 'obj'
+    case 'stl':
+      return 'stl'
+    case 'gltf':
+      return 'gltf'
+    case 'glb':
+      return 'glb'
+    case 'svg':
+      return 'svg'
+    default:
+      return IMAGE_EXTENSIONS.has(ext) ? 'image' : null
+  }
 }
 
-/* ---------------- Bibliothek ---------------- */
-
-export interface LibraryEntry {
-  id: string
-  name: string
-  category: string
-  /** Beschreibung fuer die Kachel */
-  description: string
-  /** erzeugt die Definition(en) beim ersten Einfuegen */
-  build(): { definitions: Definition[]; rootId: Id }
-  /** Groessenangabe fuer die Kachel, z.B. "80 x 80 x 75 cm" */
-  size?: string
+/** Alle Endungen, die `importFile` verarbeiten kann - fuer den Datei-Dialog. */
+export function importableExtensions(): string[] {
+  return ['.osk', '.obj', '.stl', '.gltf', '.glb', '.svg', ...[...IMAGE_EXTENSIONS].map((e) => `.${e}`)]
 }
 
-export function getLibraryCategories(): string[] {
-  return []
-}
+/* ------------------------------------------------------------------ */
+/* Bibliothek                                                          */
+/* ------------------------------------------------------------------ */
 
-export function getLibraryComponents(category?: string): LibraryEntry[] {
-  return []
-}
+export type { LibraryEntry } from './library/types'
 
+export {
+  buildLibraryComponent,
+  getLibraryCategories,
+  getLibraryComponent,
+  getLibraryComponents,
+  getMaterialCategories,
+  libraryComponentCount,
+  libraryMaterialId,
+  libraryTextureId,
+} from './library'
+
+/** Rund 60 Materialien in zehn Kategorien, Texturen prozedural als Data-URL. */
 export function getLibraryMaterials(): Material[] {
-  return []
+  return libraryMaterials()
+}
+
+/**
+ * Die zu `getLibraryMaterials()` gehoerenden Texturen. In Node-Umgebungen
+ * (kein `document`) ist die Liste leer und die Materialien bleiben reine
+ * Farben - das ist gewollt und kein Fehler.
+ */
+export function getLibraryTextures(): Texture[] {
+  return libraryTextures()
 }

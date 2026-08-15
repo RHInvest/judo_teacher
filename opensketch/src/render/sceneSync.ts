@@ -67,6 +67,11 @@ export interface FaceGroup {
   backMaterialId: Id | null
   geometry: THREE.BufferGeometry
   triangles: number
+  /** Rohpositionen der Gruppe - vom Picking direkt genutzt */
+  positions: Float32Array
+  indices: Uint32Array
+  /** Flaechen-Id je Dreieck (`faceIds[i]` gehoert zu `indices[i*3 .. i*3+2]`) */
+  faceIds: Id[]
 }
 
 export interface DefinitionBuild {
@@ -77,6 +82,9 @@ export interface DefinitionBuild {
   edges: EdgeExtraction
   lineGeometries: Partial<Record<EdgeClass, LineSegmentsGeometry>>
   endpoints: Float32Array
+  /** Vertexpositionen dieser Definition (3 Werte je Vertex), fuer das Picking */
+  vertexPositions: Float32Array
+  vertexIds: Id[]
   /** Huelle der EIGENEN Geometrie dieser Definition, in Definitionsraum */
   localBounds: BBox3Like
   triangles: number
@@ -326,10 +334,21 @@ export class SceneSync {
     }
 
     // Huelle: Flaechen + alle Kantenendpunkte (auch bei fehlender Triangulierung korrekt)
+    // In einem Durchgang entsteht dabei auch die Vertexliste fuers Picking.
     const bounds = B.clone(faceResult.bounds)
-    for (const vertexId of Object.keys(geom.vertices)) {
+    const vertexIds: Id[] = []
+    const vertexKeys = Object.keys(geom.vertices)
+    const vertexPositions = new Float32Array(vertexKeys.length * 3)
+    let vertexCursor = 0
+    for (const vertexId of vertexKeys) {
       const vertex = geom.vertices[vertexId]
-      if (vertex && vertex.p) B.expandByPointMut(bounds, vertex.p)
+      if (!vertex || !vertex.p) continue
+      B.expandByPointMut(bounds, vertex.p)
+      vertexPositions[vertexCursor * 3] = vertex.p.x
+      vertexPositions[vertexCursor * 3 + 1] = vertex.p.y
+      vertexPositions[vertexCursor * 3 + 2] = vertex.p.z
+      vertexIds.push(vertexId)
+      vertexCursor++
     }
 
     const hasChildInstances = (def.children ?? []).some((id) => doc.entities?.[id]?.type === 'instance')
@@ -341,6 +360,8 @@ export class SceneSync {
       edges,
       lineGeometries,
       endpoints: edges.endpoints,
+      vertexPositions: vertexPositions.subarray(0, vertexCursor * 3),
+      vertexIds,
       localBounds: bounds,
       triangles: faceResult.triangles,
       edgeCount: edges.total,
@@ -710,6 +731,8 @@ interface GroupAccum {
   uv: number[]
   uv1: number[]
   indices: number[]
+  /** Flaechen-Id je Dreieck */
+  faceIds: Id[]
   vertexCount: number
 }
 
@@ -752,6 +775,7 @@ function buildFaceGroups(geom: Geometry, snapshot: RenderSnapshot, doc: SketchDo
         uv: [],
         uv1: [],
         indices: [],
+        faceIds: [],
         vertexCount: 0,
       }
       groups.set(key, group)
@@ -795,23 +819,26 @@ function buildFaceGroups(geom: Geometry, snapshot: RenderSnapshot, doc: SketchDo
     }
 
     for (let i = 0; i < tri.indices.length; i++) group.indices.push(base + tri.indices[i])
+    const faceTriangles = Math.floor(tri.indices.length / 3)
+    for (let i = 0; i < faceTriangles; i++) group.faceIds.push(faceId)
     group.vertexCount += count
-    triangles += Math.floor(tri.indices.length / 3)
+    triangles += faceTriangles
   }
 
   const out: FaceGroup[] = []
   for (const group of groups.values()) {
     if (group.vertexCount === 0 || group.indices.length < 3) continue
+    // Positionen und Indizes werden EINMAL als typisierte Arrays angelegt und
+    // sowohl an three.js als auch an das Picking weitergereicht.
+    const positions = new Float32Array(group.positions)
+    const indices = new Uint32Array(group.indices)
+
     const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(group.positions, 3))
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(group.normals, 3))
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute(group.uv, 2))
     geometry.setAttribute('uv1', new THREE.Float32BufferAttribute(group.uv1, 2))
-    geometry.setIndex(
-      group.vertexCount > 65535
-        ? new THREE.Uint32BufferAttribute(group.indices, 1)
-        : new THREE.Uint16BufferAttribute(group.indices, 1),
-    )
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1))
     geometry.computeBoundingBox()
     geometry.computeBoundingSphere()
     out.push({
@@ -819,6 +846,9 @@ function buildFaceGroups(geom: Geometry, snapshot: RenderSnapshot, doc: SketchDo
       backMaterialId: group.backMaterialId,
       geometry,
       triangles: Math.floor(group.indices.length / 3),
+      positions,
+      indices,
+      faceIds: group.faceIds,
     })
   }
 

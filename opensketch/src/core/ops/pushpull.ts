@@ -12,10 +12,34 @@
  * In both modes the resulting cap is tested against the opposite side of the
  * solid; when it lands exactly on a coplanar face it is dissolved into a hole
  * of that face, which turns a push-through into a real opening.
+ *
+ * ------------------------------------------------------------------------
+ * AUSLEGUNG "in Material hinein" (vom Lead bestaetigt, bitte nicht wegraeumen)
+ * ------------------------------------------------------------------------
+ * Der Contract sagt nicht, was passieren soll, wenn in Extrusionsrichtung
+ * bereits Material steht. Wir folgen SketchUp:
+ *
+ *  1. AUSHOEHLUNG vs. AUFSATZ wird per Parity-Raycast entschieden
+ *     (`pushesIntoMaterial`): ein Punkt knapp hinter der Flaeche liegt genau
+ *     dann im Volumen, wenn ein Strahl von dort eine ungerade Zahl an Flaechen
+ *     kreuzt. Beim Aushoehlen werden Seitenwaende UND Deckel umgekehrt
+ *     orientiert (`orient = -s`), denn ihre Vorderseiten zeigen dann in den
+ *     ausgehoehlten Kanal statt aus einem Klotz heraus.
+ *
+ *  2. Eine Flaeche, die ein LOCH EINER KOPLANAREN NACHBARFLAECHE fuellt
+ *     (`fillsHoleOfCoplanarFace`), waere nach dem Extrudieren eine Innenwand
+ *     und wird geloescht. Die Nachbarflaeche behaelt ihr Loch, also die
+ *     Oeffnung. Genau dadurch wird aus "Fenster auf die Deckflaeche zeichnen
+ *     und pushPull(-4)" ein echtes Loch: `isSolid()` bleibt true, das Volumen
+ *     eines 10x10x4-Quaders mit 3x3-Durchbruch ist 364 (Testfall in
+ *     `src/core/__tests__/pushpull.test.ts`).
+ *
+ *  3. `createNewStartingFace: true` schaltet BEIDES ab - die Startflaeche
+ *     bleibt unveraendert stehen, es wird immer ein Aufsatz gebaut.
  */
 
-import type { Geometry, Id, Loop, Vec3Like } from '@/shared/types'
-import { MIN_LENGTH, P, PLANAR_TOL, POINT_TOL, V } from '@/core/math'
+import type { Face, Geometry, Id, Loop, Vec3Like } from '@/shared/types'
+import { MIN_LENGTH, P, PLANAR_TOL, POINT_TOL, R, V } from '@/core/math'
 import {
   createEdge,
   createFace,
@@ -31,6 +55,7 @@ import {
   vertexPoint,
   type ChangeAcc,
 } from '@/core/topology'
+import { faceTriangles } from '@/core/query/triangulate'
 
 export interface PushPullOptions {
   /** Richtung, Standard ist die Flaechennormale */
@@ -77,6 +102,70 @@ function punchThrough(geom: Geometry, capId: Id, acc: ChangeAcc): boolean {
     }
     acc.modifiedFaces.add(gId)
     return true
+  }
+  return false
+}
+
+/** A point that is safely inside the face, holes excluded. */
+function faceInteriorPoint(geom: Geometry, faceId: Id): Vec3Like | null {
+  let best: Vec3Like | null = null
+  let bestArea = 0
+  for (const [a, b, c] of faceTriangles(geom, faceId)) {
+    const area = V.length(V.cross(V.sub(b, a), V.sub(c, a))) * 0.5
+    if (area <= bestArea) continue
+    bestArea = area
+    best = { x: (a.x + b.x + c.x) / 3, y: (a.y + b.y + c.y) / 3, z: (a.z + b.z + c.z) / 3 }
+  }
+  return bestArea > MIN_LENGTH ? best : null
+}
+
+/**
+ * true when the extrusion runs INTO existing material instead of into empty
+ * space. Parity test: a point just past the face along `dir` is inside the
+ * solid exactly when a ray from there crosses an odd number of faces.
+ */
+function pushesIntoMaterial(geom: Geometry, faceId: Id, dir: Vec3Like, reach: number): boolean {
+  const inside = faceInteriorPoint(geom, faceId)
+  if (!inside) return false
+  const eps = Math.max(MIN_LENGTH * 10, Math.min(reach * 0.25, 1e-3))
+  const origin = V.addScaled(inside, dir, eps)
+  const ray = R.ray(origin, dir)
+  let crossings = 0
+  for (const gId in geom.faces) {
+    if (gId === faceId) continue
+    let hit = false
+    for (const [a, b, c] of faceTriangles(geom, gId)) {
+      if (R.intersectTriangle(ray, a, b, c, false)) {
+        hit = true
+        break
+      }
+    }
+    if (hit) crossings++
+  }
+  return crossings % 2 === 1
+}
+
+/**
+ * true when the face fills a hole of a coplanar neighbour, i.e. it sits inside
+ * a larger surface. Such a face becomes an interior interface after extruding
+ * and has to disappear.
+ */
+function fillsHoleOfCoplanarFace(geom: Geometry, face: Face): boolean {
+  const own = new Set(face.outer.edges)
+  if (own.size === 0) return false
+  for (const eId of face.outer.edges) {
+    const e = geom.edges[eId]
+    if (!e) continue
+    for (const gId of e.faces) {
+      if (gId === face.id) continue
+      const g = geom.faces[gId]
+      if (!g) continue
+      if (!P.isCoplanar(g.plane, face.plane, PLANAR_TOL * 4)) continue
+      for (const loop of g.inner) {
+        if (loop.edges.length !== own.size) continue
+        if (loop.edges.every((id) => own.has(id))) return true
+      }
+    }
   }
   return false
 }
@@ -166,6 +255,17 @@ export function pushPullMut(
   }
 
   /* ---------------- extrude mode ---------------- */
+  // Pushing into existing material carves a recess instead of adding a plug:
+  // walls and cap face the other way round.
+  const keepStart = opts?.createNewStartingFace === true
+  // the parity test needs the real travel direction, not the face normal
+  const travel = V.normalize(off)
+  const carving = !keepStart && pushesIntoMaterial(geom, faceId, travel, V.length(off))
+  // a face filling a hole of a coplanar neighbour is an interior interface
+  // afterwards and must not survive the operation
+  const dropStart = !keepStart && fillsHoleOfCoplanarFace(geom, face)
+  const orient = carving ? -s : s
+
   const props = { tagId: face.tagId, materialId: null }
   const vMap = new Map<Id, Id>()
   for (const vId of vertexIds) {
@@ -200,7 +300,7 @@ export function pushPullMut(
       const rb = railEdge.get(bId)
       if (top === undefined || at === undefined || bt === undefined || ra === undefined || rb === undefined) continue
       const wall: Loop =
-        s > 0
+        orient > 0
           ? { vertices: [aId, bId, bt, at], edges: [eId, rb, top, ra] }
           : { vertices: [bId, aId, at, bt], edges: [eId, ra, top, rb] }
       const pts = wall.vertices.map((v) => vertexPoint(geom, v))
@@ -218,7 +318,7 @@ export function pushPullMut(
   let capOuter = mapLoop(face.outer)
   let capInner = face.inner.map(mapLoop)
   let capNormal = face.normal
-  if (s < 0) {
+  if (orient < 0) {
     capOuter = reverseLoop(capOuter)
     capInner = capInner.map(reverseLoop)
     capNormal = V.negate(face.normal)
@@ -230,9 +330,12 @@ export function pushPullMut(
     hidden: face.hidden,
   }, acc)
 
-  // the starting face becomes the opposite cap, so its front has to look away
-  // from the new volume
-  if (s > 0) {
+  if (dropStart) {
+    // interior interface - the surrounding coplanar face keeps the opening
+    removeFace(geom, faceId, acc)
+  } else if (orient > 0) {
+    // the starting face becomes the opposite cap, so its front has to look away
+    // from the new volume
     flipFace(geom, faceId)
     acc.modifiedFaces.add(faceId)
   }

@@ -28,6 +28,7 @@ import type {
   InferenceResult,
   InferenceType,
   KeyInfo,
+  Mat4Like,
   OverlayApi,
   PickHit,
   PlaneLike,
@@ -47,7 +48,8 @@ import {
   stateOf,
 } from '../helpers'
 import { axisDirections } from '../modelAxes'
-import { colorFor, labelFor, markerFor, LABEL_FACE_CENTER } from './labels'
+import { circumcenter } from '../geom'
+import { colorFor, labelFor, markerFor, LABEL_ARC_CENTER, LABEL_FACE_CENTER } from './labels'
 import {
   isStrongPoint,
   pickBestPoint,
@@ -459,12 +461,11 @@ export class InferenceEngine implements InferenceApi {
 
     /* ---- 4. Ebene ---- */
     this.dwellPoint = null
-    const onGround = !hit || hit.kind === 'none' || hit.kind === 'ground'
     return this.finishResult(
       {
         ...emptyResult(raw),
-        type: onGround && !opts.plane && !from ? 'onPlane' : 'onPlane',
-        label: labelFor('onPlane'),
+        type: 'onPlane',
+        label: this.planeLabel(workPlane, opts),
         color: COLORS.onPlane,
         marker: 'none',
         plane: workPlane,
@@ -473,6 +474,19 @@ export class InferenceEngine implements InferenceApi {
       },
       opts,
     )
+  }
+
+  /**
+   * Beschriftung der Zeichenebene. Die Bodenebene wird beim Namen genannt -
+   * das ist die haeufigste Ebene und der Nutzer soll sehen, dass er nicht
+   * versehentlich in der Luft zeichnet.
+   */
+  private planeLabel(plane: PlaneLike, opts: InferOptions): string {
+    const target = opts.plane ?? plane
+    if (Math.abs(target.d) < POINT_TOL && Math.abs(Math.abs(target.n.z) - 1) < 1e-6) {
+      return 'Auf Bodenebene'
+    }
+    return labelFor('onPlane')
   }
 
   /** Letzter Schliff: Ebenenzwang und Endkontrolle. */
@@ -571,6 +585,8 @@ export class InferenceEngine implements InferenceApi {
         pushCandidate(out, mid, 'midpoint', screenDistance(vp, mid, x, y), { refEdgeId: hit.id })
         const onEdge = R.closestPointOnSegment(a, b, hit.point).point
         pushCandidate(out, onEdge, 'onEdge', screenDistance(vp, onEdge, x, y), { refEdgeId: hit.id })
+        this.collectArcCenter(state, hit, xf, x, y, out)
+        this.collectEdgeIntersections(a, b, hit.id, x, y, out)
       } else if (V.isFinite3(hit.point)) {
         pushCandidate(out, hit.point, 'onEdge', screenDistance(vp, hit.point, x, y), { refEdgeId: hit.id })
       }
@@ -624,6 +640,87 @@ export class InferenceEngine implements InferenceApi {
       if (V.isFinite3(hit.point)) {
         pushCandidate(out, hit.point, 'onFace', 0, { onGeometry: true })
       }
+    }
+  }
+
+  /**
+   * Mittelpunkt eines Kreises oder Bogens.
+   *
+   * Kreise und Boegen bestehen im Modell aus vielen kurzen, weichgezeichneten
+   * Kanten. Aus der Kante unter dem Cursor und einer anschliessenden Kante
+   * laesst sich der Umkreismittelpunkt rekonstruieren - genau das ist der
+   * "Mittelpunkt", den SketchUp beim Ueberfahren eines Kreises anbietet.
+   */
+  private collectArcCenter(
+    state: AppState | null,
+    hit: PickHit,
+    xf: Mat4Like,
+    x: number,
+    y: number,
+    out: PointCandidate[],
+  ): void {
+    if (!state || !hit.id) return
+    const def = hit.definitionId
+    const edge = safeOrNull(() => state.getEdge(hit.id as Id, def ?? undefined))
+    if (!edge || !(edge.smooth || edge.soft)) return
+    const pts = edgeWorldPoints(state, hit.id, def, xf)
+    if (!pts) return
+
+    for (const vertexId of [edge.a, edge.b]) {
+      const vertex = safeOrNull(() => state.getVertex(vertexId, def ?? undefined))
+      if (!vertex) continue
+      for (const otherId of vertex.edges) {
+        if (otherId === hit.id) continue
+        const other = safeOrNull(() => state.getEdge(otherId, def ?? undefined))
+        if (!other || !(other.smooth || other.soft)) continue
+        const otherPts = edgeWorldPoints(state, otherId, def, xf)
+        if (!otherPts) continue
+        // dritter Punkt: das vom gemeinsamen Knoten abgewandte Ende
+        const shared = safeOrNull(() => state.getVertex(vertexId, def ?? undefined))
+        if (!shared) continue
+        const sharedWorld = M.transformPoint(xf, shared.p)
+        const third =
+          V.distance(otherPts[0], sharedWorld) > V.distance(otherPts[1], sharedWorld) ? otherPts[0] : otherPts[1]
+        const circle = circumcenter(pts[0], pts[1], third)
+        if (!circle || !V.isFinite3(circle.center)) continue
+        pushCandidate(out, circle.center, 'center', screenDistance(this.viewport, circle.center, x, y), {
+          refEdgeId: hit.id,
+          label: LABEL_ARC_CENTER,
+          onGeometry: false,
+        })
+        return
+      }
+    }
+  }
+
+  /** Schnittpunkte der Kante unter dem Cursor mit zuletzt beruehrten Kanten. */
+  private collectEdgeIntersections(
+    a: Vec3Like,
+    b: Vec3Like,
+    edgeId: Id | null,
+    x: number,
+    y: number,
+    out: PointCandidate[],
+  ): void {
+    const ab = V.sub(b, a)
+    const lengthAb = V.length(ab)
+    if (lengthAb < POINT_TOL) return
+    for (const ref of this.refEdges) {
+      if (ref.id === edgeId) continue
+      const cd = V.sub(ref.b, ref.a)
+      const lengthCd = V.length(cd)
+      if (lengthCd < POINT_TOL) continue
+      const res = safeOrNull(() => R.closestPointsBetweenLines(a, ab, ref.a, cd))
+      if (!res) continue
+      if (res.t1 < -0.001 || res.t1 > 1.001) continue
+      if (res.t2 < -0.001 || res.t2 > 1.001) continue
+      // Windschiefe Kanten schneiden sich nicht wirklich.
+      if (V.distance(res.point1, res.point2) > Math.min(lengthAb, lengthCd) * 0.02 + POINT_TOL) continue
+      const point = V.midpoint(res.point1, res.point2)
+      pushCandidate(out, point, 'intersection', screenDistance(this.viewport, point, x, y), {
+        refEdgeId: edgeId,
+        refPoint: ref.a,
+      })
     }
   }
 
@@ -749,23 +846,31 @@ export class InferenceEngine implements InferenceApi {
       }
     }
 
-    /* Verlaengerung / Tangente bekannter Kanten - braucht keinen Referenzpunkt */
+    /*
+     * Verlaengerung / Tangente bekannter Kanten - braucht keinen Referenzpunkt.
+     * Bei weichgezeichneten Kanten (Bogen, Kreis) ist die Kantenrichtung am
+     * Endpunkt die Tangente, deshalb der andere Typ und die andere Farbe.
+     */
     for (const edge of this.refEdges) {
       const d = V.sub(edge.b, edge.a)
       if (V.isZero(d)) continue
       const length = V.length(d)
       const dir = V.mul(d, 1 / length)
       const type: InferenceType = edge.smooth ? 'tangent' : 'extension'
-      const cand = add(edge.a, dir, type, {
-        color: edge.smooth ? COLORS.tangent : COLORS.guide,
-        priority: 2,
-        refEdgeId: edge.id,
-        refPoint: edge.b,
-      })
-      if (cand) {
+      // Von beiden Enden aus, damit die Verlaengerung in beide Richtungen faengt.
+      for (const [origin, far] of [
+        [edge.a, edge.b],
+        [edge.b, edge.a],
+      ] as [Vec3Like, Vec3Like][]) {
+        const outward = V.normalize(V.sub(origin, far))
+        const cand = add(origin, outward, type, {
+          color: edge.smooth ? COLORS.tangent : COLORS.guide,
+          priority: 2,
+          refEdgeId: edge.id,
+          refPoint: origin,
+        })
         // Nur ausserhalb der Kante ist es wirklich eine Verlaengerung.
-        const t = V.dot(V.sub(cand.point, edge.a), dir)
-        if (t > -0.001 && t < length + 0.001) out.pop()
+        if (cand && V.dot(V.sub(cand.point, origin), outward) < length * 0.001) out.pop()
       }
     }
 

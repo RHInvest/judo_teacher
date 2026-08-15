@@ -2242,12 +2242,14 @@ export const useStore = create<AppState>()((set, get) => {
       )
     },
 
+    /** Aktives Material = Werkzeugzustand, nicht undo-bar (siehe `setActiveTag`). */
     setActiveMaterial(id) {
+      if (id !== null && !get().doc.materials[id]) return
       editDoc((doc) => {
         doc.activeMaterialId = id
       })
-      set({ dirty: get().dirty })
       bus.emit('material:changed', id ? { materialId: id } : {})
+      bus.emit('render:request')
     },
 
     applyMaterial(target, materialId, side = 'front') {
@@ -2382,14 +2384,20 @@ export const useStore = create<AppState>()((set, get) => {
       )
     },
 
+    /**
+     * Aktives Tag = Werkzeugzustand, kein Modellinhalt: bewusst OHNE Operation,
+     * damit Strg+Z die letzte Geometrieaenderung zuruecknimmt und nicht die
+     * Tag-Auswahl umspringt. Wird trotzdem mitserialisiert (Nutzer findet seine
+     * Auswahl beim Oeffnen wieder), deshalb `dirty`. Gleiche Regel wie bei
+     * `setActiveMaterial`. (Festgelegt vom Lead.)
+     */
     setActiveTag(id) {
-      get().operation('Aktives Tag', () =>
-        editDoc((doc) => {
-          if (!doc.tags[id]) return
-          doc.activeTagId = id
-          history.marks.document = true
-        }),
-      )
+      if (!get().doc.tags[id]) return
+      editDoc((doc) => {
+        doc.activeTagId = id
+      })
+      bus.emit('style:changed')
+      bus.emit('render:request')
     },
 
     addTagFolder(name) {

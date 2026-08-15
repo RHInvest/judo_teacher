@@ -29,8 +29,19 @@ export interface Vec3Like {
   z: number
 }
 
-/** Column major 4x4 matrix, identical memory layout to THREE.Matrix4.elements */
-export type Mat4Like = readonly number[] & { length: 16 }
+/**
+ * Column major 4x4 matrix, identical memory layout to THREE.Matrix4.elements.
+ *
+ * Die Laenge ist per Konvention immer 16 - sie wird bewusst NICHT im Typ
+ * erzwungen, weil eine `& { length: 16 }`-Verschaerfung an jeder Aufrufstelle
+ * einen Cast erzwingt und die Casts die Sicherheit ohnehin aushebeln.
+ * Erzeuge Matrizen ueber `@/core/math` (`M.identity()`, `M.translation()`, ...),
+ * dann stimmt die Laenge automatisch.
+ */
+export type Mat4Like = readonly number[]
+
+/** Die Identitaetsmatrix als Literal - fuer Stellen ohne Zugriff auf `@/core/math`. */
+export const IDENTITY_MATRIX: Mat4Like = Object.freeze([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
 
 export interface PlaneLike {
   /** unit normal */

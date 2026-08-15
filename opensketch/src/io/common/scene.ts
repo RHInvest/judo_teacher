@@ -30,8 +30,18 @@ export interface TraverseOptions {
   skipHidden?: boolean
   /** Skalierung aller Koordinaten (1 = Meter) */
   unitScale?: number
-  /** nur diese Definitionen / Entities exportieren */
+  /**
+   * Nur diese Instanzen der Wurzel exportieren. Ist die Liste gesetzt, wird
+   * die Rohgeometrie der Wurzel uebersprungen und nur in die genannten
+   * Instanzen abgestiegen. Leere oder fehlende Liste = alles.
+   */
   onlyEntityIds?: Id[]
+}
+
+/** true, wenn `onlyEntityIds` benutzbar ist. */
+function selectionOf(opts: TraverseOptions): Set<Id> | null {
+  const ids = opts.onlyEntityIds
+  return ids && ids.length > 0 ? new Set(ids) : null
 }
 
 const MAX_DEPTH = 32
@@ -72,6 +82,7 @@ export interface FlatDocument {
 export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {}): FlatDocument {
   const scale = opts.unitScale ?? 1
   const skipHidden = opts.skipHidden ?? true
+  const selection = selectionOf(opts)
   const out: FlatDocument = { faces: [], edges: [], skipped: 0 }
 
   const walk = (definitionId: Id, transform: Mat4Like, name: string, depth: number, path: Id[]): void => {
@@ -82,45 +93,50 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
     const def = doc.definitions[definitionId]
     if (!def) return
 
+    // Bei einer Auswahl bleibt die Rohgeometrie der Wurzel aussen vor.
+    const skipGeometry = selection !== null && depth === 0
     const geom = def.geometry
-    for (const face of Object.values(geom.faces)) {
-      if (skipHidden && face.hidden) continue
-      const outer = faceRing(geom, face.id).map((p) => transformScaled(p, transform, scale))
-      if (outer.length < 3) continue
-      const holes = faceHoleRings(geom, face.id).map((ring) =>
-        ring.map((p) => transformScaled(p, transform, scale)),
-      )
-      const normal = P.polygonNormal(outer) ?? M.transformNormal(transform, face.normal)
-      out.faces.push({
-        outer,
-        holes,
-        normal,
-        frontMaterialId: face.frontMaterialId,
-        backMaterialId: face.backMaterialId,
-        faceId: face.id,
-        definitionId,
-        groupName: name,
-      })
-    }
-    for (const edge of Object.values(geom.edges)) {
-      if (skipHidden && (edge.hidden || edge.guide)) continue
-      const a = geom.vertices[edge.a]
-      const b = geom.vertices[edge.b]
-      if (!a || !b) continue
-      out.edges.push({
-        a: transformScaled(a.p, transform, scale),
-        b: transformScaled(b.p, transform, scale),
-        materialId: edge.materialId,
-        groupName: name,
-        soft: edge.soft,
-        hidden: edge.hidden,
-      })
+    if (!skipGeometry) {
+      for (const face of Object.values(geom.faces)) {
+        if (skipHidden && face.hidden) continue
+        const outer = faceRing(geom, face.id).map((p) => transformScaled(p, transform, scale))
+        if (outer.length < 3) continue
+        const holes = faceHoleRings(geom, face.id).map((ring) =>
+          ring.map((p) => transformScaled(p, transform, scale)),
+        )
+        const normal = P.polygonNormal(outer) ?? M.transformNormal(transform, face.normal)
+        out.faces.push({
+          outer,
+          holes,
+          normal,
+          frontMaterialId: face.frontMaterialId,
+          backMaterialId: face.backMaterialId,
+          faceId: face.id,
+          definitionId,
+          groupName: name,
+        })
+      }
+      for (const edge of Object.values(geom.edges)) {
+        if (skipHidden && (edge.hidden || edge.guide)) continue
+        const a = geom.vertices[edge.a]
+        const b = geom.vertices[edge.b]
+        if (!a || !b) continue
+        out.edges.push({
+          a: transformScaled(a.p, transform, scale),
+          b: transformScaled(b.p, transform, scale),
+          materialId: edge.materialId,
+          groupName: name,
+          soft: edge.soft,
+          hidden: edge.hidden,
+        })
+      }
     }
 
     for (const childId of def.children) {
       const entity = doc.entities[childId]
       if (!entity || entity.type !== 'instance') continue
       if (skipHidden && entity.hidden) continue
+      if (selection !== null && depth === 0 && !selection.has(entity.id)) continue
       if (path.includes(entity.definitionId)) {
         out.skipped++
         continue
@@ -162,6 +178,7 @@ export interface SceneNode {
 
 export function buildSceneTree(doc: SketchDocument, opts: TraverseOptions = {}): SceneNode {
   const skipHidden = opts.skipHidden ?? true
+  const selection = selectionOf(opts)
 
   const walk = (definitionId: Id, transform: Mat4Like, name: string, materialId: Id | null, depth: number, path: Id[]): SceneNode => {
     const node: SceneNode = { name, definitionId, transform, children: [], materialId }
@@ -171,6 +188,7 @@ export function buildSceneTree(doc: SketchDocument, opts: TraverseOptions = {}):
       const entity = doc.entities[childId]
       if (!entity || entity.type !== 'instance') continue
       if (skipHidden && entity.hidden) continue
+      if (selection !== null && depth === 0 && !selection.has(entity.id)) continue
       if (path.includes(entity.definitionId)) continue
       const child = doc.definitions[entity.definitionId]
       node.children.push(
