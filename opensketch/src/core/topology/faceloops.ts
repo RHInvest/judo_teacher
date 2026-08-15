@@ -359,7 +359,13 @@ export function buildFacesInPlane(
       props,
       acc,
     )
-    harmonizeOrientation(geom, faceId, acc)
+    if (item.region) {
+      // a face that was destroyed and re-facetted keeps its original front
+      // side - cutting a face must never turn it inside out
+      if (V.dot(item.region.plane.n, plane.n) < 0) flipCreated(geom, faceId)
+    } else {
+      harmonizeOrientation(geom, faceId, acc)
+    }
     created.push(faceId)
   }
   return created

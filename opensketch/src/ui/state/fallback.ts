@@ -7,7 +7,7 @@
  * Alle Aktionen sind No-Ops, alle Leser liefern leere, aber gueltige Daten.
  */
 
-import { emptyGeometry, emptySelection } from '@/shared/types'
+import { IDENTITY_MATRIX, emptyGeometry, emptySelection } from '@/shared/types'
 import { DEFAULT_UNITS } from '@/shared/units'
 import type { AppState, UiState } from '@/shared/store-api'
 import type {
@@ -21,7 +21,7 @@ import type {
   SunSettings,
 } from '@/shared/types'
 
-export const IDENTITY: Mat4Like = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] as unknown as Mat4Like
+export const IDENTITY: Mat4Like = IDENTITY_MATRIX
 
 export const DEFAULT_STYLE: StyleSettings = {
   id: 'c000style',

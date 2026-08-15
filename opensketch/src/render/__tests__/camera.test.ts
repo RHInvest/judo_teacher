@@ -85,11 +85,23 @@ describe('orbit', () => {
 
   it('kippt nicht ueber den Pol', () => {
     cam.setState({ eye: { x: 0, y: -10, z: 0 }, target: { x: 0, y: 0, z: 0 } })
+
+    // Ziehen nach unten senkt die Kamera bis genau auf den Suedpol - und nicht darueber hinaus
     cam.orbit(0, 100000)
-    const above = cam.getState().eye.z
-    expect(above).toBeGreaterThan(0)
+    const bottom = cam.getState()
+    expect(bottom.eye.z).toBeGreaterThan(-10)
+    expect(bottom.eye.z).toBeLessThan(-9.99)
+    expect(cam.distance).toBeCloseTo(10, 6)
+
+    // und zurueck bis genau auf den Nordpol
     cam.orbit(0, -100000)
-    expect(cam.getState().eye.z).toBeLessThan(0)
+    const top = cam.getState()
+    expect(top.eye.z).toBeLessThan(10)
+    expect(top.eye.z).toBeGreaterThan(9.99)
+    expect(cam.distance).toBeCloseTo(10, 6)
+
+    // am Pol wird der Up-Vektor waagerecht gefuehrt, damit die Ansicht nicht springt
+    expect(Math.abs(top.up.z)).toBeLessThan(0.01)
   })
 })
 
@@ -252,7 +264,9 @@ describe('Animation', () => {
     expect(cam.tick(start + 200)).toBe(true)
     const mid = cam.getState().eye
     expect(mid.y).toBeLessThan(0)
-    expect(cam.distance).toBeCloseTo(10, 3)
+    // Blickrichtung wird spheerisch interpoliert, der Abstand linear (10 -> 20)
+    expect(cam.distance).toBeGreaterThan(10)
+    expect(cam.distance).toBeLessThan(20)
 
     expect(cam.tick(start + 1000)).toBe(false)
     expect(cam.animating).toBe(false)

@@ -16,8 +16,8 @@ import {
   saveNamedDocument,
 } from '@/model'
 import { bus } from '@/shared/events'
-import { emptySelection, selectionCount } from '@/shared/types'
-import type { Id, Mat4Like, Selection, StandardView, ToolId } from '@/shared/types'
+import { IDENTITY_MATRIX, emptySelection, selectionCount } from '@/shared/types'
+import type { Id, Selection, StandardView, ToolId } from '@/shared/types'
 import { getViewport } from '@/app/ViewportHost'
 import { act, edit, read, toast } from '@/ui/state/store'
 import { downloadBlob, pickFiles } from './hooks'
@@ -87,8 +87,6 @@ export function cmdCut(): void {
   clipboard.selection = null
 }
 
-const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] as unknown as Mat4Like
-
 export function cmdPaste(inPlace = false): void {
   const source = clipboard.selection
   if (!source) {
@@ -96,7 +94,7 @@ export function cmdPaste(inPlace = false): void {
     return
   }
   edit(inPlace ? 'An Ort einfuegen' : 'Einfuegen', (state) => {
-    state.transformPrimitives(source, IDENTITY, true)
+    state.transformPrimitives(source, IDENTITY_MATRIX, true)
   })
 }
 

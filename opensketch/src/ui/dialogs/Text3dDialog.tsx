@@ -1,65 +1,41 @@
 /**
  * 3D-Text einfuegen.
  *
- * ANNAHME (an den Lead gemeldet): es gibt bislang keinen Contract, ueber den die
- * Oberflaeche einen Textinhalt an das Werkzeug `text3d` uebergeben koennte
- * (weder ein Bus-Ereignis noch eine Store-Aktion). Damit der Dialog trotzdem
- * etwas Echtes tut, legt er eine Text-Entitaet im Weltraum an - platziert im
- * Kamerafokus - und aktiviert anschliessend das Werkzeug, sobald es echte
- * extrudierte Geometrie erzeugt.
+ * Der Dialog sammelt nur die Parameter und schickt sie als `text3d:create`
+ * ueber den Bus; die Geometrie baut das Werkzeug `text3d`.
  */
 
 import { useState } from 'react'
 import clsx from 'clsx'
-import { newId } from '@/shared/ids'
-import type { TextEntity, Vec3Like } from '@/shared/types'
+import { bus } from '@/shared/events'
 import { useSkin } from '@/ui/lib/theme'
-import { ColorField, NumberInput, Row, TextInput } from '@/ui/components/controls'
-import { getViewportSafe, setTool } from '@/ui/lib/commands'
-import { edit, read, toast } from '@/ui/state/store'
+import { Checkbox, IconRow, NumberInput, Row, TextInput } from '@/ui/components/controls'
+import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
+import { setTool } from '@/ui/lib/commands'
 import { Dialog } from './Dialog'
 
-function placementPoint(): Vec3Like {
-  const camera = getViewportSafe()?.getCamera()
-  if (camera?.target) return { x: camera.target.x, y: camera.target.y, z: camera.target.z }
-  const bounds = read((s) => s.getModelBounds(), null)
-  if (bounds) {
-    return {
-      x: (bounds.min.x + bounds.max.x) / 2,
-      y: (bounds.min.y + bounds.max.y) / 2,
-      z: (bounds.min.z + bounds.max.z) / 2,
-    }
-  }
-  return { x: 0, y: 0, z: 0 }
-}
+type Align = 'left' | 'center' | 'right'
+
+const ALIGN_OPTIONS: { value: Align; label: string; icon: typeof AlignLeft }[] = [
+  { value: 'left', label: 'Linksbuendig', icon: AlignLeft },
+  { value: 'center', label: 'Zentriert', icon: AlignCenter },
+  { value: 'right', label: 'Rechtsbuendig', icon: AlignRight },
+]
 
 export function Text3dDialog({ onClose }: { onClose: () => void }) {
   const skin = useSkin()
   const [text, setText] = useState('OpenSketch')
   const [height, setHeight] = useState(0.5)
-  const [color, setColor] = useState('#dfe4ec')
+  const [extrude, setExtrude] = useState(0.05)
+  const [bold, setBold] = useState(false)
+  const [italic, setItalic] = useState(false)
+  const [filled, setFilled] = useState(true)
+  const [align, setAlign] = useState<Align>('left')
 
   const insert = () => {
     const content = text.trim()
     if (content === '') return
-    const position = placementPoint()
-    const entity: TextEntity = {
-      id: newId('n'),
-      type: 'text',
-      name: content.slice(0, 32),
-      tagId: null,
-      hidden: false,
-      locked: false,
-      anchor: position,
-      position,
-      text: content,
-      fontSize: height,
-      color,
-      screenSpace: false,
-      leader: 'none',
-    }
-    edit('3D-Text einfuegen', (s) => s.addEntity(entity))
-    toast('Text im Kamerafokus abgelegt - mit Verschieben positionieren.', 'success')
+    bus.emit('text3d:create', { text: content, height, extrude, bold, italic, filled, align })
     setTool('text3d')
     onClose()
   }
@@ -67,8 +43,9 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog
       title="3D-Text"
-      width={430}
+      width={440}
       onClose={onClose}
+      footerNote={extrude > 0 ? 'Extrudierte Buchstaben' : 'Flache Buchstabenflaechen'}
       actions={[
         { label: 'Abbrechen', onClick: onClose },
         { label: 'Einfuegen', variant: 'primary', onClick: insert, disabled: text.trim() === '' },
@@ -81,18 +58,36 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
         <NumberInput
           value={height}
           min={0.01}
+          max={100}
           step={0.05}
           suffix="m"
-          ariaLabel="Schrifthoehe in Metern"
+          ariaLabel="Versalhoehe in Metern"
           onChange={setHeight}
         />
       </Row>
-      <Row label="Farbe">
-        <ColorField value={color} ariaLabel="Textfarbe" onChange={setColor} />
+      <Row label="Tiefe">
+        <NumberInput
+          value={extrude}
+          min={0}
+          max={100}
+          step={0.01}
+          suffix="m"
+          ariaLabel="Extrusionstiefe in Metern"
+          onChange={setExtrude}
+        />
       </Row>
-      <p className={clsx('px-3 pb-2 pt-1 text-[11px] leading-relaxed', skin.dim)}>
-        Der Text wird im Kamerafokus abgelegt. Extrudierte Buchstabengeometrie liefert das Werkzeug, sobald es
-        fertiggestellt ist.
+      <Row label="Ausrichtung">
+        <IconRow ariaLabel="Textausrichtung" value={align} options={ALIGN_OPTIONS} onChange={setAlign} />
+      </Row>
+
+      <div className="px-2 pb-1 pt-1">
+        <Checkbox checked={bold} label="Fett" onChange={setBold} />
+        <Checkbox checked={italic} label="Kursiv" onChange={setItalic} />
+        <Checkbox checked={filled} label="Gefuellte Flaechen (sonst nur Umrisse)" onChange={setFilled} />
+      </div>
+
+      <p className={clsx('px-3 pb-2 text-[11px] leading-relaxed', skin.dim)}>
+        Nach dem Bestaetigen den Einfuegepunkt im Modell anklicken.
       </p>
     </Dialog>
   )

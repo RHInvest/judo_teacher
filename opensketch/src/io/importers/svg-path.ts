@@ -54,20 +54,24 @@ export function parsePath(d: string, opts: PathOptions = {}): SubPath[] {
   const arcStep = opts.arcStep ?? DEFAULT_ARC_STEP
 
   const paths: SubPath[] = []
-  let current: SubPath | null = null
+  // Zustand in einem Objekt, damit die Zuweisungen aus den Closures fuer
+  // TypeScript sichtbar bleiben.
+  const state: { current: SubPath | null; lastCubic: Pt | null; lastQuadratic: Pt | null } = {
+    current: null,
+    lastCubic: null,
+    lastQuadratic: null,
+  }
   let cursor: Pt = { x: 0, y: 0 }
   let start: Pt = { x: 0, y: 0 }
-  // letzter Kontrollpunkt fuer S/T
-  let lastCubic: Pt | null = null
-  let lastQuadratic: Pt | null = null
 
   const begin = (p: Pt): void => {
-    current = { points: [{ ...p }], closed: false }
-    paths.push(current)
+    const sub: SubPath = { points: [{ ...p }], closed: false }
+    state.current = sub
+    paths.push(sub)
   }
   const lineTo = (p: Pt): void => {
-    if (!current) begin(cursor)
-    current!.points.push({ ...p })
+    if (!state.current) begin(cursor)
+    state.current?.points.push({ ...p })
   }
 
   for (const { command, args } of tokenizePath(d)) {
@@ -75,13 +79,13 @@ export function parsePath(d: string, opts: PathOptions = {}): SubPath[] {
     const upper = command.toUpperCase()
 
     if (upper === 'Z') {
-      if (current) {
-        current.closed = true
+      if (state.current) {
+        state.current.closed = true
         cursor = { ...start }
       }
-      current = null
-      lastCubic = null
-      lastQuadratic = null
+      state.current = null
+      state.lastCubic = null
+      state.lastQuadratic = null
       continue
     }
 
@@ -99,32 +103,32 @@ export function parsePath(d: string, opts: PathOptions = {}): SubPath[] {
             lineTo(p)
           }
           cursor = p
-          lastCubic = null
-          lastQuadratic = null
+          state.lastCubic = null
+          state.lastQuadratic = null
           break
         }
         case 'L': {
           const p = relative ? { x: cursor.x + a[0], y: cursor.y + a[1] } : { x: a[0], y: a[1] }
           lineTo(p)
           cursor = p
-          lastCubic = null
-          lastQuadratic = null
+          state.lastCubic = null
+          state.lastQuadratic = null
           break
         }
         case 'H': {
           const p = { x: relative ? cursor.x + a[0] : a[0], y: cursor.y }
           lineTo(p)
           cursor = p
-          lastCubic = null
-          lastQuadratic = null
+          state.lastCubic = null
+          state.lastQuadratic = null
           break
         }
         case 'V': {
           const p = { x: cursor.x, y: relative ? cursor.y + a[0] : a[0] }
           lineTo(p)
           cursor = p
-          lastCubic = null
-          lastQuadratic = null
+          state.lastCubic = null
+          state.lastQuadratic = null
           break
         }
         case 'C': {
@@ -133,18 +137,18 @@ export function parsePath(d: string, opts: PathOptions = {}): SubPath[] {
           const end = rel(cursor, a[4], a[5], relative)
           emitCubic(lineTo, cursor, c1, c2, end, segments)
           cursor = end
-          lastCubic = c2
-          lastQuadratic = null
+          state.lastCubic = c2
+          state.lastQuadratic = null
           break
         }
         case 'S': {
-          const c1 = lastCubic ? mirror(cursor, lastCubic) : { ...cursor }
+          const c1: Pt = state.lastCubic ? mirror(cursor, state.lastCubic) : { ...cursor }
           const c2 = rel(cursor, a[0], a[1], relative)
           const end = rel(cursor, a[2], a[3], relative)
           emitCubic(lineTo, cursor, c1, c2, end, segments)
           cursor = end
-          lastCubic = c2
-          lastQuadratic = null
+          state.lastCubic = c2
+          state.lastQuadratic = null
           break
         }
         case 'Q': {
@@ -152,25 +156,25 @@ export function parsePath(d: string, opts: PathOptions = {}): SubPath[] {
           const end = rel(cursor, a[2], a[3], relative)
           emitQuadratic(lineTo, cursor, c, end, segments)
           cursor = end
-          lastQuadratic = c
-          lastCubic = null
+          state.lastQuadratic = c
+          state.lastCubic = null
           break
         }
         case 'T': {
-          const c = lastQuadratic ? mirror(cursor, lastQuadratic) : { ...cursor }
+          const c: Pt = state.lastQuadratic ? mirror(cursor, state.lastQuadratic) : { ...cursor }
           const end = rel(cursor, a[0], a[1], relative)
           emitQuadratic(lineTo, cursor, c, end, segments)
           cursor = end
-          lastQuadratic = c
-          lastCubic = null
+          state.lastQuadratic = c
+          state.lastCubic = null
           break
         }
         case 'A': {
           const end = rel(cursor, a[5], a[6], relative)
           emitArc(lineTo, cursor, a[0], a[1], a[2], a[3] !== 0, a[4] !== 0, end, arcStep)
           cursor = end
-          lastCubic = null
-          lastQuadratic = null
+          state.lastCubic = null
+          state.lastQuadratic = null
           break
         }
         default:
