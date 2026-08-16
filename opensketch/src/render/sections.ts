@@ -14,6 +14,20 @@
  *
  * Dazu kommt das Schnittebenensymbol: ein Rahmen mit Eckgriffen.
  *
+ * BEKANNTE EINSCHRAENKUNGEN des Stencil-Durchgangs:
+ *
+ *  - Gefuellt wird nur die ERSTE aktive Ebene (siehe `rebuild`). Weitere aktive
+ *    Ebenen schneiden mit, bekommen aber keine eigene Fuellung - wie in
+ *    SketchUp, wo pro Kontext eine Schnittebene aktiv ist.
+ *  - Der Durchgang zeichnet jede Platzierung EINZELN, auch wenn `sceneSync`
+ *    dieselbe Definition sonst als `InstancedMesh` zusammenfasst. Bei sehr
+ *    vielen Instanzen kostet die Fuellung deshalb spuerbar Zeichenaufrufe.
+ *
+ * Instanzierte Definitionen FEHLEN dagegen nicht: `addStencilPass` laeuft ueber
+ * `sync.records`, also ueber alle Platzierungen samt Welttransformation - eine
+ * frueher notierte Einschraenkung, die auf den aktuellen Stand nicht mehr
+ * zutrifft. Abgesichert in `__tests__/sections.test.ts`.
+ *
  * OWNERSHIP: Render-Entwickler.
  */
 

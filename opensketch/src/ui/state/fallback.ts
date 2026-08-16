@@ -136,7 +136,7 @@ export const FALLBACK_UI: UiState = {
   toasts: [],
   dialog: null,
   busy: null,
-  stats: { faces: 0, edges: 0, instances: 0, fps: 0 },
+  stats: { faces: 0, edges: 0, instances: 0, triangles: 0, fps: 0 },
 }
 
 const EMPTY_GEOMETRY: Geometry = emptyGeometry()
