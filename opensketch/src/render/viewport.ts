@@ -60,7 +60,7 @@ export interface ViewportDeps {
 /** Wie lange eine Szenenfahrt dauert, wenn die Szene nichts vorgibt. */
 const DEFAULT_SCENE_TRANSITION_S = 0.8
 
-/** Kleinster Abstand zwischen zwei FPS-Aktualisierungen der Statuszeile. */
+/** Kleinster Abstand zwischen zwei Renderwert-Aktualisierungen der Statuszeile. */
 const STATS_INTERVAL_MS = 1000
 
 export class Viewport implements ViewportApi {
@@ -100,8 +100,8 @@ export class Viewport implements ViewportApi {
   private fps = 0
   /** Kennwerte des letzten Modell-Pushs, als Vergleichsschluessel */
   private lastStatsKey = ''
-  private lastFpsPush = 0
-  private fpsTimer: ReturnType<typeof setTimeout> | null = null
+  private lastRenderStatsPush = 0
+  private renderStatsTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(canvas: HTMLCanvasElement, private readonly store: StoreHandle) {
     this.canvas = canvas
@@ -344,7 +344,7 @@ export class Viewport implements ViewportApi {
     })
 
     this.pushModelStats()
-    this.pushFps(now)
+    this.pushRenderStats(now)
   }
 
   /* ================================================================ */
@@ -369,39 +369,45 @@ export class Viewport implements ViewportApi {
   }
 
   /**
-   * FPS getrennt und gedrosselt schreiben (hoechstens einmal pro Sekunde),
-   * damit die Oberflaeche nicht bei jedem Frame neu rendert. Greift die
-   * Drosselung, wird der Push per Timer ans Ende des Fensters NACHGEHOLT -
-   * verworfen wird er nie.
+   * Renderwerte (Dreiecke, FPS) getrennt und gedrosselt schreiben - hoechstens
+   * einmal pro Sekunde, damit die Oberflaeche nicht bei jedem Frame neu
+   * rendert. Greift die Drosselung, wird der Push per Timer ans Ende des
+   * Fensters NACHGEHOLT; verworfen wird er nie. Genau daran hing der
+   * eingefrorene Zaehler: nach einer Aenderung laeuft ein einziger Frame, ein
+   * verworfener Push wird also von keinem spaeteren Frame nachgeholt.
    */
-  private pushFps(now: number): void {
-    const wait = STATS_INTERVAL_MS - (now - this.lastFpsPush)
+  private pushRenderStats(now: number): void {
+    const wait = STATS_INTERVAL_MS - (now - this.lastRenderStatsPush)
     if (wait > 0) {
-      this.scheduleFpsPush(wait)
+      this.scheduleRenderStats(wait)
       return
     }
-    this.clearFpsTimer()
-    this.lastFpsPush = now
-    this.writeStats({ fps: Math.round(this.fps) })
+    this.clearRenderStatsTimer()
+    this.lastRenderStatsPush = now
+    this.writeRenderStats()
   }
 
-  private scheduleFpsPush(delayMs: number): void {
-    if (this.fpsTimer !== null || this.disposed) return
-    this.fpsTimer = setTimeout(() => {
-      this.fpsTimer = null
+  private scheduleRenderStats(delayMs: number): void {
+    if (this.renderStatsTimer !== null || this.disposed) return
+    this.renderStatsTimer = setTimeout(() => {
+      this.renderStatsTimer = null
       if (this.disposed) return
-      this.lastFpsPush = nowMs()
-      this.writeStats({ fps: Math.round(this.fps) })
+      this.lastRenderStatsPush = nowMs()
+      this.writeRenderStats()
     }, Math.max(0, delayMs))
   }
 
-  private clearFpsTimer(): void {
-    if (this.fpsTimer === null) return
-    clearTimeout(this.fpsTimer)
-    this.fpsTimer = null
+  private writeRenderStats(): void {
+    this.writeStats({ triangles: this.sync.stats.triangles, fps: Math.round(this.fps) })
   }
 
-  private writeStats(patch: { faces?: number; edges?: number; instances?: number; fps?: number }): void {
+  private clearRenderStatsTimer(): void {
+    if (this.renderStatsTimer === null) return
+    clearTimeout(this.renderStatsTimer)
+    this.renderStatsTimer = null
+  }
+
+  private writeStats(patch: Partial<{ faces: number; edges: number; instances: number; triangles: number; fps: number }>): void {
     attempt('store.setStats', () => this.store.getState().setStats(patch), undefined)
   }
 
@@ -690,7 +696,7 @@ export class Viewport implements ViewportApi {
     this.disposed = true
     if (this.rafHandle !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(this.rafHandle)
     this.rafHandle = 0
-    this.clearFpsTimer()
+    this.clearRenderStatsTimer()
 
     for (const off of this.unsubscribe) {
       try {

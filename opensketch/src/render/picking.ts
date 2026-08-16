@@ -378,11 +378,30 @@ export class Picker {
         const kernelHits = geom
           ? kernelRaycast(geom, localRay, localTolerance, geometryKinds, options?.ignore, options?.includeHidden === true)
           : null
-        // Der Kernel prueft Flaechen EXAKT gegen die Triangulierung (siehe
-        // core/query/raycast.ts) - die Toleranz gilt dort nur fuer Kanten und
-        // Vertices. Genau am Flaechenrand kann er deshalb leer ausgehen, wo der
-        // Puffer-Raycast noch trifft. Bei leerem Ergebnis wird deshalb der
-        // Puffer nachgeschlagen, damit beide Pfade dasselbe liefern.
+        // NICHT ENTFERNEN - der Rueckfall ist kein toter Code.
+        //
+        // Es gibt zwei Wege zur selben Antwort, und sie muessen dieselbe
+        // Antwort geben:
+        //
+        //  - Der Kernel (`core.raycast`, siehe core/query/raycast.ts) prueft
+        //    Flaechen EXAKT gegen die Triangulierung. `tolerance` gilt dort nur
+        //    fuer Kanten (Kapseltest) und Vertices (Kugeltest), NICHT fuer
+        //    Flaechen. Das ist so dokumentiert und gewollt.
+        //  - Der Puffer-Raycast unten arbeitet auf den Renderdreiecken und ist
+        //    am Rand toleranter.
+        //
+        // Klickt jemand genau auf eine Flaechenkante, weicht der Strahl schon
+        // durch die Rundung von `worldToScreen`/`screenToRay` um ~1e-14 nach
+        // aussen ab. Der Kernel liefert dann KEINEN Flaechentreffer, der Puffer
+        // schon. Sichtbar wurde das bei `pick(..., { kinds: ['face'] })`: mit
+        // Kernel kam 'none', ohne Kernel 'face' - also ein Werkzeug wie der
+        // Farbeimer, das am Flaechenrand scheinbar zufaellig nicht greift.
+        //
+        // Bei leerem Kernel-Ergebnis wird deshalb der Puffer nachgeschlagen.
+        // Das kostet nur dort, wo die Huelle bereits getroffen war und trotzdem
+        // nichts gefunden wurde. Ob `tolerance` im Kernel auch fuer Flaechen
+        // gelten soll, entscheiden Lead und Kernel-Entwickler; bis dahin (und
+        // danach) haelt dieser Rueckfall beide Pfade deckungsgleich.
         const hits =
           kernelHits && kernelHits.length > 0
             ? kernelHits

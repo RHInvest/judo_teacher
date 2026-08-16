@@ -129,8 +129,16 @@ export interface UiState {
   dialog: DialogState | null
   /** true while the renderer is busy with a long operation */
   busy: string | null
-  /** rendering statistics shown in the status bar */
-  stats: { faces: number; edges: number; instances: number; fps: number }
+  /**
+   * Kennwerte fuer die Statuszeile.
+   *
+   * `faces`/`edges`/`instances` sind MODELLwerte und werden inhaltsgetrieben
+   * aktualisiert, also einmal pro Bearbeitungsschritt. `triangles` und `fps`
+   * sind RENDERwerte aus dem letzten Frame und laufen gedrosselt mit
+   * nachlaufendem Push - eine Drosselung ohne Nachlauf friert die Anzeige
+   * dauerhaft ein, weil nur bei Bedarf gerendert wird.
+   */
+  stats: { faces: number; edges: number; instances: number; triangles: number; fps: number }
 }
 
 export type DialogState =
