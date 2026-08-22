@@ -88,7 +88,7 @@ export class Arc3Tool extends BaseTool {
         overlay.line(all[0], all[1], { color: COLORS.preview, width: 2, onTop: true })
       } else if (all.length >= 3) {
         const arc = arc3Points(all[0], all[1], all[2], this.segments)
-        overlay.polyline(arc, false, { color: COLORS.preview, width: 2, onTop: true })
+        if (arc.length >= 2) overlay.polyline(arc, false, { color: COLORS.preview, width: 2, onTop: true })
       }
       for (const p of this.points) {
         overlay.point(p, 'circle', { color: COLORS.highlight, size: 6, onTop: true })

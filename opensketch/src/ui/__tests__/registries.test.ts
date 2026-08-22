@@ -23,6 +23,7 @@ import { DIALOG_KINDS, DIALOG_RENDERERS, LOCAL_DIALOG_KINDS, LOCAL_DIALOG_RENDER
 import { PANEL_COMPONENTS } from '@/ui/panels/registry'
 import { PANEL_META, PANEL_ORDER } from '@/ui/panels/meta'
 import { ALL_TOOL_IDS, DRAW_MENU_TOOLS, TOOLBAR_GROUPS, TOOLS_MENU_TOOLS, TOOL_META } from '@/ui/lib/tools'
+import { TOOL_INSTRUCTIONS, instructionFor } from '@/ui/lib/instructor'
 
 /* ------------------------------------------------------------------ */
 /* Unabhaengige Fassung der Contract-Aufzaehlungen                      */
@@ -268,6 +269,49 @@ describe('Abgleich mit der Werkzeugschicht', () => {
     const covered = Object.values(TOOL_SHORTCUTS)
     for (const id of ALL_TOOLS) {
       expect(covered.filter((entry) => entry === id).length, `Kuerzel fuer "${id}"`).toBe(1)
+    }
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* Instructor                                                          */
+/* ------------------------------------------------------------------ */
+
+describe('Instructor', () => {
+  it('hat zu jedem Werkzeug eine Anleitung', () => {
+    for (const id of ALL_TOOLS) {
+      expect(TOOL_INSTRUCTIONS[id], `Keine Anleitung fuer "${id}"`).toBeDefined()
+    }
+    expect(Object.keys(TOOL_INSTRUCTIONS).sort()).toEqual([...ALL_TOOLS].sort())
+  })
+
+  it('nennt in jeder Anleitung mindestens einen Arbeitsschritt', () => {
+    // Ein leeres Instructor-Panel sieht aus wie ein Fehler, nicht wie
+    // "hier gibt es nichts zu erklaeren".
+    for (const id of ALL_TOOLS) {
+      const instruction = instructionFor(id)
+      expect(instruction.steps.length, `"${id}" ohne Arbeitsschritt`).toBeGreaterThan(0)
+      for (const step of instruction.steps) {
+        expect(step.trim().length, `"${id}": leerer Arbeitsschritt`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('beschriftet jede Sondertaste mit Taste und Wirkung', () => {
+    for (const id of ALL_TOOLS) {
+      for (const modifier of instructionFor(id).modifiers) {
+        expect(modifier.key.trim().length, `"${id}": Sondertaste ohne Bezeichnung`).toBeGreaterThan(0)
+        expect(modifier.effect.trim().length, `"${id}": Sondertaste "${modifier.key}" ohne Wirkung`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('haelt die Texte frei von Umlauten wie der Rest der Oberflaeche', () => {
+    for (const id of ALL_TOOLS) {
+      const instruction = instructionFor(id)
+      for (const text of [...instruction.steps, instruction.vcb ?? '']) {
+        expect(text, `"${id}": "${text}"`).not.toMatch(/[äöüÄÖÜß]/)
+      }
     }
   })
 })

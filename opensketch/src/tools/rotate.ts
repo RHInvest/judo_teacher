@@ -167,7 +167,9 @@ export class RotateTool extends BaseTool {
             const to = V.addScaled(this.center, V.rotateAround(this.startDir, this.axis, this.angle), radius)
             overlay.line(this.center, to, { color: COLORS.preview, width: 2, onTop: true })
             const sweep = arcPoints(this.center, this.axis, radius * 0.6, 0, this.angle, 32, this.startDir)
-            overlay.polyline(sweep, false, { color: this.axisColor(), width: 2, onTop: true })
+            if (sweep.length >= 2) {
+              overlay.polyline(sweep, false, { color: this.axisColor(), width: 2, onTop: true })
+            }
             overlay.text(to, formatAngle(this.angle, this.units()), {
               color: COLORS.neutral,
               size: 12,

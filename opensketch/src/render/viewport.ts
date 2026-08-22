@@ -39,6 +39,7 @@ import type {
   Vec2Like,
   Vec3Like,
 } from '@/shared/types'
+import { AnnotationLayer } from './annotations'
 import { CameraController } from './camera'
 import { LIMITS } from './defaults'
 import { EdgeMaterials } from './edges'

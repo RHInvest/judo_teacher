@@ -13,6 +13,9 @@
  * 4. **Punkte von Werkzeugen sind WELTKOORDINATEN.** Vor jedem Kernel-Aufruf
  *    werden sie mit der Inversen von `context.worldTransform` in den Raum des
  *    aktiven Kontexts geholt (`toLocalPoint` / `toLocalDir` / `toLocalMatrix`).
+ *    Das gilt genauso fuer Entities, die ein Werkzeug anlegt - dafuer gibt es
+ *    `toLocalEntityMut`. Ausnahme ist `placeInstance`: dessen Matrix ist laut
+ *    Contract bereits eine Kontextmatrix.
  *
  * OWNERSHIP: Model.
  */

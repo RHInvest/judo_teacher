@@ -235,9 +235,14 @@ Komponenten-Bibliothek (Möbel, Bau, Vegetation, Personen).
   (Werkzeuge, Renderer, Manager).
 - Funktionen sind rein, wo es geht; Mutation nur in klar benannten
   `...Mut`-Funktionen oder im Store.
-- Alle sichtbaren Texte auf **Deutsch** (die App ist deutschsprachig).
-  Code, Bezeichner und Kommentare auf Deutsch oder Englisch - aber konsistent
-  innerhalb einer Datei. Keine Umlaute in Bezeichnern.
+- Alle sichtbaren Texte auf **Deutsch, mit korrekten Umlauten und Eszett**:
+  „Auswählen", „Flächen", „Öffnen", „Größe", „Maß". Das gilt für jede
+  Zeichenkette, die ein Nutzer zu sehen bekommt - Menüs, Panels, Statuszeile,
+  Toasts, Fehlermeldungen, Komponenten- und Materialnamen. „Flaechen" in einer
+  deutschsprachigen Anwendung sieht aus wie ein Fehler, und wenn ein Modul es
+  so schreibt und das nächste richtig, sieht der Nutzer beides nebeneinander.
+- **Bezeichner** dagegen bleiben umlautfrei und dürfen deutsch oder englisch
+  sein, konsistent innerhalb einer Datei. Kommentare ebenso.
 - Icons ausschließlich aus `lucide-react`.
 - Jede nicht triviale Kernel-Funktion braucht einen vitest-Test in
   `src/**/__tests__/`.

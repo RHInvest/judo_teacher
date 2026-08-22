@@ -11,7 +11,7 @@ import { P, V, POINT_TOL } from '@/core/math'
 import { formatLength } from '@/shared/units'
 import { BaseTool } from './toolBase'
 import { COLORS } from './colors'
-import { arcBulgePoints, bulgeFromRadius, radiusFromBulge } from './geom'
+import { arcBulgePoints, bulgeFromRadius, radiusFromBulge, usablePoints } from './geom'
 import { clampInt } from './helpers'
 import { parseLengthInput, parseSegmentsInput } from './vcbInput'
 
@@ -181,7 +181,7 @@ export class Arc2Tool extends BaseTool {
 
   protected previewPoints(): Vec3Like[] | null {
     if (!this.start || !this.end || Math.abs(this.bulge) < POINT_TOL) return null
-    return arcBulgePoints(this.start, this.end, this.bulge, this.normal(), this.segments)
+    return usablePoints(arcBulgePoints(this.start, this.end, this.bulge, this.normal(), this.segments), 2)
   }
 
   protected commit(): void {

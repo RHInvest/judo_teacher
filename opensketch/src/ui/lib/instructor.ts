@@ -16,7 +16,12 @@ export interface ToolInstruction {
 
 const EMPTY: ToolInstruction = { steps: [], modifiers: [] }
 
-export const TOOL_INSTRUCTIONS: Partial<Record<ToolId, ToolInstruction>> = {
+/**
+ * Vollstaendiger `Record`, nicht `Partial`: jedes Werkzeug braucht eine
+ * Anleitung. Als `Partial` waere ein neues Werkzeug ohne Text durchgerutscht
+ * und der Instructor haette dazu wortlos eine leere Flaeche gezeigt.
+ */
+export const TOOL_INSTRUCTIONS: Record<ToolId, ToolInstruction> = {
   select: {
     steps: [
       'Auf ein Element klicken, um es auszuwaehlen.',

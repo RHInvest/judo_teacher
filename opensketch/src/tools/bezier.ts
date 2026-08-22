@@ -73,7 +73,7 @@ export class BezierTool extends BaseTool {
       const control = this.controlPoints()
       if (control) {
         const curve = bezierPoints(control[0], control[1], control[2], control[3], this.segments)
-        overlay.polyline(curve, false, { color: COLORS.preview, width: 2, onTop: true })
+        if (curve.length >= 2) overlay.polyline(curve, false, { color: COLORS.preview, width: 2, onTop: true })
         overlay.line(control[0], control[1], { color: COLORS.guide, width: 1, dashed: true, onTop: true })
         overlay.line(control[3], control[2], { color: COLORS.guide, width: 1, dashed: true, onTop: true })
       } else if (this.pts.length === 1 && this.preview) {

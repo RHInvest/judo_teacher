@@ -76,4 +76,5 @@ export {
   radiusFromBulge,
   rectanglePoints,
   simplifyPolyline,
+  usablePoints,
 } from './geom'

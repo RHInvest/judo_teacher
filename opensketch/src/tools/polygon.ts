@@ -8,7 +8,7 @@
 import type { Cursor, KeyInfo, ToolId, Vec3Like } from '@/shared/types'
 import { POINT_TOL } from '@/core/math'
 import { CircleTool } from './circle'
-import { polygonPoints } from './geom'
+import { polygonPoints, usablePoints } from './geom'
 
 export class PolygonTool extends CircleTool {
   readonly id: ToolId = 'polygon'
@@ -26,7 +26,16 @@ export class PolygonTool extends CircleTool {
 
   protected previewPoints(): Vec3Like[] | null {
     if (!this.center || this.radius <= POINT_TOL) return null
-    return polygonPoints(this.center, this.normal(), this.radius, this.segments, this.inscribed, this.rim)
+    return usablePoints(
+      polygonPoints(this.center, this.normal(), this.radius, this.segments, this.inscribed, this.rim),
+      3,
+    )
+  }
+
+  protected degenerateReason(): string {
+    if (this.radius <= POINT_TOL) return `${this.name}: Radius 0 - der Punkt liegt auf dem Mittelpunkt`
+    if (this.segments < 3) return `${this.name}: mindestens 3 Seiten nötig, eingestellt sind ${this.segments}`
+    return `${this.name}: aus Mittelpunkt, Radius und Seitenzahl lässt sich keine Form bilden`
   }
 
   protected updateVcb(): void {

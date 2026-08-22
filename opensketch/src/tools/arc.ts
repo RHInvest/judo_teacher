@@ -9,7 +9,7 @@ import { P, V, POINT_TOL, normalizeAngle } from '@/core/math'
 import { formatAngle, formatLength, snapAngle } from '@/shared/units'
 import { BaseTool } from './toolBase'
 import { COLORS } from './colors'
-import { arcPoints } from './geom'
+import { arcPoints, usablePoints } from './geom'
 import { clampInt } from './helpers'
 import { parseAngleInput, parseLengthInput, parseSegmentsInput } from './vcbInput'
 
@@ -176,7 +176,10 @@ export class ArcTool extends BaseTool {
   protected previewPoints(): Vec3Like[] | null {
     if (!this.center || !this.startDir || this.radius <= POINT_TOL || Math.abs(this.sweep) < 1e-4) return null
     const seg = Math.max(2, Math.round((this.segments * Math.abs(this.sweep)) / (Math.PI / 2)))
-    return arcPoints(this.center, this.normal(), this.radius, 0, this.sweep, Math.min(seg, 360), this.startDir)
+    return usablePoints(
+      arcPoints(this.center, this.normal(), this.radius, 0, this.sweep, Math.min(seg, 360), this.startDir),
+      2,
+    )
   }
 
   protected commit(): void {

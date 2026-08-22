@@ -295,7 +295,15 @@ export interface AppState {
   makeComponent(opts: { name: string; description?: string; behavior?: Definition['behavior'] }): Id | null
   /** dissolves group/component instances back into the parent context */
   explode(entityIds: Id[]): void
-  /** places a definition into the active context */
+  /**
+   * Platziert eine Definition im aktiven Kontext.
+   *
+   * `transform` ist eine WELTmatrix - wie alle Punkte, die Werkzeuge an den
+   * Store geben (Regel 4). Der Store rechnet sie in den Kontextraum um. Ohne
+   * diese Ausnahmefreiheit muesste jeder Aufrufer wissen, welche Methode
+   * welchen Raum erwartet, und genau daraus entstehen die Fehler, die erst
+   * innerhalb einer Gruppe auffallen.
+   */
   placeInstance(definitionId: Id, transform: Mat4Like, opts?: { name?: string }): Id
   /** makes the selected instances use their own private copy of the definition */
   makeUnique(entityIds: Id[]): void

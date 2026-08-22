@@ -11,7 +11,7 @@ import { P, V, DEFAULT_CIRCLE_SEGMENTS, MAX_CIRCLE_SEGMENTS, POINT_TOL } from '@
 import { formatLength } from '@/shared/units'
 import { BaseTool } from './toolBase'
 import { COLORS } from './colors'
-import { circlePoints } from './geom'
+import { circlePoints, usablePoints } from './geom'
 import { clampInt } from './helpers'
 import { parseLengthInput, parseSegmentsInput } from './vcbInput'
 
@@ -129,15 +129,26 @@ export class CircleTool extends BaseTool {
 
   protected previewPoints(): Vec3Like[] | null {
     if (!this.center || this.radius <= POINT_TOL) return null
-    return circlePoints(this.center, this.normal(), this.radius, this.segments, this.rim)
+    return usablePoints(circlePoints(this.center, this.normal(), this.radius, this.segments, this.rim), 3)
+  }
+
+  /**
+   * Sagt dem Nutzer, WARUM nichts entstanden ist. Ein leeres Ergebnis aus dem
+   * Kern ist eine Antwort, kein Ausfall - sie wird hier uebersetzt.
+   */
+  protected degenerateReason(): string {
+    if (this.radius <= POINT_TOL) return `${this.name}: Radius 0 - der Punkt liegt auf dem Mittelpunkt`
+    if (this.segments < 3) return `${this.name}: mindestens 3 Segmente nötig, eingestellt sind ${this.segments}`
+    return `${this.name}: aus Mittelpunkt, Radius und Ebene lässt sich keine Form bilden`
   }
 
   protected commit(): void {
     const points = this.previewPoints()
     if (!points) {
       const hadCenter = this.center !== null
+      const reason = this.degenerateReason()
       this.cancel()
-      if (hadCenter) this.abortDegenerate(`${this.name}: Radius 0 - der Punkt liegt auf dem Mittelpunkt`)
+      if (hadCenter) this.abortDegenerate(reason)
       return
     }
     this.modify(`${this.name} zeichnen`, (state) => state.addFace(points))

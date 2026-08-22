@@ -39,6 +39,9 @@ export { isSlideshowRunning, onSlideshowChange, startSlideshow, stopSlideshow, t
 export { useGlobalShortcuts } from './lib/useGlobalShortcuts'
 export { DARK, LIGHT, SkinContext, skinFor, useSkin } from './lib/theme'
 export type { Skin } from './lib/theme'
+export { vcbAction, vcbInitialValue, vcbLabelText, vcbShownValue, vcbSubmitText } from './lib/vcb'
+export type { VcbAction } from './lib/vcb'
+export { TEXT3D_GLYPHS, mapText3d, mapText3dChar, text3dChanges, unsupportedText3dChars } from './lib/text3d'
 
 /* ---------------- Bausteine ---------------- */
 
@@ -57,6 +60,15 @@ export { BusyOverlay } from './overlays/BusyOverlay'
 export { SceneTabs } from './overlays/SceneTabs'
 export { Welcome } from './overlays/Welcome'
 export { ViewportContextMenu, contextMenuEntries } from './overlays/ContextMenu'
-export { DialogHost, LocalDialogHost, Dialog, DialogTabs } from './dialogs'
-export type { LocalDialog } from './dialogs'
+export {
+  DialogHost,
+  LocalDialogHost,
+  Dialog,
+  DialogTabs,
+  DIALOG_KINDS,
+  DIALOG_RENDERERS,
+  LOCAL_DIALOG_KINDS,
+  LOCAL_DIALOG_RENDERERS,
+} from './dialogs'
+export type { DialogKind, LocalDialog } from './dialogs'
 export { dayOfYear, isoFromDayOfYear } from './panels/ShadowsPanel'

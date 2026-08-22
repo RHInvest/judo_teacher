@@ -9,7 +9,7 @@ import { P, V, POINT_TOL } from '@/core/math'
 import { formatAngle, formatLength } from '@/shared/units'
 import { BaseTool } from './toolBase'
 import { COLORS } from './colors'
-import { rectanglePoints } from './geom'
+import { rectanglePoints, usablePoints } from './geom'
 import { parseLengthInput, parseLengthPair } from './vcbInput'
 
 export class RotatedRectangleTool extends BaseTool {
@@ -164,7 +164,7 @@ export class RotatedRectangleTool extends BaseTool {
     if (!this.p0 || !this.p1 || Math.abs(this.height) < POINT_TOL) return null
     const width = V.distance(this.p0, this.p1)
     if (width < POINT_TOL) return null
-    return rectanglePoints(this.p0, this.u, this.v, width, this.height)
+    return usablePoints(rectanglePoints(this.p0, this.u, this.v, width, this.height), 4)
   }
 
   private commit(): void {

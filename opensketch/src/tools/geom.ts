@@ -79,16 +79,8 @@ export function circlePoints(
   segments: number,
   startPoint?: Vec3Like | null,
 ): Vec3Like[] {
-  const seg = Math.max(3, Math.round(segments))
-  const core = usable(safeOrNull(() => buildCircle(center, normal, radius, seg, startPoint ?? undefined)), 3)
-  if (core) return core
-  const { u, v } = planeBasis(normal, center, startPoint)
-  const out: Vec3Like[] = []
-  for (let i = 0; i < seg; i++) {
-    const a = (i / seg) * Math.PI * 2
-    out.push(V.add(center, V.add(V.mul(u, Math.cos(a) * radius), V.mul(v, Math.sin(a) * radius))))
-  }
-  return out
+  const seg = Math.round(segments)
+  return fromCore(safeOrNull(() => buildCircle(center, normal, radius, seg, startPoint ?? undefined)), 3)
 }
 
 export function polygonPoints(
@@ -99,11 +91,11 @@ export function polygonPoints(
   inscribed = true,
   startPoint?: Vec3Like | null,
 ): Vec3Like[] {
-  const n = Math.max(3, Math.round(sides))
-  const core = usable(safeOrNull(() => buildPolygon(center, normal, radius, n, inscribed, startPoint ?? undefined)), 3)
-  if (core) return core
-  const r = inscribed ? radius : radius / Math.cos(Math.PI / n)
-  return circlePoints(center, normal, r, n, startPoint)
+  const n = Math.round(sides)
+  return fromCore(
+    safeOrNull(() => buildPolygon(center, normal, radius, n, inscribed, startPoint ?? undefined)),
+    3,
+  )
 }
 
 export function rectanglePoints(
@@ -113,16 +105,7 @@ export function rectanglePoints(
   width: number,
   height: number,
 ): Vec3Like[] {
-  const core = usable(safeOrNull(() => buildRectangle(origin, xAxis, yAxis, width, height)), 4)
-  if (core) return core
-  const x = V.normalizeOr(xAxis, V.AXIS_X)
-  const y = V.normalizeOr(yAxis, V.AXIS_Y)
-  return [
-    V.clone(origin),
-    V.addScaled(origin, x, width),
-    V.add(V.addScaled(origin, x, width), V.mul(y, height)),
-    V.addScaled(origin, y, height),
-  ]
+  return fromCore(safeOrNull(() => buildRectangle(origin, xAxis, yAxis, width, height)), 4)
 }
 
 /* ------------------------------------------------------------------ */
@@ -138,16 +121,8 @@ export function arcPoints(
   segments: number,
   xAxis?: Vec3Like,
 ): Vec3Like[] {
-  const seg = Math.max(1, Math.round(segments))
-  const core = usable(safeOrNull(() => buildArc(center, normal, radius, startAngle, endAngle, seg, xAxis)), 2)
-  if (core) return core
-  const { u, v } = planeBasis(normal, center, xAxis ? V.add(center, xAxis) : null)
-  const out: Vec3Like[] = []
-  for (let i = 0; i <= seg; i++) {
-    const a = startAngle + ((endAngle - startAngle) * i) / seg
-    out.push(V.add(center, V.add(V.mul(u, Math.cos(a) * radius), V.mul(v, Math.sin(a) * radius))))
-  }
-  return out
+  const seg = Math.round(segments)
+  return fromCore(safeOrNull(() => buildArc(center, normal, radius, startAngle, endAngle, seg, xAxis)), 2)
 }
 
 /** Mittelpunkt des Kreises durch drei Punkte, null bei Kollinearitaet. */
@@ -166,29 +141,8 @@ export function circumcenter(a: Vec3Like, b: Vec3Like, c: Vec3Like): { center: V
 }
 
 export function arc3Points(a: Vec3Like, b: Vec3Like, c: Vec3Like, segments: number): Vec3Like[] {
-  const seg = Math.max(1, Math.round(segments))
-  const core = usable(safeOrNull(() => buildArc3Points(a, b, c, seg)), 2)
-  if (core) return core
-  const circle = circumcenter(a, b, c)
-  if (!circle) return [V.clone(a), V.clone(b), V.clone(c)]
-  const { center, normal, radius } = circle
-  const u = V.normalize(V.sub(a, center))
-  const v = V.normalize(V.cross(normal, u))
-  const angleOf = (p: Vec3Like): number => {
-    const rel = V.sub(p, center)
-    const angle = Math.atan2(V.dot(rel, v), V.dot(rel, u))
-    return angle < 0 ? angle + Math.PI * 2 : angle
-  }
-  const ab = angleOf(b)
-  const ac = angleOf(c)
-  // Der Bogen laeuft von a (Winkel 0) ueber b nach c.
-  const end = ab <= ac ? ac : ac - Math.PI * 2
-  const out: Vec3Like[] = []
-  for (let i = 0; i <= seg; i++) {
-    const t = (end * i) / seg
-    out.push(V.add(center, V.add(V.mul(u, Math.cos(t) * radius), V.mul(v, Math.sin(t) * radius))))
-  }
-  return out
+  const seg = Math.round(segments)
+  return fromCore(safeOrNull(() => buildArc3Points(a, b, c, seg)), 2)
 }
 
 /** Bogen ueber Sehne + Bogenhoehe (SketchUp "2-Punkt-Bogen"). */
@@ -199,19 +153,8 @@ export function arcBulgePoints(
   normal: Vec3Like,
   segments: number,
 ): Vec3Like[] {
-  const seg = Math.max(1, Math.round(segments))
-  const core = usable(safeOrNull(() => buildArcBulge(start, end, bulge, normal, seg)), 2)
-  if (core) return core
-  const chord = V.sub(end, start)
-  const len = V.length(chord)
-  if (len < MIN_LENGTH) return [V.clone(start), V.clone(end)]
-  if (Math.abs(bulge) < 1e-9) return [V.clone(start), V.clone(end)]
-  const n = V.normalizeOr(normal, V.AXIS_Z)
-  let perp = V.cross(n, V.normalize(chord))
-  if (V.isZero(perp)) perp = V.anyPerpendicular(chord)
-  perp = V.normalize(perp)
-  const apex = V.addScaled(V.midpoint(start, end), perp, bulge)
-  return arc3Points(start, apex, end, seg)
+  const seg = Math.round(segments)
+  return fromCore(safeOrNull(() => buildArcBulge(start, end, bulge, normal, seg)), 2)
 }
 
 /** Bogenhoehe aus Sehne und Radius (fuer die Anzeige im Massfeld). */
@@ -239,24 +182,8 @@ export function bezierPoints(
   p3: Vec3Like,
   segments: number,
 ): Vec3Like[] {
-  const seg = Math.max(1, Math.round(segments))
-  const core = usable(safeOrNull(() => buildBezier(p0, p1, p2, p3, seg)), 2)
-  if (core) return core
-  const out: Vec3Like[] = []
-  for (let i = 0; i <= seg; i++) {
-    const t = i / seg
-    const mt = 1 - t
-    const w0 = mt * mt * mt
-    const w1 = 3 * mt * mt * t
-    const w2 = 3 * mt * t * t
-    const w3 = t * t * t
-    out.push({
-      x: p0.x * w0 + p1.x * w1 + p2.x * w2 + p3.x * w3,
-      y: p0.y * w0 + p1.y * w1 + p2.y * w2 + p3.y * w3,
-      z: p0.z * w0 + p1.z * w1 + p2.z * w2 + p3.z * w3,
-    })
-  }
-  return out
+  const seg = Math.round(segments)
+  return fromCore(safeOrNull(() => buildBezier(p0, p1, p2, p3, seg)), 2)
 }
 
 /* ------------------------------------------------------------------ */

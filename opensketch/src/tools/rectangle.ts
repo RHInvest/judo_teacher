@@ -10,7 +10,7 @@ import { P, V, POINT_TOL } from '@/core/math'
 import { formatLength } from '@/shared/units'
 import { BaseTool } from './toolBase'
 import { COLORS } from './colors'
-import { rectanglePoints } from './geom'
+import { rectanglePoints, usablePoints } from './geom'
 import { parseLengthPair } from './vcbInput'
 
 export class RectangleTool extends BaseTool {
@@ -158,7 +158,7 @@ export class RectangleTool extends BaseTool {
     if (!this.origin || !this.corner) return null
     const { width, height } = this.currentSize()
     if (Math.abs(width) < POINT_TOL || Math.abs(height) < POINT_TOL) return null
-    return rectanglePoints(this.origin, this.u, this.v, width, height)
+    return usablePoints(rectanglePoints(this.origin, this.u, this.v, width, height), 4)
   }
 
   protected commit(): void {
@@ -183,9 +183,14 @@ export class RectangleTool extends BaseTool {
     if (flatWidth && flatHeight) {
       return 'Rechteck hat keine Fläche - beide Ecken liegen aufeinander'
     }
-    return flatWidth
-      ? 'Rechteck hat keine Fläche - Breite 0, die Ecke liegt auf einer Geraden durch den Startpunkt'
-      : 'Rechteck hat keine Fläche - Höhe 0, die Ecke liegt auf einer Geraden durch den Startpunkt'
+    if (flatWidth) {
+      return 'Rechteck hat keine Fläche - Breite 0, die Ecke liegt auf einer Geraden durch den Startpunkt'
+    }
+    if (flatHeight) {
+      return 'Rechteck hat keine Fläche - Höhe 0, die Ecke liegt auf einer Geraden durch den Startpunkt'
+    }
+    // Der Kern hat die Form abgelehnt, obwohl Breite und Höhe stehen.
+    return 'Rechteck abgebrochen - aus diesen Ecken lässt sich kein Rechteck bilden'
   }
 
   private updateVcb(): void {

@@ -243,7 +243,7 @@ export function importFiles(files: File[]): void {
  * Dateidialog tauchten sie aber nicht auf. Der Rueckfall ist nur fuer den
  * Fall, dass die IO-Schicht gar nicht antwortet.
  */
-function importAccept(): string {
+export function importAccept(): string {
   try {
     const list = importableExtensions()
     if (list && list.length > 0) return list.join(',')

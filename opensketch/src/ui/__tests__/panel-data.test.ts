@@ -10,7 +10,8 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { getLibraryCategories, getLibraryComponents, getLibraryMaterials } from '@/io'
+import { detectFormat, getLibraryCategories, getLibraryComponents, getLibraryMaterials, importableExtensions } from '@/io'
+import { importAccept } from '@/ui/lib/commands'
 import { store } from '@/model'
 import { FALLBACK_STATE } from '@/ui/state/fallback'
 import { appState, storeReady } from '@/ui/state/store'
@@ -181,5 +182,31 @@ describe('Anbindung an den Store', () => {
     expect(doc.sun.date, 'sun.date fehlt').toBeTruthy()
     expect(doc.fog.color, 'fog.color fehlt').toBeTruthy()
     expect(doc.units, 'units fehlt').toBeTruthy()
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* Importformate (Menue "Datei -> Importieren")                        */
+/* ------------------------------------------------------------------ */
+
+describe('Importformate', () => {
+  it('nimmt die Endungsliste aus der IO-Schicht, nicht aus einer Kopie', () => {
+    // Vorher stand die Liste fest verdrahtet im Aufruf und war bereits
+    // auseinandergelaufen: .gif, .webp, .bmp und .json fehlten im Dateidialog,
+    // obwohl detectFormat sie erkennt.
+    const accept = importAccept().split(',')
+    expect([...accept].sort()).toEqual([...importableExtensions()].sort())
+  })
+
+  it('bietet jede Endung an, die die IO-Schicht auch erkennt', () => {
+    for (const extension of importAccept().split(',')) {
+      expect(detectFormat(`modell${extension}`), `Endung "${extension}" wird nicht erkannt`).toBeTruthy()
+    }
+  })
+
+  it('laesst keine erkannte Bildendung aus', () => {
+    for (const extension of ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']) {
+      expect(importAccept(), `Endung "${extension}" fehlt im Dateidialog`).toContain(extension)
+    }
   })
 })

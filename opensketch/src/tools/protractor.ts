@@ -164,7 +164,9 @@ export class ProtractorTool extends BaseTool {
             const tip = V.addScaled(vertex, dir, radius)
             overlay.line(vertex, tip, { color: COLORS.preview, width: 2, onTop: true })
             const sweep = arcPoints(vertex, this.axis, radius * 0.55, 0, this.angle, 32, this.baseDir)
-            overlay.polyline(sweep, false, { color: this.axisColor(), width: 2, onTop: true })
+            if (sweep.length >= 2) {
+              overlay.polyline(sweep, false, { color: this.axisColor(), width: 2, onTop: true })
+            }
             overlay.text(tip, formatAngle(this.angle, this.units()), {
               color: COLORS.neutral,
               size: 12,
