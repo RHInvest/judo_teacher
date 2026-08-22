@@ -85,7 +85,14 @@ export interface SketchLineOptions {
 export class SketchLineMaterial extends LineMaterial {
   constructor(options: SketchLineOptions = {}) {
     super({
-      color: options.color ?? 0x222222,
+      /*
+       * LineMaterial MULTIPLIZIERT die Vertex-Farbe mit dieser Grundfarbe.
+       * Mit dem dunklen Kantenwert 0x222222 wird jede Vertex-Farbe auf ein
+       * Achtel gedaempft - aus dem Achsenrot d33b3b wurde ein fast schwarzes
+       * Braun. Wo Vertex-Farben im Spiel sind, muss die Grundfarbe deshalb
+       * neutral weiss sein, damit sie unveraendert durchkommen.
+       */
+      color: options.color ?? (options.vertexColors ? 0xffffff : 0x222222),
       linewidth: options.linewidth ?? 1,
       dashed: options.dashed ?? false,
       dashSize: options.dashSize ?? 0.2,
