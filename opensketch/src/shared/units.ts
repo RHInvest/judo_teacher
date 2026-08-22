@@ -306,10 +306,10 @@ export function formatLength(metres: number, units: UnitSettings, opts?: { suffi
     return showSuffix ? `${body}'` : body
   }
 
-  const factor = LENGTH_TO_M[units.lengthUnit]
+  const factor = LENGTH_TO_M[units.lengthUnit] ?? LENGTH_TO_M.m
   const value = metres / factor
   const body = trimZeros(value.toFixed(Math.max(0, units.precision)))
-  return showSuffix ? `${body} ${LENGTH_SUFFIX[units.lengthUnit]}`.replace(' "', '"').replace(" '", "'") : body
+  return showSuffix ? `${body} ${LENGTH_SUFFIX[units.lengthUnit] ?? LENGTH_SUFFIX.m}`.replace(' "', '"').replace(" '", "'") : body
 }
 
 /** Formats an angle given in RADIANS. */
@@ -324,18 +324,28 @@ export function formatAngle(radians: number, units: UnitSettings, opts?: { suffi
   return showSuffix ? `${body}°` : body
 }
 
-/** Formats an area given in SQUARE METRES. */
+/**
+ * Formats an area given in SQUARE METRES.
+ *
+ * Unbekannte Einheitenschluessel (aus einem aelteren oder beschaedigten
+ * Dokument) fallen auf die metrische Grundeinheit zurueck. Ohne diesen
+ * Rueckfall waere der Faktor `undefined`, die Division liefert NaN, und in der
+ * Entitaetsinfo stuende die Zeichenkette "NaN" - ohne dass irgendetwas wirft,
+ * also von keinem try/catch zu fangen.
+ */
 export function formatArea(m2: number, units: UnitSettings): string {
-  const value = m2 / AREA_TO_M2[units.areaUnit]
+  if (!Number.isFinite(m2)) return units.displayUnitSuffix ? `- ${AREA_SUFFIX.m2}` : '-'
+  const value = m2 / (AREA_TO_M2[units.areaUnit] ?? AREA_TO_M2.m2)
   const body = trimZeros(value.toFixed(Math.max(2, units.precision)))
-  return units.displayUnitSuffix ? `${body} ${AREA_SUFFIX[units.areaUnit]}` : body
+  return units.displayUnitSuffix ? `${body} ${AREA_SUFFIX[units.areaUnit] ?? AREA_SUFFIX.m2}` : body
 }
 
 /** Formats a volume given in CUBIC METRES. */
 export function formatVolume(m3: number, units: UnitSettings): string {
-  const value = m3 / VOLUME_TO_M3[units.volumeUnit]
+  if (!Number.isFinite(m3)) return units.displayUnitSuffix ? `- ${VOLUME_SUFFIX.m3}` : '-'
+  const value = m3 / (VOLUME_TO_M3[units.volumeUnit] ?? VOLUME_TO_M3.m3)
   const body = trimZeros(value.toFixed(Math.max(2, units.precision)))
-  return units.displayUnitSuffix ? `${body} ${VOLUME_SUFFIX[units.volumeUnit]}` : body
+  return units.displayUnitSuffix ? `${body} ${VOLUME_SUFFIX[units.volumeUnit] ?? VOLUME_SUFFIX.m3}` : body
 }
 
 /** Formats a coordinate triple for the measurement box, e.g. `[2,00; 1,50; 0,00]`. */

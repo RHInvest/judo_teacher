@@ -18,6 +18,8 @@ import {
   faceLoops,
   getOrCreateEdge,
   getOrCreateVertex,
+  isFiniteNumber,
+  isFinitePoint,
   loopPoints,
   orderEdgePath,
   pathVertices,

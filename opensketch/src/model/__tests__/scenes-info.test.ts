@@ -482,6 +482,136 @@ describe('Entity-Info bei gemischter Auswahl', () => {
     useStore.getState().setSelection({ ...emptySelection(), entityIds: [id] })
     expect(useStore.getState().getEntityInfo()?.kind).toBe('Hilfspunkt')
   })
+
+  it('zaehlt Geometrie und Objekte gemeinsam auf', () => {
+    const built = installGeometry(buildBox({ x: 0, y: 0, z: 0 }, { x: 2, y: 2, z: 2 }))
+    const guideId = useStore.getState().addEntity({
+      id: '',
+      type: 'guidePoint',
+      name: 'Bezug',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      position: { x: 5, y: 5, z: 0 },
+    })
+    useStore.getState().setSelection({
+      ...emptySelection(),
+      faceIds: [built.faceIds[0]],
+      entityIds: [guideId],
+    })
+
+    const info = useStore.getState().getEntityInfo()
+    expect(info?.kind).toBe('Auswahl')
+    expect(info?.count).toBe(2)
+    expect(info?.rows.find((r) => r.label === 'Flaechen')?.value).toBe('1')
+    expect(info?.rows.find((r) => r.label === 'Objekte')?.value).toBe('1')
+    // Bei gemischter Auswahl gibt es keine Sammelzeile "Anzahl"
+    expect(info?.rows.some((r) => r.label === 'Anzahl')).toBe(false)
+    // Die Abmessungen umfassen Geometrie UND Objekt
+    expect(info?.rows.some((r) => r.label === 'Abmessungen')).toBe(true)
+  })
+
+  it('nennt Gruppen und Komponenten zusammen nur "Objekte"', () => {
+    const { instanceId: groupId } = boxGroup('Eine Gruppe')
+    installGeometry(buildQuad({ x: 9, y: 0, z: 0 }, 1, 1))
+    useStore.getState().setSelection({
+      ...emptySelection(),
+      faceIds: Object.keys(useStore.getState().getActiveGeometry().faces),
+    })
+    const componentId = useStore.getState().makeComponent({ name: 'Eine Komponente' }) as string
+
+    useStore.getState().setSelection({ ...emptySelection(), entityIds: [groupId, componentId] })
+    const mixed = useStore.getState().getEntityInfo()
+    expect(mixed?.kind).toBe('Objekte')
+    expect(mixed?.rows.find((r) => r.label === 'Anzahl')?.value).toBe('2')
+    // Ohne gemeinsame Definition auch keine Definitionszeile
+    expect(mixed?.rows.some((r) => r.label === 'Definition')).toBe(false)
+
+    useStore.getState().setSelection({ ...emptySelection(), entityIds: [groupId] })
+    expect(useStore.getState().getEntityInfo()?.kind).toBe('Gruppe')
+    useStore.getState().setSelection({ ...emptySelection(), entityIds: [componentId] })
+    expect(useStore.getState().getEntityInfo()?.kind).toBe('Komponente')
+  })
+
+  it('nennt verschiedene Hilfsobjekte zusammen "Objekte", gleiche beim Namen', () => {
+    const pointId = useStore.getState().addEntity({
+      id: '',
+      type: 'guidePoint',
+      name: 'Punkt',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      position: { x: 0, y: 0, z: 0 },
+    })
+    const lineId = useStore.getState().addEntity({
+      id: '',
+      type: 'guideLine',
+      name: 'Linie',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      origin: { x: 0, y: 0, z: 0 },
+      direction: { x: 1, y: 0, z: 0 },
+      length: 5,
+    })
+    const secondPointId = useStore.getState().addEntity({
+      id: '',
+      type: 'guidePoint',
+      name: 'Punkt 2',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      position: { x: 2, y: 0, z: 0 },
+    })
+
+    useStore.getState().setSelection({ ...emptySelection(), entityIds: [pointId, lineId] })
+    expect(useStore.getState().getEntityInfo()?.kind).toBe('Objekte')
+
+    useStore.getState().setSelection({ ...emptySelection(), entityIds: [pointId, secondPointId] })
+    expect(useStore.getState().getEntityInfo()?.kind).toBe('Hilfspunkte')
+  })
+
+  it('meldet Tag, Sichtbarkeit und Sperre nur bei echter Uebereinstimmung', () => {
+    const { instanceId: first } = boxGroup('Erste')
+    const second = useStore.getState().transformEntities([first], M.translation({ x: 9, y: 0, z: 0 }), true)[0]
+    const tagId = useStore.getState().addTag('Gemeinsam')
+
+    useStore.getState().setEntityTag([first, second], tagId)
+    useStore.getState().setEntityHidden([first, second], true)
+    useStore.getState().setEntityLocked([first, second], true)
+
+    useStore.getState().setSelection({ ...emptySelection(), entityIds: [first, second] })
+    const info = useStore.getState().getEntityInfo()
+    expect(info?.tagId).toBe(tagId)
+    expect(info?.hidden).toBe(true)
+    expect(info?.locked).toBe(true)
+    // Beide zeigen auf dieselbe Definition - die Zeile darf erscheinen
+    expect(info?.rows.some((r) => r.label === 'Definition')).toBe(true)
+
+    // Sobald eines abweicht, ist nichts mehr gemeinsam
+    useStore.getState().setEntityLocked([second], false)
+    useStore.getState().setEntityTag([second], null)
+    const mixed = useStore.getState().getEntityInfo()
+    expect(mixed?.locked).toBeUndefined()
+    expect(mixed?.tagId).toBeUndefined()
+    expect(mixed?.hidden).toBe(true)
+  })
+
+  it('ignoriert Ids, die es gar nicht gibt', () => {
+    installGeometry(buildQuad())
+    useStore.getState().setSelection({
+      edgeIds: ['e-gibtsnicht'],
+      faceIds: ['f-gibtsnicht'],
+      vertexIds: ['v-gibtsnicht'],
+      entityIds: ['i-gibtsnicht'],
+    })
+    const info = useStore.getState().getEntityInfo()
+    // Die Auswahl zaehlt vier Eintraege, es gibt aber nichts zu berichten
+    expect(info?.count).toBe(4)
+    expect(info?.rows.some((r) => r.label === 'Flaeche')).toBe(false)
+    expect(info?.name).toBeUndefined()
+    expect(() => useStore.getState().getSelectionBounds()).not.toThrow()
+  })
 })
 
 describe('Obergrenze der Historie', () => {

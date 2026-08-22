@@ -377,6 +377,22 @@ export const useStore = create<AppState>()((set, get) => {
     return M.chain(M.invert(w), world, w)
   }
 
+  /**
+   * Holt ALLE Punktfelder einer Entity aus der Welt in den aktiven Kontext -
+   * Bemassungspunkte, Textanker, Schnittebene (Punkt und Normale),
+   * Hilfsobjekte, Bild- und Instanzmatrizen.
+   *
+   * `transformEntityMut` behandelt jede Entity-Art bereits richtig, inklusive
+   * der Normalenmatrix fuer `sectionPlane`; hier wird sie nur mit der Inversen
+   * der Weltmatrix gefuettert. An der Modellwurzel ist das die Einheitsmatrix
+   * und der Aufruf kostet nichts.
+   */
+  function toLocalEntityMut(entity: Entity): void {
+    const world = get().context.worldTransform
+    if (M.isIdentity(world)) return
+    transformEntityMut(entity, M.invert(world))
+  }
+
   /* ---------------- Auswahl ---------------- */
 
   function applySelection(sel: Selection): void {

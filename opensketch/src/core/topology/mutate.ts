@@ -13,6 +13,29 @@ import { MIN_LENGTH, P, POINT_TOL, V } from '@/core/math'
 import type { ChangeAcc } from './change'
 
 /* ------------------------------------------------------------------ */
+/* Eingangspruefung                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * NaN und Infinity duerfen NIE in die Geometrie gelangen.
+ *
+ * Ein einziger nicht endlicher Vertex vergiftet alles, was danach kommt: die
+ * Huellbox wird NaN, damit die BVH-Vorauswahl, damit jeder Strahltest;
+ * `solidVolume` liefert NaN; und `validate` meldet die Geometrie als
+ * beschaedigt. Repariert wird das nicht mehr - der Nutzer sieht nur, dass
+ * "nichts mehr geht". Deshalb wird an jeder Stelle, die Zahlen von aussen
+ * annimmt, vorher geprueft, statt hinterher zu retten.
+ */
+export function isFinitePoint(p: Vec3Like | null | undefined): boolean {
+  return !!p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z)
+}
+
+/** Endliche Zahl, sonst false. Fuer Distanzen, Winkel und Segmentzahlen. */
+export function isFiniteNumber(x: unknown): x is number {
+  return typeof x === 'number' && Number.isFinite(x)
+}
+
+/* ------------------------------------------------------------------ */
 /* Vertex spatial index                                                */
 /* ------------------------------------------------------------------ */
 
@@ -466,5 +489,8 @@ export function planeKey(plane: PlaneLike): string {
 }
 
 export function isDegenerateSegment(a: Vec3Like, b: Vec3Like): boolean {
+  // NaN zuerst: jeder Vergleich mit NaN ist false, ein NaN-Segment gaelte sonst
+  // als voellig in Ordnung und landete in der Geometrie.
+  if (!isFinitePoint(a) || !isFinitePoint(b)) return true
   return V.distanceSq(a, b) < MIN_LENGTH * MIN_LENGTH
 }

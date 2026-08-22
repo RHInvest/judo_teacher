@@ -21,8 +21,10 @@ import {
   createFace,
   edgeEndpoints,
   findEdgeBetween,
+  findVertexAt,
   getOrCreateEdge,
   getOrCreateVertex,
+  isFinitePoint,
   planeKey,
   removeFace,
   splitEdge,
@@ -274,6 +276,8 @@ export function addEdgeMut(
   acc: ChangeAcc,
   collect?: Set<Id>,
 ): Id[] {
+  // NaN/Infinity abweisen, BEVOR ein Vertex entsteht - siehe isFinitePoint
+  if (!isFinitePoint(a) || !isFinitePoint(b)) return []
   if (V.distance(a, b) <= POINT_TOL) return []
   const vaId = getOrCreateVertex(geom, a, acc)
   const vbId = getOrCreateVertex(geom, b, acc)
@@ -349,7 +353,39 @@ export function addFacePolygonMut(
   opts: AddOptions,
   acc: ChangeAcc,
 ): Id | null {
+  /**
+   * Kollabiert die Punktfolge genau so, wie es `buildLoop` gleich tut - aber
+   * OHNE etwas anzulegen. Ohne diesen Trockenlauf legt eine Schleife aus zwei
+   * Punkten erst zwei Vertices an und wird dann verworfen; zurueck bleiben
+   * verwaiste Vertices in einem Modell, in dem der Nutzer nichts gezeichnet
+   * hat. Ein Schluessel ist die Id eines vorhandenen Vertex oder `n<i>` fuer
+   * einen, der neu entstehen wuerde.
+   */
+  const wouldYieldLoop = (pts: readonly Vec3Like[]): boolean => {
+    const keys: string[] = []
+    const fresh: Vec3Like[] = []
+    for (const p of pts) {
+      if (!isFinitePoint(p)) return false
+      const existing = findVertexAt(geom, p)
+      let key: string
+      if (existing !== null) {
+        key = existing
+      } else {
+        let at = fresh.findIndex((q) => V.distance(q, p) <= POINT_TOL)
+        if (at < 0) {
+          at = fresh.length
+          fresh.push(p)
+        }
+        key = `n${at}`
+      }
+      if (keys.length === 0 || keys[keys.length - 1] !== key) keys.push(key)
+    }
+    while (keys.length > 1 && keys[0] === keys[keys.length - 1]) keys.pop()
+    return keys.length >= 3
+  }
+
   const buildLoop = (pts: readonly Vec3Like[]): { edges: Id[]; vertices: Id[] } | null => {
+    if (!wouldYieldLoop(pts)) return null
     const ids: Id[] = []
     for (const p of pts) {
       const id = getOrCreateVertex(geom, p, acc)

@@ -16,6 +16,7 @@ import type { Geometry, Id, Vec2Like, Vec3Like } from '@/shared/types'
 import { MIN_LENGTH, P, POINT_TOL, V, V2 } from '@/core/math'
 import {
   addPolylineMut,
+  isFiniteNumber,
   loopPoints,
   orderEdgePath,
   pathVertices,

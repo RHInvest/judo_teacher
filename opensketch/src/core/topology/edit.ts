@@ -14,6 +14,7 @@ import {
   flipFace,
   getOrCreateVertex,
   invalidateVertexIndex,
+  isFinitePoint,
   loopEdgeDirection,
   loopPoints,
   refreshFacePlane,
@@ -25,6 +26,17 @@ import {
 } from './mutate'
 import { buildFacesInPlane, captureRegion, type DeletedRegion } from './faceloops'
 import { findCoplanarFaces } from './connect'
+
+/**
+ * Eine Matrix mit NaN verwandelt jeden transformierten Punkt in NaN - und ein
+ * NaN-Vertex ist irreparabel (siehe `isFinitePoint` in `mutate.ts`). Eine zu
+ * kurze Matrix liefert `undefined` in der Rechnung, also ebenfalls NaN.
+ */
+function isFiniteMatrix(m: Mat4Like | undefined): boolean {
+  if (!m || m.length < 16) return false
+  for (let i = 0; i < 16; i++) if (!Number.isFinite(m[i])) return false
+  return true
+}
 
 /* ------------------------------------------------------------------ */
 /* Deleting                                                            */
@@ -183,6 +195,7 @@ export function moveVerticesMut(
   delta: Vec3Like,
   acc: ChangeAcc,
 ): void {
+  if (!isFinitePoint(delta)) return
   const set = new Set(vertexIds.filter((id) => !!geom.vertices[id]))
   if (set.size === 0) return
   for (const vId of set) setVertexPosition(geom, vId, V.add(vertexPoint(geom, vId), delta))
@@ -224,6 +237,7 @@ export function transformPrimitivesMut(
   copy: boolean,
   acc: ChangeAcc,
 ): void {
+  if (!isFiniteMatrix(matrix)) return
   const vertexSet = expandToVertices(geom, ids)
   if (vertexSet.size === 0) return
 
@@ -342,6 +356,8 @@ export function cloneGeometryDeep(geom: Geometry): Geometry {
 
 export function transformGeometryCopy(geom: Geometry, matrix: Mat4Like): Geometry {
   const out = cloneGeometryDeep(geom)
+  // eine unbrauchbare Matrix liefert die unveraenderte Kopie, keine NaN-Kopie
+  if (!isFiniteMatrix(matrix)) return out
   for (const id in out.vertices) {
     out.vertices[id].p = M.transformPoint(matrix, out.vertices[id].p)
   }
@@ -366,10 +382,13 @@ export function mergeGeometryMut(
   transform: Mat4Like | undefined,
   acc: ChangeAcc,
 ): void {
+  if (transform && !isFiniteMatrix(transform)) return
   const mirrored = transform ? M.isMirrored(transform) : false
   const vMap = new Map<Id, Id>()
   for (const id in source.vertices) {
     const p = transform ? M.transformPoint(transform, source.vertices[id].p) : source.vertices[id].p
+    // eine beschaedigte Quelle darf das Ziel nicht anstecken
+    if (!isFinitePoint(p)) continue
     vMap.set(id, getOrCreateVertex(target, p, acc))
   }
   const eMap = new Map<Id, Id>()

@@ -54,6 +54,8 @@ import {
   reverseLoop,
   vertexPoint,
   type ChangeAcc,
+  isFiniteNumber,
+  isFinitePoint,
 } from '@/core/topology'
 import { faceTriangles } from '@/core/query/triangulate'
 
@@ -179,7 +181,11 @@ export function pushPullMut(
 ): void {
   const face = geom.faces[faceId]
   if (!face) return
+  // NaN zuerst: `Math.abs(NaN) <= POINT_TOL` ist false, eine NaN-Distanz kaeme
+  // sonst durch und extrudierte den Koerper ins Nichts.
+  if (!isFiniteNumber(distance)) return
   if (Math.abs(distance) <= POINT_TOL) return
+  if (opts?.direction && !isFinitePoint(opts.direction)) return
   let dirN = V.normalizeOr(opts?.direction ?? face.normal, face.normal)
   if (V.lengthSq(dirN) < 0.5) dirN = face.normal
   const off = V.mul(dirN, distance)

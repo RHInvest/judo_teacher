@@ -262,4 +262,41 @@ describe('Cache-Invalidierung', () => {
     expect(second.length).toBeGreaterThan(0)
     expect(second[0].point.z).toBeCloseTo(3, 6)
   })
+
+  it('auch wenn sich die Anzahl der Primitive gar nicht aendert', () => {
+    // Der raeumliche Index ist nur ueber die Primitivanzahlen signiert - eine
+    // reine Punktverschiebung wuerde er ohne Verwerfen nicht bemerken.
+    useStore.getState().addPolyline(
+      [
+        { x: 0, y: 0, z: 0 },
+        { x: 2, y: 0, z: 0 },
+        { x: 2, y: 2, z: 0 },
+        { x: 0, y: 2, z: 0 },
+      ],
+      true,
+    )
+    const down = { origin: { x: 1, y: 1, z: 10 }, dir: { x: 0, y: 0, z: -1 } }
+    expect(core.raycast(geom(), down, { kinds: ['face'] })[0].point.z).toBeCloseTo(0, 6)
+
+    const countBefore = {
+      vertices: Object.keys(geom().vertices).length,
+      edges: Object.keys(geom().edges).length,
+      faces: Object.keys(geom().faces).length,
+    }
+    useStore.getState().moveVertices(Object.keys(geom().vertices), { x: 0, y: 0, z: 4 })
+    expect({
+      vertices: Object.keys(geom().vertices).length,
+      edges: Object.keys(geom().edges).length,
+      faces: Object.keys(geom().faces).length,
+    }).toEqual(countBefore)
+
+    const moved = core.raycast(geom(), down, { kinds: ['face'] })
+    expect(moved.length).toBeGreaterThan(0)
+    expect(moved[0].point.z).toBeCloseTo(4, 6)
+
+    useStore.getState().undo()
+    const back = core.raycast(geom(), down, { kinds: ['face'] })
+    expect(back.length).toBeGreaterThan(0)
+    expect(back[0].point.z).toBeCloseTo(0, 6)
+  })
 })

@@ -93,11 +93,35 @@ describe('Einheiten-Wrapper', () => {
     expect(fmtAngle(Math.PI / 4, METRIC)).not.toMatch(/NaN|undefined/)
   })
 
-  it('liefert bei kaputten Einheiten eine metrische Naeherung', () => {
-    expect(fmtLength(2, BROKEN)).toBe('2.000 m')
-    expect(fmtArea(12, BROKEN)).toBe('12.00 m²')
-    expect(fmtVolume(24, BROKEN)).toBe('24.000 m³')
-    expect(fmtAngle(Math.PI, BROKEN)).toBe('180.0°')
+  it('liefert eine metrische Naeherung, wenn die Bibliothek wirft', () => {
+    expect(fmtLength(2, THROWS)).toBe('2.000 m')
+    expect(fmtArea(12, THROWS)).toBe('12.00 m²')
+    expect(fmtVolume(24, THROWS)).toBe('24.000 m³')
+    expect(fmtAngle(Math.PI, THROWS)).toMatch(/^180/)
+  })
+
+  it('zeigt niemals "NaN", auch wenn die Bibliothek es liefert', () => {
+    // Unbekannte Einheitennamen werfen nicht, sie ergeben "NaN". Genau das
+    // stand vorher ungeprueft in der Entitaetsinfo.
+    expect(fmtLength(2, GARBAGE)).toBe('2.000 m')
+    expect(fmtArea(12, GARBAGE)).toBe('12.00 m²')
+    expect(fmtVolume(24, GARBAGE)).toBe('24.000 m³')
+    expect(fmtAngle(Math.PI, GARBAGE)).toMatch(/^180/)
+  })
+
+  it('macht aus einer unbrauchbaren Zahl einen Strich', () => {
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(fmtLength(value, METRIC), `Laenge ${value}`).toBe('- m')
+      expect(fmtArea(value, METRIC), `Flaeche ${value}`).toBe('- m²')
+      expect(fmtVolume(value, METRIC), `Volumen ${value}`).toBe('- m³')
+      expect(fmtAngle(value, METRIC), `Winkel ${value}`).toBe('-°')
+    }
+  })
+
+  it('formatiert Null und negative Werte ohne Rueckfall', () => {
+    expect(fmtLength(0, METRIC)).not.toMatch(/^-\s/)
+    expect(fmtLength(-2.5, METRIC)).not.toMatch(/NaN/)
+    expect(fmtArea(0, METRIC)).not.toMatch(/NaN/)
   })
 })
 

@@ -7,7 +7,14 @@
  */
 
 import type { Material, SketchDocument, Texture } from '@/shared/types'
-import type { ExportFormat, ExportOptions, ExportResult, ImportFormat, ImportResult } from './api-types'
+import type {
+  ExportFormat,
+  ExportOptions,
+  ExportResult,
+  ImportFormat,
+  ImportOptions,
+  ImportResult,
+} from './api-types'
 import { exportAs } from './exporters'
 import { importFromBytes } from './importers'
 import { extensionOf } from './common/util'
@@ -54,7 +61,12 @@ export function exportableFormats(): { format: ExportFormat; label: string; exte
 /* Import                                                              */
 /* ------------------------------------------------------------------ */
 
-export async function importFile(file: File, opts: { unitScale?: number } = {}): Promise<ImportResult> {
+/**
+ * `opts.companions` nimmt Beidateien auf, die der Aufrufer mitgeladen hat -
+ * die `.mtl` eines OBJ, die `.bin` und Texturen eines glTF. Ohne sie fallen
+ * die Importer auf Ersatzfarben zurueck und melden das als Warnung.
+ */
+export async function importFile(file: File, opts: ImportOptions = {}): Promise<ImportResult> {
   const format = detectFormat(file.name)
   if (!format) throw new Error(`Unbekanntes Dateiformat: ${file.name}`)
   const buffer = await file.arrayBuffer()
@@ -65,7 +77,7 @@ export async function importFile(file: File, opts: { unitScale?: number } = {}):
 export function importBytes(
   bytes: Uint8Array,
   filename: string,
-  opts: { unitScale?: number } = {},
+  opts: ImportOptions = {},
 ): Promise<ImportResult> {
   const format = detectFormat(filename)
   if (!format) throw new Error(`Unbekanntes Dateiformat: ${filename}`)
@@ -95,9 +107,22 @@ export function detectFormat(filename: string): ImportFormat | null {
   }
 }
 
-/** Alle Endungen, die `importFile` verarbeiten kann - fuer den Datei-Dialog. */
+/**
+ * Alle Endungen, die `importFile` verarbeiten kann - fuer den Datei-Dialog.
+ * Die Liste muss zu `detectFormat` passen; `io.test.ts` prueft das in beide
+ * Richtungen.
+ */
 export function importableExtensions(): string[] {
-  return ['.osk', '.obj', '.stl', '.gltf', '.glb', '.svg', ...[...IMAGE_EXTENSIONS].map((e) => `.${e}`)]
+  return [
+    '.osk',
+    '.json',
+    '.obj',
+    '.stl',
+    '.gltf',
+    '.glb',
+    '.svg',
+    ...[...IMAGE_EXTENSIONS].map((e) => `.${e}`),
+  ]
 }
 
 /* ------------------------------------------------------------------ */

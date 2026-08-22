@@ -92,18 +92,19 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Waschbecken',
     category: CATEGORY_SANITARY,
     description: 'Waschtisch 60 × 48 cm, Oberkante 85 cm, mit Einhebelmischer und Siphon. Wandseite in +Y.',
-    size: '60 × 50 × 41 cm',
+    size: '60 × 50 × 45 cm',
     geometry(g) {
       const outer = roundedRectProfile(0, 0, 0.6, 0.48, 0.03)
       const bowl = roundedRectProfile(0, -0.03, 0.42, 0.3, 0.06)
-      basin(g, outer, bowl, 0.72, 0.02, 0.13, CERAMIC)
-      drain(g, 0, -0.03, 0.74)
+      // Oberkante = 0,70 + 0,02 + 0,13 = 0,85 m; darauf sitzt die Armatur.
+      basin(g, outer, bowl, 0.7, 0.02, 0.13, CERAMIC)
+      drain(g, 0, -0.03, 0.72)
       faucet(g, 0, 0.185, 0.85, 0.13, 0.16)
       // Siphon
-      cylinderZ(g, 0, -0.03, 0.6, 0.022, 0.12, 12, CHROME)
-      cylinderBetween(g, { x: 0, y: -0.03, z: 0.61 }, { x: 0, y: 0.2, z: 0.61 }, 0.02, 12, CHROME)
+      cylinderZ(g, 0, -0.03, 0.58, 0.022, 0.12, 12, CHROME)
+      cylinderBetween(g, { x: 0, y: -0.03, z: 0.59 }, { x: 0, y: 0.2, z: 0.59 }, 0.02, 12, CHROME)
       // Konsole zur Wand
-      boxAt(g, 0, 0.21, 0.68, 0.4, 0.04, 0.06, CERAMIC)
+      boxAt(g, 0, 0.21, 0.66, 0.4, 0.04, 0.06, CERAMIC)
     },
   }),
 

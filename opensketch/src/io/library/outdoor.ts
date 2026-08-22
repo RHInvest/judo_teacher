@@ -111,7 +111,7 @@ export const OUTDOOR: LibraryEntry[] = [
     id: 'baum-laub',
     name: 'Laubbaum',
     category: CATEGORY_OUTDOOR,
-    description: 'Ausgewachsener Laubbaum, rund 7 m hoch, mit verzweigtem Stamm und breiter Krone.',
+    description: 'Ausgewachsener Laubbaum, gut 6 m hoch, mit verzweigtem Stamm und breiter Krone.',
     size: '455 × 455 × 635 cm',
     geometry(g) {
       // Stamm mit Wurzelanlauf

@@ -69,10 +69,15 @@ const GLYPH_SET = new Set(TEXT3D_GLYPHS.split(''))
  */
 export function mapText3dChar(char: string): string {
   if (char === ' ' || char === '\t') return ' '
-  const upper = char.toUpperCase()
-  if (GLYPH_SET.has(upper)) return upper
-  const substitute = SUBSTITUTIONS[upper]
+  const substitute = SUBSTITUTIONS[char] ?? SUBSTITUTIONS[char.toUpperCase()]
   if (substitute) return substitute
+  /*
+   * Grossschreibung darf mehrere Zeichen ergeben - "ß" wird zu "SS". Deshalb
+   * wird die ganze Grossform gegen den Vorrat geprueft und nicht nur ihr
+   * erstes Zeichen.
+   */
+  const upper = char.toUpperCase()
+  if (upper.length > 0 && [...upper].every((part) => GLYPH_SET.has(part))) return upper
   return ''
 }
 
