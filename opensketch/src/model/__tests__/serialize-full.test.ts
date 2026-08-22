@@ -21,6 +21,7 @@ import {
   OSK_VERSION,
   deserializeDocument,
   documentFromRaw,
+  documentRepairOf,
   normalizeDocument,
   normalizeGeometry,
   repairGeometryReferences,
@@ -420,26 +421,75 @@ describe('Kaputte und unvollstaendige Daten', () => {
     expect(doc.activeMaterialId).toBeNull()
   })
 
-  it('eine Instanz ohne Definition legt weder Kennzahlen noch Store lahm', () => {
+  it('Instanzen ohne Definition werden entfernt und gemeldet', () => {
     const doc = normalizeDocument({
       rootId: 'd-root',
-      definitions: { 'd-root': { id: 'd-root', name: 'Modell', kind: 'model', children: ['i-verwaist'] } },
+      definitions: {
+        'd-root': {
+          id: 'd-root',
+          name: 'Modell',
+          kind: 'model',
+          children: ['i-verwaist', 'i-auchweg', 'g-bleibt'],
+        },
+      },
       entities: {
         'i-verwaist': { id: 'i-verwaist', type: 'instance', name: 'Geist', definitionId: 'd-gibtsnicht' },
+        'i-auchweg': { id: 'i-auchweg', type: 'instance', name: 'Geist 2', definitionId: '' },
+        'g-bleibt': { id: 'g-bleibt', type: 'guidePoint', name: 'Bezug', position: { x: 1, y: 1, z: 1 } },
       },
     })
 
-    expect(doc.entities['i-verwaist']).toBeDefined()
-    expect(() => documentStats(doc)).not.toThrow()
+    // Eine unsichtbare, aber anwaehlbare Instanz waere schlimmer als keine.
+    expect(doc.entities['i-verwaist']).toBeUndefined()
+    expect(doc.entities['i-auchweg']).toBeUndefined()
+    expect(doc.entities['g-bleibt']).toBeDefined()
+    expect(doc.definitions['d-root'].children).toEqual(['g-bleibt'])
+    expect(documentRepairOf(doc)?.removedOrphanInstances).toBe(2)
+    expect(documentStats(doc).instances).toBe(0)
+
+    // Beim Laden erfaehrt der Nutzer davon - stilles Wegraeumen waere falsch.
+    state().loadDocument(doc)
+    const toast = state().ui.toasts.find((t) => t.kind === 'warn')
+    expect(toast).toBeDefined()
+    expect(toast?.text).toContain('2 Objekte ohne Definition')
+
+    expect(() => state().getModelBounds()).not.toThrow()
+    expect(state().addEdge({ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }).addedEdges).toHaveLength(1)
+  })
+
+  it('ein heiles Dokument loest keine Warnung aus', () => {
+    const doc = deserializeDocument(serializeDocument(buildEverything().doc))
+    expect(documentRepairOf(doc)).toBeUndefined()
 
     state().loadDocument(doc)
-    expect(() => state().getModelBounds()).not.toThrow()
-    expect(() => state().getDefinitionBounds('d-root')).not.toThrow()
-    // Betreten scheitert lautlos, statt zu werfen
-    expect(() => state().enterContext('i-verwaist')).not.toThrow()
-    expect(state().context.definitionId).toBe('d-root')
-    // Und das Dokument bleibt schreibbar
-    expect(state().addEdge({ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }).addedEdges).toHaveLength(1)
+    expect(state().ui.toasts.filter((t) => t.kind === 'warn')).toEqual([])
+  })
+
+  it('auch ein Dokument aus fremder Hand wird beim Laden bereinigt', () => {
+    // Kein Round-Trip durch normalizeDocument - so kommen Dokumente von
+    // Importeuren oder aus Programmcode.
+    installGeometry(buildQuad())
+    const doc = state().exportDocument()
+    doc.entities['i-geist'] = {
+      id: 'i-geist',
+      type: 'instance',
+      name: 'Geist',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      definitionId: 'd-gibtsnicht',
+      transform: M.identity(),
+      isGroup: true,
+      materialId: null,
+    }
+    doc.definitions[doc.rootId].children.push('i-geist')
+
+    state().loadDocument(doc)
+
+    expect(state().doc.entities['i-geist']).toBeUndefined()
+    expect(state().doc.definitions[state().doc.rootId].children).not.toContain('i-geist')
+    const toast = state().ui.toasts.find((t) => t.kind === 'warn')
+    expect(toast?.text).toContain('Ein Objekt ohne Definition')
   })
 
   it('Geometrie mit toten Verweisen wird gesaeubert statt uebernommen', () => {

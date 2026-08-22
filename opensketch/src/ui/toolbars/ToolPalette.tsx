@@ -15,12 +15,16 @@ function ToolButton({
   active,
   onSelect,
   corner,
+  cornerOpen,
+  cornerLabel,
   onCorner,
 }: {
   id: ToolId
   active: boolean
   onSelect: () => void
   corner?: boolean
+  cornerOpen?: boolean
+  cornerLabel?: string
   onCorner?: () => void
 }) {
   const skin = useSkin()
@@ -39,23 +43,45 @@ function ToolButton({
           className={clsx(
             'os-tool-btn h-8 w-8',
             active ? skin.iconBtnActive : skin.iconBtn,
-            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-400',
+            skin.ring,
           )}
         >
           <Icon size={17} strokeWidth={1.7} />
         </button>
         {corner ? (
-          <span
-            role="button"
-            tabIndex={-1}
-            aria-label={`${meta.name}: Varianten`}
+          /*
+           * Eigener Knopf, nicht nur eine angeklickte Ecke: die Werkzeuge
+           * eines Flyouts waeren sonst mit der Tastatur ueberhaupt nicht
+           * erreichbar. Er liegt bewusst in der Tab-Reihenfolge und traegt
+           * `aria-expanded`, damit auch eine Vorlesehilfe merkt, dass sich
+           * hier etwas aufklappt.
+           */
+          <button
+            type="button"
+            aria-label={cornerLabel ?? `${meta.name}: Varianten`}
+            aria-haspopup="menu"
+            aria-expanded={Boolean(cornerOpen)}
             onPointerDown={(event) => {
               event.stopPropagation()
               event.preventDefault()
               onCorner?.()
             }}
-            className="absolute bottom-0 right-0 h-0 w-0 cursor-pointer border-b-[6px] border-l-[6px] border-b-current border-l-transparent opacity-70 hover:opacity-100"
-          />
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onCorner?.()
+              }
+            }}
+            className={clsx(
+              'absolute bottom-0 right-0 flex h-3 w-3 cursor-pointer items-end justify-end rounded-sm',
+              skin.ring,
+            )}
+          >
+            <span
+              aria-hidden
+              className="h-0 w-0 border-b-[6px] border-l-[6px] border-b-current border-l-transparent opacity-70 transition-opacity hover:opacity-100"
+            />
+          </button>
         ) : null}
       </div>
     </Tooltip>
@@ -91,8 +117,18 @@ function FlyoutEntry({
     const onDown = (event: MouseEvent) => {
       if (containerRef.current && event.target instanceof Node && !containerRef.current.contains(event.target)) onClose()
     }
+    /* Escape schliesst das Flyout - ohne das bliebe es mit der Tastatur offen. */
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      onClose()
+    }
     window.addEventListener('mousedown', onDown)
-    return () => window.removeEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey, true)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey, true)
+    }
   }, [open, onClose])
 
   return (
@@ -102,6 +138,8 @@ function FlyoutEntry({
         active={groupActive}
         onSelect={() => setTool(shown)}
         corner
+        cornerOpen={open}
+        cornerLabel={`${entry.label}: weitere Werkzeuge`}
         onCorner={() => (open ? onClose() : onOpen())}
       />
       {open ? (

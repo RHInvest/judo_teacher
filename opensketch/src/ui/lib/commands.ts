@@ -15,6 +15,7 @@ import {
   readDocumentFile,
   saveNamedDocument,
 } from '@/model'
+import { importableExtensions } from '@/io'
 import { bus } from '@/shared/events'
 import { IDENTITY_MATRIX, emptySelection, selectionCount } from '@/shared/types'
 import type { Id, Selection, StandardView, ToolId } from '@/shared/types'
@@ -234,8 +235,26 @@ export function importFiles(files: File[]): void {
   for (const file of files) bus.emit('file:import', { file })
 }
 
+/**
+ * Die Endungsliste kommt aus der IO-Schicht, nicht aus einer Kopie hier.
+ *
+ * Vorher stand sie fest verdrahtet im Aufruf und war bereits auseinander-
+ * gelaufen: `.gif`, `.webp`, `.bmp` und `.json` erkennt `detectFormat`, im
+ * Dateidialog tauchten sie aber nicht auf. Der Rueckfall ist nur fuer den
+ * Fall, dass die IO-Schicht gar nicht antwortet.
+ */
+function importAccept(): string {
+  try {
+    const list = importableExtensions()
+    if (list && list.length > 0) return list.join(',')
+  } catch (err) {
+    console.warn('[ui] Importformate nicht abrufbar', err)
+  }
+  return '.osk,.json,.obj,.stl,.gltf,.glb,.svg,.png,.jpg,.jpeg'
+}
+
 export async function cmdImport(): Promise<void> {
-  const files = await pickFiles('.obj,.stl,.gltf,.glb,.svg,.png,.jpg,.jpeg,.osk', true)
+  const files = await pickFiles(importAccept(), true)
   if (files.length === 0) return
   importFiles(files)
 }

@@ -193,7 +193,7 @@ export function Checkbox({
           className={clsx(
             'pointer-events-none flex h-[14px] w-[14px] items-center justify-center rounded-[3px] border transition-colors',
             checked ? 'border-accent-500 bg-accent-500 text-white' : clsx(skin.input, 'border'),
-            'peer-focus-visible:ring-1 peer-focus-visible:ring-accent-400',
+            skin.ringPeer,
           )}
         >
           {checked ? <Check size={11} strokeWidth={3} /> : null}

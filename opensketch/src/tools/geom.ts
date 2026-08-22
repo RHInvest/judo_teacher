@@ -1,10 +1,21 @@
 /**
  * Primitivgeneratoren fuer Vorschau und Erzeugung.
  *
- * Zuerst wird immer der Geometriekern (`@/core`) gefragt. Solange der noch
- * nicht implementiert ist (er wird parallel entwickelt), greift eine lokale,
- * mathematisch identische Umsetzung - so bleiben Vorschau und Werkzeuge
- * bereits heute benutzbar.
+ * Erzeugt wird ausschliesslich im Geometriekern (`@/core`). Fruehere Fassungen
+ * hatten hier eine zweite, lokale Umsetzung als Rueckfall - aus der Zeit, als
+ * der Kern noch nicht implementiert war. Der Rueckfall ist ENTFERNT, und zwar
+ * aus einem inhaltlichen Grund:
+ *
+ * Der Kern beantwortet entartete Eingaben (Radius 0, weniger als drei
+ * Segmente, NaN in den Punkten) mit einem LEEREN Array - das ist seine Art zu
+ * sagen "geht nicht". Ein Rueckfall verschluckt diese Antwort und liefert
+ * stattdessen etwas Plausibles: 24 identische Punkte fuer einen Kreis mit
+ * Radius 0, ein Dreieck fuer zwei Segmente. Der Nutzer bekaeme still falsche
+ * Geometrie statt einer Meldung.
+ *
+ * Deshalb gilt hier: ein leeres Ergebnis wird DURCHGEREICHT. Die Werkzeuge
+ * pruefen es mit `usablePoints(...)` und melden ueber
+ * `BaseTool.abortDegenerate(grund)`.
  *
  * OWNERSHIP: Tools.
  */
@@ -22,9 +33,22 @@ import {
 import { P, V, MIN_LENGTH } from '@/core/math'
 import { safeOrNull } from './helpers'
 
-function usable(points: Vec3Like[] | null, min = 2): Vec3Like[] | null {
+/**
+ * Antwort des Kerns pruefen: zu wenige oder nicht endliche Punkte sind keine
+ * Geometrie. Das Ergebnis ist ein leeres Array - nie ein Ersatzwert.
+ */
+function fromCore(points: Vec3Like[] | null, min: number): Vec3Like[] {
+  if (!points || points.length < min) return []
+  return points.every((p) => V.isFinite3(p)) ? points : []
+}
+
+/**
+ * Die Pruefung, die jedes Werkzeug vor dem Erzeugen macht: `null` heisst
+ * "daraus wird nichts, bitte melden".
+ */
+export function usablePoints(points: readonly Vec3Like[] | null, min = 2): Vec3Like[] | null {
   if (!points || points.length < min) return null
-  return points.every((p) => V.isFinite3(p)) ? points : null
+  return points.every((p) => V.isFinite3(p)) ? points.map(V.clone) : null
 }
 
 /** Orthonormale Basis einer Ebene, optional an einem Startpunkt ausgerichtet. */

@@ -264,6 +264,13 @@ export function revolveMut(
   if (!profileFace) return
   const profile = profileRing(geom, profileFaceId)
   if (!profile) return
+  // NaN/Infinity und eine Segmentzahl unter 1 abweisen, statt eine Zahl zu
+  // erfinden: `Math.abs(NaN) < 1e-9` ist false, ein NaN-Winkel drehte das
+  // Profil sonst ins Nichts, und `Math.max(3, 0)` machte aus "gar keine
+  // Segmente" stillschweigend ein Dreieck.
+  if (!isFiniteNumber(angle)) return
+  if (!isFinitePoint(axisOrigin) || !isFinitePoint(axisDirection)) return
+  if (!isFiniteNumber(segments) || Math.floor(segments) < 1) return
   const axis = V.normalize(axisDirection)
   if (V.lengthSq(axis) < 0.5) return
   const steps = Math.max(3, Math.floor(segments))

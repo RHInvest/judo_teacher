@@ -183,6 +183,11 @@ export function StylesPanel() {
         <Checkbox checked={style.showAxes} label="Zeichenachsen" onChange={(checked) => patch({ showAxes: checked })} />
         <Checkbox checked={style.showGrid} label="Raster" onChange={(checked) => patch({ showGrid: checked })} />
         <Checkbox
+          checked={style.showGuides}
+          label="Hilfslinien und Hilfspunkte"
+          onChange={(checked) => patch({ showGuides: checked })}
+        />
+        <Checkbox
           checked={style.showHiddenGeometry}
           label="Verdeckte Geometrie"
           onChange={(checked) => patch({ showHiddenGeometry: checked })}

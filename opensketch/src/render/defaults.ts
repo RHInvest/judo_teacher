@@ -50,6 +50,7 @@ export const DEFAULT_STYLE: StyleSettings = Object.freeze({
   showGrid: false,
   gridSpacing: 1,
   showHiddenGeometry: false,
+  showGuides: true,
   showSectionPlanes: true,
   showSectionCuts: true,
   sectionCutFill: '#d9d2c2',

@@ -295,6 +295,180 @@ describe('Verschachtelung ueber drei Ebenen', () => {
 
 /* ------------------------------------------------------------------ */
 
+describe('Objekte im Gruppenkontext', () => {
+  /** Gruppe, die um (5, 2, 0) verschoben und um 90 Grad um Z gedreht ist. */
+  function rotatedGroup(): Id {
+    installGeometry(buildQuad({ x: 0, y: 0, z: 0 }, 1, 1))
+    state().selectAll()
+    const groupId = state().makeGroup('Gedreht') as string
+    state().transformEntities(
+      [groupId],
+      M.chain(M.translation({ x: 5, y: 2, z: 0 }), M.rotation(V.AXIS_Z, Math.PI / 2)),
+      false,
+    )
+    return groupId
+  }
+
+  it('addEntity rechnet Bemassungspunkte in den Kontext um', () => {
+    const groupId = rotatedGroup()
+    state().enterContext(groupId)
+    const world = state().context.worldTransform
+
+    const id = state().addEntity({
+      id: '',
+      type: 'dimension',
+      name: 'Breite',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      kind: 'linear',
+      start: { x: 5, y: 2, z: 0 },
+      end: { x: 5, y: 5, z: 0 },
+      offset: { x: 1, y: 0, z: 0 },
+      text: null,
+      fontSize: 12,
+      color: '#000000',
+      screenSpace: true,
+      arrowStyle: 'slash',
+    })
+
+    const entity = state().doc.entities[id]
+    if (!entity || entity.type !== 'dimension') throw new Error('Bemassung erwartet')
+    // Lokal: der Gruppenursprung selbst, und 3 entlang der lokalen X-Achse
+    expect(V.equals(entity.start, { x: 0, y: 0, z: 0 }, 1e-9)).toBe(true)
+    expect(V.equals(entity.end, { x: 3, y: 0, z: 0 }, 1e-9)).toBe(true)
+    // Zurueckgerechnet trifft es wieder die Weltpunkte, mit denen gezeichnet wurde
+    expect(V.equals(M.transformPoint(world, entity.start), { x: 5, y: 2, z: 0 }, 1e-9)).toBe(true)
+    expect(V.equals(M.transformPoint(world, entity.end), { x: 5, y: 5, z: 0 }, 1e-9)).toBe(true)
+    // Der Versatz ist eine Richtung, keine Position
+    expect(V.equals(M.transformDirection(world, entity.offset), { x: 1, y: 0, z: 0 }, 1e-9)).toBe(true)
+  })
+
+  it('Texte, Hilfsobjekte und Bilder ebenso', () => {
+    const groupId = rotatedGroup()
+    state().enterContext(groupId)
+    const world = state().context.worldTransform
+
+    const textId = state().addEntity({
+      id: '',
+      type: 'text',
+      name: 'Hinweis',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      anchor: { x: 5, y: 4, z: 0 },
+      position: { x: 6, y: 4, z: 1 },
+      text: 'Hier',
+      fontSize: 12,
+      color: '#000000',
+      screenSpace: true,
+      leader: 'viewBased',
+    })
+    const pointId = state().addEntity({
+      id: '',
+      type: 'guidePoint',
+      name: 'Bezug',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      position: { x: 8, y: 2, z: 3 },
+    })
+    const lineId = state().addEntity({
+      id: '',
+      type: 'guideLine',
+      name: 'Achse',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      origin: { x: 5, y: 2, z: 0 },
+      direction: { x: 0, y: 1, z: 0 },
+      length: 4,
+    })
+    const imageId = state().addEntity({
+      id: '',
+      type: 'image',
+      name: 'Foto',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      textureId: 'tex-1',
+      transform: M.translation({ x: 5, y: 6, z: 0 }),
+      width: 2,
+      height: 1,
+      usage: 'model',
+    })
+
+    const text = state().doc.entities[textId]
+    const point = state().doc.entities[pointId]
+    const line = state().doc.entities[lineId]
+    const image = state().doc.entities[imageId]
+    if (text?.type !== 'text' || point?.type !== 'guidePoint') throw new Error('Objekte erwartet')
+    if (line?.type !== 'guideLine' || image?.type !== 'image') throw new Error('Objekte erwartet')
+
+    expect(V.equals(M.transformPoint(world, text.anchor), { x: 5, y: 4, z: 0 }, 1e-9)).toBe(true)
+    expect(V.equals(M.transformPoint(world, text.position), { x: 6, y: 4, z: 1 }, 1e-9)).toBe(true)
+    expect(V.equals(M.transformPoint(world, point.position), { x: 8, y: 2, z: 3 }, 1e-9)).toBe(true)
+    expect(V.equals(M.transformPoint(world, line.origin), { x: 5, y: 2, z: 0 }, 1e-9)).toBe(true)
+    expect(V.equals(M.transformDirection(world, line.direction), { x: 0, y: 1, z: 0 }, 1e-9)).toBe(true)
+    expect(
+      V.equals(
+        M.transformPoint(M.multiply(world, image.transform), { x: 0, y: 0, z: 0 }),
+        { x: 5, y: 6, z: 0 },
+        1e-9,
+      ),
+    ).toBe(true)
+  })
+
+  it('eine Schnittebene behaelt Lage UND Normale', () => {
+    const groupId = rotatedGroup()
+    state().enterContext(groupId)
+    const world = state().context.worldTransform
+
+    // Weltebene y = 4, Normale +Y
+    const id = state().addEntity({
+      id: '',
+      type: 'sectionPlane',
+      name: 'Schnitt',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      plane: { n: { x: 0, y: 1, z: 0 }, d: 4 },
+      active: true,
+      symbolSize: 1,
+      color: '#d97706',
+    })
+
+    const entity = state().doc.entities[id]
+    if (!entity || entity.type !== 'sectionPlane') throw new Error('Schnittebene erwartet')
+
+    // Die Gruppe ist um +90 Grad um Z gedreht; dieselbe Ebene zeigt lokal in +X
+    expect(V.equals(entity.plane.n, { x: 1, y: 0, z: 0 }, 1e-9)).toBe(true)
+
+    // Zurueck in die Welt: gleiche Normale, gleicher Abstand
+    const worldNormal = M.transformNormal(world, entity.plane.n)
+    const onPlane = M.transformPoint(world, V.mul(entity.plane.n, entity.plane.d))
+    expect(V.equals(worldNormal, { x: 0, y: 1, z: 0 }, 1e-9)).toBe(true)
+    expect(V.dot(worldNormal, onPlane)).toBeCloseTo(4, 9)
+  })
+
+  it('an der Modellwurzel bleibt alles unveraendert', () => {
+    const id = state().addEntity({
+      id: '',
+      type: 'guidePoint',
+      name: 'Bezug',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      position: { x: 1, y: 2, z: 3 },
+    })
+    const entity = state().doc.entities[id]
+    if (!entity || entity.type !== 'guidePoint') throw new Error('Hilfspunkt erwartet')
+    expect(entity.position).toEqual({ x: 1, y: 2, z: 3 })
+  })
+})
+
+/* ------------------------------------------------------------------ */
+
 describe('Aufloesen unter Transformation', () => {
   it('gedrehte und skalierte Geometrie landet an derselben Weltposition', () => {
     installGeometry(buildQuad({ x: 0, y: 0, z: 0 }, 1, 1))

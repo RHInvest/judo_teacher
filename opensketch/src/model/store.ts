@@ -79,6 +79,7 @@ import {
   worldTransformOf,
 } from './document'
 import { createDefaultMaterials, normalizeMaterial } from './materials'
+import { documentRepairOf } from './serialize'
 import {
   History,
   touchDefinition,
@@ -292,6 +293,33 @@ function rootContext(doc: SketchDocument): EditContext {
     definitionPath: [doc.rootId],
     worldTransform: M.identity(),
   }
+}
+
+/**
+ * Entfernt Instanzen, deren Definition fehlt.
+ *
+ * `normalizeDocument` tut das bereits fuer alles, was aus einer `.osk`-Datei
+ * kommt. Diese zweite Runde faengt Dokumente ab, die auf anderem Weg entstehen
+ * (Importeure, Tests, Programmcode) - sonst haette der Outliner unsichtbare,
+ * anwaehlbare Eintraege, die nichts tun.
+ *
+ * Ohne Fund wird das Dokument unveraendert durchgereicht.
+ */
+function withoutOrphanInstances(doc: SketchDocument): { doc: SketchDocument; removed: number } {
+  const orphans = Object.keys(doc.entities).filter((id) => {
+    const entity = doc.entities[id]
+    return entity.type === 'instance' && !doc.definitions[entity.definitionId]
+  })
+  if (orphans.length === 0) return { doc, removed: 0 }
+
+  const entities = { ...doc.entities }
+  for (const id of orphans) delete entities[id]
+  const definitions: Record<Id, Definition> = {}
+  for (const id of Object.keys(doc.definitions)) {
+    const def = doc.definitions[id]
+    definitions[id] = { ...def, children: def.children.filter((child) => entities[child] !== undefined) }
+  }
+  return { doc: { ...doc, entities, definitions }, removed: orphans.length }
 }
 
 const initialDocument = createEmptyDocument('metric')
@@ -800,7 +828,15 @@ export const useStore = create<AppState>()((set, get) => {
       bus.emit('render:request')
     },
 
-    loadDocument(doc) {
+    loadDocument(incoming) {
+      // Beim Einlesen entfernte Instanzen ohne Definition, plus die, die erst
+      // hier auffallen. Stilles Wegraeumen waere falsch: wer eine kaputte
+      // Datei oeffnet, muss erfahren, dass etwas gefehlt hat.
+      const reported = documentRepairOf(incoming)?.removedOrphanInstances ?? 0
+      const swept = withoutOrphanInstances(incoming)
+      const orphans = reported + swept.removed
+      const doc = swept.doc
+
       syncIdCounter(doc)
       history.clear()
       installDocument(doc, rootContext(doc), emptySelection())
@@ -820,6 +856,15 @@ export const useStore = create<AppState>()((set, get) => {
       bus.emit('material:changed', {})
       bus.emit('style:changed')
       bus.emit('render:request')
+
+      if (orphans > 0) {
+        get().toast(
+          orphans === 1
+            ? 'Ein Objekt ohne Definition wurde beim Laden entfernt'
+            : `${orphans} Objekte ohne Definition wurden beim Laden entfernt`,
+          'warn',
+        )
+      }
     },
 
     exportDocument() {
@@ -1722,6 +1767,10 @@ export const useStore = create<AppState>()((set, get) => {
         editDoc((doc) => {
           const copy = cloneEntity(entity)
           if (!copy.id) copy.id = newId(entityPrefix(copy.type))
+          // Regel 4: Werkzeuge liefern Weltkoordinaten. Ohne diese Umrechnung
+          // landen Bemassungen, Texte, Schnittebenen und Hilfsobjekte, die in
+          // einer Gruppe erzeugt werden, um die Gruppentransformation versetzt.
+          toLocalEntityMut(copy)
           addEntityTo(doc, get().context.definitionId, copy)
           markScene()
           return copy.id

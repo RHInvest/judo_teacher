@@ -162,9 +162,42 @@ export function migrateDocument(raw: Record<string, unknown>, fromVersion: numbe
 /* Normalisierung (robust gegen fehlende Felder)                       */
 /* ------------------------------------------------------------------ */
 
+/** Was beim Einlesen repariert werden musste. */
+export interface DocumentRepair {
+  /** Instanzen, deren Definition fehlte - sie waeren unsichtbar geblieben. */
+  removedOrphanInstances: number
+}
+
+/**
+ * Reparaturberichte, geschluesselt am eingelesenen Dokument.
+ *
+ * Nur `normalizeDocument` legt einen Bericht an, und nur wenn wirklich etwas
+ * entfernt wurde. Der Store liest ihn in `loadDocument`, um den Nutzer zu
+ * warnen. Wer das Dokument kopiert, verliert den Bericht - dann faellt der
+ * Store auf seinen eigenen Durchgang zurueck.
+ */
+const repairs = new WeakMap<SketchDocument, DocumentRepair>()
+
+export function documentRepairOf(doc: SketchDocument): DocumentRepair | undefined {
+  return repairs.get(doc)
+}
+
 export function normalizeDocument(raw: Record<string, unknown>): SketchDocument {
   const definitions = normalizeDefinitions(raw.definitions)
   const entities = normalizeEntities(raw.entities)
+
+  /*
+   * Instanzen ohne Definition sind unsichtbar, stehen aber im Outliner, lassen
+   * sich anwaehlen und tun nichts. Sie fliegen raus - gezaehlt, damit der
+   * Nutzer beim Laden erfaehrt, dass die Datei unvollstaendig war.
+   */
+  let removedOrphanInstances = 0
+  for (const id of Object.keys(entities)) {
+    const entity = entities[id]
+    if (entity.type !== 'instance' || definitions[entity.definitionId]) continue
+    delete entities[id]
+    removedOrphanInstances += 1
+  }
 
   let rootId = str(raw.rootId, '')
   if (!rootId || !definitions[rootId]) {
@@ -204,7 +237,7 @@ export function normalizeDocument(raw: Record<string, unknown>): SketchDocument 
   const activeStyleId = str(raw.activeStyleId, '')
   const activeMaterialId = raw.activeMaterialId === null ? null : str(raw.activeMaterialId, '')
 
-  return {
+  const doc: SketchDocument = {
     meta: normalizeMeta(raw.meta),
     rootId,
     definitions,
@@ -222,6 +255,8 @@ export function normalizeDocument(raw: Record<string, unknown>): SketchDocument 
     activeTagId: tags[activeTagId] ? activeTagId : Object.keys(tags)[0],
     activeMaterialId: activeMaterialId && materials[activeMaterialId] ? activeMaterialId : null,
   }
+  if (removedOrphanInstances > 0) repairs.set(doc, { removedOrphanInstances })
+  return doc
 }
 
 function normalizeMeta(raw: unknown): DocumentMeta {

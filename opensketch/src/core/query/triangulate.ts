@@ -171,7 +171,14 @@ function earClip(pts: readonly Vec2Like[], input: readonly number[]): number[] {
     )
     idx.splice(bestI, 1)
   }
-  if (idx.length === 3) out.push(idx[0], idx[1], idx[2])
+  if (idx.length === 3) {
+    // Kein Nulldreieck ausliefern: drei kollineare Punkte sind kein Polygon.
+    // Sonst kaeme aus einer entarteten Schleife ein Dreieck mit Flaeche 0, das
+    // im Puffer landet, beim Picken traefe und in der Statistik mitzaehlt.
+    if (Math.abs(triArea(pts[idx[0]], pts[idx[1]], pts[idx[2]])) > AREA_EPS) {
+      out.push(idx[0], idx[1], idx[2])
+    }
+  }
   return out
 }
 

@@ -6,6 +6,30 @@
 import type { Vec3Like } from '@/shared/types'
 import { MIN_LENGTH, P, V } from '@/core/math'
 
+/*
+ * LEERE PUNKTLISTE HEISST "GEHT NICHT".
+ *
+ * Die Generatoren erfinden keine Werte. Ein Kreis mit Radius 0 oder zwei
+ * Segmenten laesst sich nicht bauen; ein Ergebnis aus 24 identischen Punkten
+ * oder ein Dreieck statt eines Kreises waere eine stille falsche Antwort, und
+ * der Aufrufer koennte dem Nutzer nicht sagen, dass nichts entstanden ist.
+ * Deshalb: leeres Array. Nicht endliche Eingaben ebenso - NaN darf nie bis zur
+ * Geometrie durchkommen (siehe `isFinitePoint` in `topology/mutate.ts`).
+ */
+
+function finite(...values: number[]): boolean {
+  for (const v of values) if (!Number.isFinite(v)) return false
+  return true
+}
+
+function finitePoints(...points: (Vec3Like | undefined)[]): boolean {
+  for (const p of points) {
+    if (p === undefined) continue
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) return false
+  }
+  return true
+}
+
 function planeAxes(normal: Vec3Like, startPoint: Vec3Like | undefined, center: Vec3Like) {
   const n = V.normalizeOr(normal, V.AXIS_Z)
   let u: Vec3Like
@@ -27,7 +51,11 @@ export function buildCircle(
   segments: number,
   startPoint?: Vec3Like,
 ): Vec3Like[] {
-  const count = Math.max(3, Math.floor(segments))
+  if (!finite(radius, segments) || !finitePoints(center, normal, startPoint)) return []
+  if (radius <= MIN_LENGTH) return []
+  const count = Math.floor(segments)
+  if (count < 3) return []
+  if (V.length(normal) < MIN_LENGTH) return []
   const { u, v } = planeAxes(normal, startPoint, center)
   const out: Vec3Like[] = []
   for (let i = 0; i < count; i++) {
@@ -49,7 +77,9 @@ export function buildPolygon(
   inscribed = true,
   startPoint?: Vec3Like,
 ): Vec3Like[] {
-  const count = Math.max(3, Math.floor(sides))
+  if (!finite(radius, sides)) return []
+  const count = Math.floor(sides)
+  if (count < 3) return []
   const r = inscribed ? radius : radius / Math.cos(Math.PI / count)
   return buildCircle(center, normal, r, count, startPoint)
 }
@@ -64,6 +94,10 @@ export function buildArc(
   segments: number,
   xAxis?: Vec3Like,
 ): Vec3Like[] {
+  if (!finite(radius, startAngle, endAngle, segments)) return []
+  if (!finitePoints(center, normal, xAxis)) return []
+  if (radius <= MIN_LENGTH) return []
+  if (Math.abs(endAngle - startAngle) < MIN_LENGTH) return []
   const count = Math.max(1, Math.floor(segments))
   const n = V.normalizeOr(normal, V.AXIS_Z)
   let u = xAxis ? V.projectOnPlaneNormal(xAxis, n) : P.basis({ n, d: 0 }).u
@@ -85,6 +119,10 @@ export function buildArc3Points(
   c: Vec3Like,
   segments: number,
 ): Vec3Like[] {
+  if (!finite(segments) || !finitePoints(a, b, c)) return []
+  // drei Punkte, die alle aufeinander liegen, ergeben weder Bogen noch Strecke
+  if (V.distance(a, c) < MIN_LENGTH && V.distance(a, b) < MIN_LENGTH) return []
+  // kollinear: der Bogen entartet zur Strecke - das ist eine gueltige Antwort
   const plane = P.fromPoints(a, b, c)
   if (!plane) return [{ ...a }, { ...c }]
   const ab = V.sub(b, a)
@@ -124,9 +162,10 @@ export function buildArcBulge(
   normal: Vec3Like,
   segments: number,
 ): Vec3Like[] {
+  if (!finite(bulge, segments) || !finitePoints(start, end, normal)) return []
   const chord = V.sub(end, start)
   const chordLen = V.length(chord)
-  if (chordLen < MIN_LENGTH) return [{ ...start }, { ...end }]
+  if (chordLen < MIN_LENGTH) return []
   const n = V.normalizeOr(normal, V.AXIS_Z)
   const side = V.normalize(V.cross(n, chord))
   const mid = V.midpoint(start, end)
@@ -142,6 +181,8 @@ export function buildRectangle(
   width: number,
   height: number,
 ): Vec3Like[] {
+  if (!finite(width, height) || !finitePoints(origin, xAxis, yAxis)) return []
+  if (Math.abs(width) < MIN_LENGTH || Math.abs(height) < MIN_LENGTH) return []
   const x = V.normalizeOr(xAxis, V.AXIS_X)
   const y = V.normalizeOr(yAxis, V.AXIS_Y)
   return [
@@ -159,6 +200,7 @@ export function buildBezier(
   p3: Vec3Like,
   segments: number,
 ): Vec3Like[] {
+  if (!finite(segments) || !finitePoints(p0, p1, p2, p3)) return []
   const count = Math.max(1, Math.floor(segments))
   const out: Vec3Like[] = []
   for (let i = 0; i <= count; i++) {

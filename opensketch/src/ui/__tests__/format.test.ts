@@ -94,19 +94,29 @@ describe('Einheiten-Wrapper', () => {
   })
 
   it('liefert eine metrische Naeherung, wenn die Bibliothek wirft', () => {
+    // `lengthUnit` wirft beim Lesen - hier greift der try/catch.
     expect(fmtLength(2, THROWS)).toBe('2.000 m')
-    expect(fmtArea(12, THROWS)).toBe('12.00 m²')
-    expect(fmtVolume(24, THROWS)).toBe('24.000 m³')
-    expect(fmtAngle(Math.PI, THROWS)).toMatch(/^180/)
   })
 
-  it('zeigt niemals "NaN", auch wenn die Bibliothek es liefert', () => {
-    // Unbekannte Einheitennamen werfen nicht, sie ergeben "NaN". Genau das
-    // stand vorher ungeprueft in der Entitaetsinfo.
-    expect(fmtLength(2, GARBAGE)).toBe('2.000 m')
-    expect(fmtArea(12, GARBAGE)).toBe('12.00 m²')
-    expect(fmtVolume(24, GARBAGE)).toBe('24.000 m³')
-    expect(fmtAngle(Math.PI, GARBAGE)).toMatch(/^180/)
+  it('zeigt niemals "NaN", egal was die Einheiteneinstellung enthaelt', () => {
+    // Unbekannte Einheitennamen werfen nicht. Seit der Rueckfall in
+    // `shared/units.ts` sitzt, faengt die Bibliothek sie selbst ab; die
+    // Pruefung hier bleibt als zweite Verteidigungslinie stehen, weil die
+    // Anzeigeschicht sich auf keine fremde Zusicherung verlassen darf.
+    for (const units of [THROWS, GARBAGE]) {
+      expect(fmtLength(2, units)).toMatch(/^2\b/)
+      expect(fmtArea(12, units)).toMatch(/^12\b/)
+      expect(fmtVolume(24, units)).toMatch(/^24\b/)
+      expect(fmtAngle(Math.PI, units)).toMatch(/^180\b/)
+      for (const text of [
+        fmtLength(2, units),
+        fmtArea(12, units),
+        fmtVolume(24, units),
+        fmtAngle(Math.PI, units),
+      ]) {
+        expect(text).not.toMatch(/NaN|undefined|Infinity/)
+      }
+    }
   })
 
   it('macht aus einer unbrauchbaren Zahl einen Strich', () => {

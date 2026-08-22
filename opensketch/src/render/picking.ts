@@ -378,30 +378,29 @@ export class Picker {
         const kernelHits = geom
           ? kernelRaycast(geom, localRay, localTolerance, geometryKinds, options?.ignore, options?.includeHidden === true)
           : null
-        // NICHT ENTFERNEN - der Rueckfall ist kein toter Code.
+        // NICHT ENTFERNEN - der Rueckfall ist kein toter Code, aber auch kein
+        // Ersatz fuer den Kernel.
         //
-        // Es gibt zwei Wege zur selben Antwort, und sie muessen dieselbe
-        // Antwort geben:
+        // MASSGEBLICH ist `core.raycast` (core/query/raycast.ts). Der
+        // Puffer-Raycast unten ist reine Absicherung fuer den Fall, dass der
+        // Kernel gar nichts liefert - etwa weil eine Definition noch nicht im
+        // raeumlichen Index steht.
         //
-        //  - Der Kernel (`core.raycast`, siehe core/query/raycast.ts) prueft
-        //    Flaechen EXAKT gegen die Triangulierung. `tolerance` gilt dort nur
-        //    fuer Kanten (Kapseltest) und Vertices (Kugeltest), NICHT fuer
-        //    Flaechen. Das ist so dokumentiert und gewollt.
-        //  - Der Puffer-Raycast unten arbeitet auf den Renderdreiecken und ist
-        //    am Rand toleranter.
+        // Frueher wichen beide Pfade am Flaechenrand voneinander ab: ein Klick
+        // genau auf eine Flaechenkante weicht durch die Rundung von
+        // `worldToScreen`/`screenToRay` um ~1e-14 nach aussen ab, der Kernel
+        // lieferte dann 'none' und der Puffer 'face'. Die Ursache lag NICHT im
+        // Dreieckstest - den teilen sich beide - sondern in der
+        // Kandidatensuche der BVH: der Kantenpfad weitete die Suchbox um
+        // `max(tolerance, POINT_TOL)` auf, der Flaechenpfad um 0, und
+        // `faceTriangles()` las aus dem Float32-Puffer, waehrend die
+        // BVH-Boxen float64 fuehrten (bei Koordinate 1234,5678 sind das 0,05 mm
+        // Versatz, das Fuenffache von POINT_TOL). Der Kernel-Entwickler hat
+        // beides behoben; abgesichert in `__tests__/kernelRaycast.test.ts`.
         //
-        // Klickt jemand genau auf eine Flaechenkante, weicht der Strahl schon
-        // durch die Rundung von `worldToScreen`/`screenToRay` um ~1e-14 nach
-        // aussen ab. Der Kernel liefert dann KEINEN Flaechentreffer, der Puffer
-        // schon. Sichtbar wurde das bei `pick(..., { kinds: ['face'] })`: mit
-        // Kernel kam 'none', ohne Kernel 'face' - also ein Werkzeug wie der
-        // Farbeimer, das am Flaechenrand scheinbar zufaellig nicht greift.
-        //
-        // Bei leerem Kernel-Ergebnis wird deshalb der Puffer nachgeschlagen.
-        // Das kostet nur dort, wo die Huelle bereits getroffen war und trotzdem
-        // nichts gefunden wurde. Ob `tolerance` im Kernel auch fuer Flaechen
-        // gelten soll, entscheiden Lead und Kernel-Entwickler; bis dahin (und
-        // danach) haelt dieser Rueckfall beide Pfade deckungsgleich.
+        // Absichtlich unveraendert: `tolerance` weitet Flaechen nicht auf. Ein
+        // Klick 5 cm neben der Flaeche liefert bei 10 cm Toleranz weiterhin
+        // eine Kante, aber keine Flaeche.
         const hits =
           kernelHits && kernelHits.length > 0
             ? kernelHits

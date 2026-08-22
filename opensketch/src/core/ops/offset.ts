@@ -181,6 +181,8 @@ export function offsetFaceMut(
 ): void {
   const face = geom.faces[faceId]
   if (!face) return
+  // NaN faellt durch `Math.abs(...) <= POINT_TOL` hindurch
+  if (!isFiniteNumber(distance)) return
   if (Math.abs(distance) <= POINT_TOL) return
   const pts3 = loopPoints(geom, face.outer)
   if (pts3.length < 3) return
@@ -204,6 +206,7 @@ export function offsetEdgesMut(
   distance: number,
   acc: ChangeAcc,
 ): void {
+  if (!isFiniteNumber(distance)) return
   if (Math.abs(distance) <= POINT_TOL) return
   const path = orderEdgePath(geom, edgeIds)
   if (!path || path.length === 0) return

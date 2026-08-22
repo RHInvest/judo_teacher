@@ -223,6 +223,16 @@ export function MenuBar(props: MenuBarProps) {
         { label: 'Achsen', checked: Boolean(style?.showAxes), run: () => patchStyle({ showAxes: !style?.showAxes }) },
         { label: 'Raster', checked: Boolean(style?.showGrid), run: () => patchStyle({ showGrid: !style?.showGrid }) },
         {
+          /*
+           * Bewusst getrennt von "Verdeckte Geometrie": Hilfslinien aus dem
+           * Massband und dem Winkelmesser will man ausblenden, ohne dabei
+           * versteckte Geometrie einzublenden.
+           */
+          label: 'Hilfslinien',
+          checked: Boolean(style?.showGuides),
+          run: () => patchStyle({ showGuides: !style?.showGuides }),
+        },
+        {
           label: 'Verdeckte Geometrie',
           checked: Boolean(style?.showHiddenGeometry),
           run: () => patchStyle({ showHiddenGeometry: !style?.showHiddenGeometry }),
@@ -370,7 +380,7 @@ export function MenuBar(props: MenuBarProps) {
             className={clsx(
               'h-6 rounded px-2 text-[12px] transition-colors',
               open === menu.id ? clsx(skin.surface, skin.text) : clsx(skin.muted, skin.hover),
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-400',
+              skin.ring,
             )}
           >
             {menu.label}

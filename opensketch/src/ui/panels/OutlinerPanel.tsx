@@ -167,7 +167,7 @@ export function OutlinerPanel() {
                   'group flex h-7 cursor-default items-center gap-1 rounded pr-1',
                   selected ? skin.selected : skin.hover,
                   inPath && !selected && 'text-accent-400',
-                  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-400',
+                  skin.ring,
                 )}
                 style={{ paddingLeft: 2 + node.depth * 12 }}
               >

@@ -404,6 +404,15 @@ export interface StyleSettings {
   showGrid: boolean
   gridSpacing: number
   showHiddenGeometry: boolean
+  /**
+   * Sichtbarkeit von Hilfslinien und Hilfspunkten (Massband, Winkelmesser).
+   *
+   * Bewusst ein eigenes Feld und NICHT an `showHiddenGeometry` gehaengt:
+   * versteckte Geometrie und Konstruktionshilfen sind verschiedene Dinge, und
+   * SketchUp trennt sie ebenfalls (Ansicht > Hilfslinien). Man will die
+   * Hilfslinien ausblenden, ohne die versteckte Geometrie einzublenden.
+   */
+  showGuides: boolean
   showSectionPlanes: boolean
   showSectionCuts: boolean
   sectionCutFill: string

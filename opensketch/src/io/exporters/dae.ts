@@ -158,8 +158,11 @@ function geometriesBlock(
 
     for (const batch of batches) {
       if (batch.indices.length < 3) continue
-      const symbol = batch.material ? materialSid.get(batch.material) ?? 'standard' : 'standard'
-      out.push(`        <triangles count="${Math.floor(batch.indices.length / 3)}" material="${symbol}">`)
+      // Ohne Material kein `material`-Attribut - ein Symbol, das keine
+      // <instance_material> bindet, laesst Importer ins Leere greifen.
+      const symbol = batch.material ? materialSid.get(batch.material) : undefined
+      const bind = symbol ? ` material="${symbol}"` : ''
+      out.push(`        <triangles count="${Math.floor(batch.indices.length / 3)}"${bind}>`)
       out.push(`          <input semantic="VERTEX" source="#${gid}-vertices" offset="0"/>`)
       out.push(`          <input semantic="NORMAL" source="#${gid}-normals" offset="1"/>`)
       if (uvs.length > 0) out.push(`          <input semantic="TEXCOORD" source="#${gid}-uv" offset="2" set="0"/>`)
@@ -207,20 +210,27 @@ function sceneBlock(
     }
     const geometry = geometryOf.get(node.definitionId)
     if (geometry) {
-      out.push(`${indent}  <instance_geometry url="#${geometry.id}">`)
       const symbols = new Set<string>()
       for (const prim of geometry.primitives) {
-        symbols.add(prim.materialId ? materialSid.get(prim.materialId) ?? 'standard' : 'standard')
+        const symbol = prim.materialId ? materialSid.get(prim.materialId) : undefined
+        if (symbol) symbols.add(symbol)
       }
-      out.push(`${indent}    <bind_material>`)
-      out.push(`${indent}      <technique_common>`)
-      for (const symbol of symbols) {
-        if (symbol === 'standard') continue
-        out.push(`${indent}        <instance_material symbol="${symbol}" target="#${symbol}"/>`)
+      if (symbols.size === 0) {
+        // Ohne Material kein <bind_material>: das Schema verlangt in
+        // <technique_common> mindestens ein <instance_material>, ein leerer
+        // Block macht die Datei ungueltig.
+        out.push(`${indent}  <instance_geometry url="#${geometry.id}"/>`)
+      } else {
+        out.push(`${indent}  <instance_geometry url="#${geometry.id}">`)
+        out.push(`${indent}    <bind_material>`)
+        out.push(`${indent}      <technique_common>`)
+        for (const symbol of symbols) {
+          out.push(`${indent}        <instance_material symbol="${symbol}" target="#${symbol}"/>`)
+        }
+        out.push(`${indent}      </technique_common>`)
+        out.push(`${indent}    </bind_material>`)
+        out.push(`${indent}  </instance_geometry>`)
       }
-      out.push(`${indent}      </technique_common>`)
-      out.push(`${indent}    </bind_material>`)
-      out.push(`${indent}  </instance_geometry>`)
     }
     for (const child of node.children) walk(child, `${indent}  `, false)
     out.push(`${indent}</node>`)

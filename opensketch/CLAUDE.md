@@ -81,6 +81,27 @@ die Dreieckszahl der Triangulierung unter der Beschriftung „Flächen".
 liess „2" im Massfeld zu einer unsichtbaren 2-mm-Extrusion werden. Eine
 Voreinstellung, die den ersten Versuch scheitern lässt, ist falsch gewählt.
 
+**Der Kern erfindet keine Werte.** Kann eine Operation oder ein Generator die
+Anfrage nicht sinnvoll beantworten, liefert er ein leeres Ergebnis — niemals
+eine plausibel aussehende Ersatzantwort. `buildCircle` mit Radius 0 gab
+24 identische Punkte zurück, `buildPolygon` mit 2 Seiten ein Dreieck: Antworten,
+die wie Erfolg aussehen und keiner Schicht darüber erlauben, dem Nutzer zu
+sagen, dass nichts entstanden ist. Das ist die Fortsetzung von „Kein stilles
+Scheitern" nach unten.
+
+**NaN kommt durch jede Toleranzprüfung.** Jeder Vergleich mit NaN ist falsch,
+also besteht NaN jede Prüfung der Form „ist der Betrag kleiner als die
+Toleranz?". Ein einziger NaN-Vertex macht die Hüllbox NaN, damit den
+räumlichen Index, damit jeden Strahltest, und Volumen wird NaN — für den
+Nutzer sieht das aus, als sei die Anwendung kaputt. Entartungsprüfungen
+fragen deshalb **zuerst** auf Endlichkeit, dann auf Kleinheit.
+
+**Zwei Wege zur selben Antwort müssen dieselbe Antwort geben.** Gefunden am
+Picking: Kernel und Renderer benutzten denselben Dreieckstest, aber der Kernel
+weitete die Kandidatensuche für Kanten um eine Toleranz auf und für Flächen um
+null. Wo zwei Pfade existieren, gehört ein Test dazu, der sie gegeneinander
+prüft — jeder für sich war grün.
+
 ## Dateieigentum
 
 Siehe `ARCHITECTURE.md`, Abschnitt 4. Kurz: `src/shared/**`, `src/core/math/**`,

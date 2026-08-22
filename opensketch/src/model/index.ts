@@ -136,12 +136,13 @@ export {
   OSK_VERSION,
   deserializeDocument,
   documentFromRaw,
+  documentRepairOf,
   normalizeDocument,
   normalizeGeometry,
   repairGeometryReferences,
   serializeDocument,
 } from './serialize'
-export type { OskFile } from './serialize'
+export type { DocumentRepair, OskFile } from './serialize'
 
 /* ------------------------------------------------------------------ */
 /* Persistenz - erweiterte API (Slots, Autosave, Verlauf)              */

@@ -47,8 +47,23 @@ export interface Skin {
   button: string
   /** Primaerknopf */
   buttonPrimary: string
-  /** Fokusring */
+  /**
+   * Fokusring fuer jedes bedienbare Element.
+   *
+   * Enthaelt bewusst auch `focus-visible:outline-none`: sonst zeichnet der
+   * Browser seinen eigenen Umriss zusaetzlich zum Ring, und die Anwendung
+   * haette zwei verschiedene Fokusdarstellungen nebeneinander - je nachdem,
+   * ob eine Komponente dieses Token benutzt oder ihren Ring selbst schreibt.
+   * Wer hier etwas entfernt, muss den Ersatz mitliefern: ein Element ohne
+   * sichtbaren Fokus ist mit der Tastatur nicht bedienbar.
+   */
   ring: string
+  /**
+   * Fokusring fuer ein sichtbares Ersatzelement, dessen echtes Eingabefeld
+   * unsichtbar darueber liegt (Kontrollkaestchen, Schalter). Der Fokus sitzt
+   * dort auf dem `peer`, nicht auf dem gezeichneten Kaestchen.
+   */
+  ringPeer: string
 }
 
 export const DARK: Skin = {
@@ -72,7 +87,8 @@ export const DARK: Skin = {
   iconBtnActive: 'bg-accent-600 text-white hover:bg-accent-600',
   button: 'bg-panel-700 text-panel-100 hover:bg-panel-600 border-panel-600',
   buttonPrimary: 'bg-accent-500 text-white hover:bg-accent-400 border-accent-500',
-  ring: 'focus-visible:ring-1 focus-visible:ring-accent-400 focus-visible:ring-offset-0',
+  ring: 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-400 focus-visible:ring-offset-0',
+  ringPeer: 'peer-focus-visible:ring-1 peer-focus-visible:ring-accent-400',
 }
 
 export const LIGHT: Skin = {
@@ -96,7 +112,8 @@ export const LIGHT: Skin = {
   iconBtnActive: 'bg-accent-500 text-white hover:bg-accent-500',
   button: 'bg-panel-200 text-panel-800 hover:bg-panel-300 border-panel-300',
   buttonPrimary: 'bg-accent-500 text-white hover:bg-accent-400 border-accent-500',
-  ring: 'focus-visible:ring-1 focus-visible:ring-accent-500 focus-visible:ring-offset-0',
+  ring: 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent-500 focus-visible:ring-offset-0',
+  ringPeer: 'peer-focus-visible:ring-1 peer-focus-visible:ring-accent-500',
 }
 
 export const SkinContext = createContext<Skin>(DARK)

@@ -493,7 +493,9 @@ describe('Primitivgeneratoren mit Unsinn', () => {
     expect(buildArc(p(0, 0), z, 5, 0, 0, 12)).toEqual([])
     expect(buildArc(p(0, 0), z, 0, 0, Math.PI, 12)).toEqual([])
 
-    expect(buildArc3Points(p(0, 0), p(1, 0), p(2, 0), 12)).toEqual([])
+    // kollinear ist kein Unsinn: der Bogen entartet zur Strecke
+    expect(buildArc3Points(p(0, 0), p(1, 0), p(2, 0), 12)).toEqual([p(0, 0), p(2, 0)])
+    // drei identische Punkte sind auch keine Strecke
     expect(buildArc3Points(p(0, 0), p(0, 0), p(0, 0), 12)).toEqual([])
 
     expect(buildArcBulge(p(0, 0), p(0, 0), 1, z, 12)).toEqual([])
