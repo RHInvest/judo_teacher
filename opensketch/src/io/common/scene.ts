@@ -43,6 +43,13 @@ export interface TraverseOptions {
    * deshalb der Rueckkanal - ohne ihn verschwaenden Instanzen lautlos.
    */
   onSkip?: () => void
+  /**
+   * Wird fuer jede Flaeche gerufen, die `buildDefinitionMesh` nicht in
+   * Dreiecke zerlegen konnte (entartete Schleife, nicht ebener Ring, NaN).
+   * Ohne den Rueckkanal exportiert ein Modell mit 200 Flaechen 197, und
+   * niemand erfaehrt es.
+   */
+  onDegenerateFace?: () => void
 }
 
 /** true, wenn `onlyEntityIds` benutzbar ist. */
@@ -89,6 +96,23 @@ export interface FlatDocument {
   edges: FlatEdge[]
   /** Anzahl uebersprungener Instanzen (Rekursionsgrenze) */
   skipped: number
+  /** Flaechen, deren Ring unbrauchbar war (zu kurz oder nicht endlich) */
+  degenerateFaces: number
+  /** Kanten mit nicht endlichem Endpunkt */
+  degenerateEdges: number
+}
+
+/**
+ * NaN oder Infinity in einem einzigen Vertex reicht, um eine Exportdatei
+ * unbrauchbar zu machen: `num()` schreibt dafuer eine 0 - also einen erfundenen
+ * Wert an einer plausiblen Stelle -, und der STL-Binaerschreiber legt das NaN
+ * roh in die Datei. Beides sieht nach Erfolg aus. Deshalb fliegt nicht endliche
+ * Geometrie hier heraus und wird gezaehlt, statt weiter unten durch jede
+ * Toleranzpruefung zu rutschen.
+ */
+function ringIsFinite(ring: readonly Vec3Like[]): boolean {
+  for (const p of ring) if (!V.isFinite3(p)) return false
+  return true
 }
 
 /** Alle Flaechen und Kanten des Dokuments in Weltkoordinaten. */
@@ -96,7 +120,7 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
   const scale = opts.unitScale ?? 1
   const skipHidden = opts.skipHidden ?? true
   const selection = selectionOf(opts)
-  const out: FlatDocument = { faces: [], edges: [], skipped: 0 }
+  const out: FlatDocument = { faces: [], edges: [], skipped: 0, degenerateFaces: 0, degenerateEdges: 0 }
 
   const walk = (definitionId: Id, transform: Mat4Like, name: string, depth: number, path: Id[]): void => {
     if (depth > MAX_DEPTH) {
@@ -114,11 +138,24 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
       for (const face of Object.values(geom.faces)) {
         if (skipHidden && face.hidden) continue
         const outer = faceRing(geom, face.id).map((p) => transformScaled(p, transform, scale))
-        if (outer.length < 3) continue
-        const holes = faceHoleRings(geom, face.id).map((ring) =>
-          ring.map((p) => transformScaled(p, transform, scale)),
-        )
+        if (outer.length < 3 || !ringIsFinite(outer)) {
+          out.degenerateFaces++
+          continue
+        }
+        const holes = faceHoleRings(geom, face.id)
+          .map((ring) => ring.map((p) => transformScaled(p, transform, scale)))
+          // Ein unbrauchbares Loch macht die Flaeche nicht unbrauchbar - es
+          // faellt einzeln heraus, die Flaeche bleibt (dann ohne Loch).
+          .filter((ring) => {
+            if (ringIsFinite(ring)) return true
+            out.degenerateFaces++
+            return false
+          })
         const normal = P.polygonNormal(outer) ?? M.transformNormal(transform, face.normal)
+        if (!V.isFinite3(normal)) {
+          out.degenerateFaces++
+          continue
+        }
         out.faces.push({
           outer,
           holes,
@@ -135,9 +172,15 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
         const a = geom.vertices[edge.a]
         const b = geom.vertices[edge.b]
         if (!a || !b) continue
+        const pa = transformScaled(a.p, transform, scale)
+        const pb = transformScaled(b.p, transform, scale)
+        if (!V.isFinite3(pa) || !V.isFinite3(pb)) {
+          out.degenerateEdges++
+          continue
+        }
         out.edges.push({
-          a: transformScaled(a.p, transform, scale),
-          b: transformScaled(b.p, transform, scale),
+          a: pa,
+          b: pb,
           materialId: edge.materialId,
           groupName: name,
           soft: edge.soft,
@@ -277,18 +320,35 @@ export function buildDefinitionMesh(
       prim = { materialId: face.frontMaterialId, positions: [], normals: [], uvs: [], indices: [] }
       byMaterial.set(key, prim)
     }
-    appendFace(prim, def.geometry, face, doc.materials[face.frontMaterialId ?? ''], scale)
+    appendFace(prim, def.geometry, face, doc.materials[face.frontMaterialId ?? ''], scale, opts.onDegenerateFace)
   }
   return [...byMaterial.values()].filter((p) => p.indices.length > 0)
 }
 
-function appendFace(prim: MeshPrimitive, geom: Geometry, face: Face, material: Material | undefined, scale: number): void {
+function appendFace(
+  prim: MeshPrimitive,
+  geom: Geometry,
+  face: Face,
+  material: Material | undefined,
+  scale: number,
+  onDegenerate?: () => void,
+): void {
   const outer = faceRing(geom, face.id)
-  if (outer.length < 3) return
-  const holes = faceHoleRings(geom, face.id)
+  if (outer.length < 3 || !ringIsFinite(outer)) {
+    onDegenerate?.()
+    return
+  }
+  const holes = faceHoleRings(geom, face.id).filter(ringIsFinite)
   const normal = P.polygonNormal(outer) ?? face.normal
+  if (!V.isFinite3(normal)) {
+    onDegenerate?.()
+    return
+  }
   const tris = triangulatePolygon3({ outer, holes, normal })
-  if (tris.length === 0) return
+  if (tris.length === 0) {
+    onDegenerate?.()
+    return
+  }
 
   const all = [...outer, ...holes.flat()]
   const base = prim.positions.length / 3

@@ -128,7 +128,10 @@ export class ProtractorTool extends BaseTool {
   onValueEntry(text: string): boolean {
     if (this.phase !== 'angle' || !this.vertex || !this.baseDir) return false
     const angle = parseAngleInput(text, this.units())
-    if (angle === null) return false
+    if (angle === null) {
+      this.notify(`Winkelmesser: „${text.trim()}" ist kein Winkel - z. B. „45" oder „0,5rad"`, 'warn')
+      return false
+    }
     this.angle = angle
     this.commit()
     return true

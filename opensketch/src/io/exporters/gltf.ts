@@ -15,6 +15,18 @@ import type { Id, Material, Mat4Like, SketchDocument } from '@/shared/types'
 import type { ExportOptions, ExportResult } from '../api-types'
 import { buildDefinitionMesh, buildSceneTree, definitionList, type MeshPrimitive, type SceneNode } from '../common/scene'
 import { binaryBlob, bytesToDataUrl, dataUrlToBytes, encodeBase64, hexToLinearRgb, sanitizeFilename, textBlob, utf8Bytes } from '../common/util'
+import {
+  WarningList,
+  backMaterialWarning,
+  degenerateFacesWarning,
+  emptyExportWarning,
+  facelessEdgesWarning,
+  skippedInstancesWarning,
+  textureUnreadableWarning,
+  texturesDisabledWarning,
+  treeLoss,
+  usedTextures,
+} from '../common/warnings'
 import { M, V } from '@/core/math'
 
 /* ------------------------------------------------------------------ */
@@ -160,6 +172,7 @@ class BinWriter {
 interface BuildResult {
   json: GltfDocument
   bin: Uint8Array
+  warnings: string[]
 }
 
 /** Z-oben -> Y-oben: Drehung um -90 Grad um die X-Achse. */
@@ -181,8 +194,11 @@ function buildGltf(doc: SketchDocument, opts: ExportOptions, embedBufferInBin: b
     buffers: [],
   }
 
+  const warnings = new WarningList()
+  let skipped = 0
   const root = buildSceneTree(doc, {
     onlyEntityIds: opts.selectionOnly ? opts.selectedEntityIds : undefined,
+    onSkip: () => skipped++,
   })
   const definitions = definitionList(doc, root)
 
@@ -190,17 +206,23 @@ function buildGltf(doc: SketchDocument, opts: ExportOptions, embedBufferInBin: b
   const materialIndex = new Map<Id, number>()
   const textureIndex = new Map<Id, number>()
   const usedMaterialIds = collectMaterialIds(doc, definitions.map((d) => d.id))
+  const materials: Material[] = []
 
   for (const id of usedMaterialIds) {
     const material = doc.materials[id]
     if (!material) continue
-    materialIndex.set(id, addMaterial(json, doc, material, textureIndex, bin, embedBufferInBin, opts))
+    materials.push(material)
+    materialIndex.set(id, addMaterial(json, doc, material, textureIndex, bin, embedBufferInBin, opts, warnings))
   }
 
   /* ---- Meshes je Definition ---- */
   const meshIndex = new Map<Id, number>()
+  let degenerateFaces = 0
   for (const definition of definitions) {
-    const primitives = buildDefinitionMesh(doc, definition.id, { unitScale: scale })
+    const primitives = buildDefinitionMesh(doc, definition.id, {
+      unitScale: scale,
+      onDegenerateFace: () => degenerateFaces++,
+    })
     if (primitives.length === 0) continue
     const gltfPrimitives: GltfPrimitive[] = []
     for (const prim of primitives) {
@@ -228,7 +250,27 @@ function buildGltf(doc: SketchDocument, opts: ExportOptions, embedBufferInBin: b
   )
   if (binBytes.length === 0 && !embedBufferInBin) json.buffers = []
 
-  return { json, bin: binBytes }
+  /* ---- Warnungen ---- */
+  const loss = treeLoss(doc, root)
+  if (json.meshes.length === 0) {
+    warnings.add(
+      emptyExportWarning(
+        'glTF',
+        opts.selectionOnly === true,
+        'glTF speichert hier nur Dreiecke — schliesse den Grundriss zu einer Fläche, bevor du als glTF exportierst.',
+      ),
+    )
+  } else {
+    warnings.add(facelessEdgesWarning(loss.facelessEdges, 'glTF'))
+  }
+  warnings.add(degenerateFacesWarning(degenerateFaces))
+  if (opts.embedTextures === false) {
+    warnings.add(texturesDisabledWarning(usedTextures(doc, materials).length))
+  }
+  warnings.add(backMaterialWarning(loss.backMaterialFaces, 'glTF'))
+  warnings.add(skippedInstancesWarning(skipped))
+
+  return { json, bin: binBytes, warnings: warnings.list() }
 }
 
 function collectMaterialIds(doc: SketchDocument, definitionIds: Id[]): Id[] {
@@ -251,6 +293,7 @@ function addMaterial(
   bin: BinWriter,
   embedInBin: boolean,
   opts: ExportOptions,
+  warnings: WarningList,
 ): number {
   const [r, g, b] = hexToLinearRgb(material.color)
   const gltfMaterial: GltfMaterial = {
@@ -272,6 +315,9 @@ function addMaterial(
       textureIndex.set(texture.id, index)
     }
     if (index >= 0) gltfMaterial.pbrMetallicRoughness.baseColorTexture = { index }
+    // `addTexture` liefert -1, wenn die Data-URL unlesbar ist. Bisher fiel
+    // der Export dann stillschweigend auf die reine Farbe zurueck.
+    else warnings.add(textureUnreadableWarning(texture.name))
   }
 
   const at = json.materials?.length ?? 0
@@ -434,18 +480,20 @@ function clamp01(v: number): number {
 /* ------------------------------------------------------------------ */
 
 export function exportGltf(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
-  const { json } = buildGltf(doc, opts, false)
+  const { json, warnings } = buildGltf(doc, opts, false)
   return {
     blob: textBlob(JSON.stringify(json, null, 2), 'model/gltf+json'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.gltf`,
+    warnings,
   }
 }
 
 export function exportGlb(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
-  const { json, bin } = buildGltf(doc, opts, true)
+  const { json, bin, warnings } = buildGltf(doc, opts, true)
   return {
     blob: binaryBlob(packGlb(json, bin), 'model/gltf-binary'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.glb`,
+    warnings,
   }
 }
 

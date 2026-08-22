@@ -13,12 +13,25 @@ import type { Id, Material, Mat4Like, SketchDocument } from '@/shared/types'
 import type { ExportOptions, ExportResult } from '../api-types'
 import { buildDefinitionMesh, buildSceneTree, definitionList, type MeshPrimitive, type SceneNode } from '../common/scene'
 import { escapeXml, hexToRgb01, num, sanitizeFilename, textBlob } from '../common/util'
+import {
+  WarningList,
+  backMaterialWarning,
+  daeTexturesWarning,
+  degenerateFacesWarning,
+  emptyExportWarning,
+  facelessEdgesWarning,
+  skippedInstancesWarning,
+  treeLoss,
+  usedTextures,
+} from '../common/warnings'
 import { M } from '@/core/math'
 
 export function exportDae(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
   const scale = opts.unitScale ?? 1
+  let skipped = 0
   const root = buildSceneTree(doc, {
     onlyEntityIds: opts.selectionOnly ? opts.selectedEntityIds : undefined,
+    onSkip: () => skipped++,
   })
   const definitions = definitionList(doc, root)
 
@@ -37,8 +50,12 @@ export function exportDae(doc: SketchDocument, opts: ExportOptions = {}): Export
 
   /* ---- Geometrien ---- */
   const geometryOf = new Map<Id, { id: string; primitives: MeshPrimitive[] }>()
+  let degenerateFaces = 0
   definitions.forEach((definition, i) => {
-    const primitives = buildDefinitionMesh(doc, definition.id, { unitScale: scale })
+    const primitives = buildDefinitionMesh(doc, definition.id, {
+      unitScale: scale,
+      onDegenerateFace: () => degenerateFaces++,
+    })
     if (primitives.length === 0) return
     geometryOf.set(definition.id, { id: `geometry_${i}`, primitives })
   })
@@ -57,9 +74,29 @@ export function exportDae(doc: SketchDocument, opts: ExportOptions = {}): Export
   xml.push('</COLLADA>')
   xml.push('')
 
+  /* ---- Warnungen ---- */
+  const warnings = new WarningList()
+  const loss = treeLoss(doc, root)
+  if (geometryOf.size === 0) {
+    warnings.add(
+      emptyExportWarning(
+        'COLLADA',
+        opts.selectionOnly === true,
+        'COLLADA speichert hier nur Dreiecke — schliesse den Grundriss zu einer Fläche, bevor du als DAE exportierst.',
+      ),
+    )
+  } else {
+    warnings.add(facelessEdgesWarning(loss.facelessEdges, 'COLLADA'))
+  }
+  warnings.add(degenerateFacesWarning(degenerateFaces))
+  warnings.add(daeTexturesWarning(usedTextures(doc, materials).length))
+  warnings.add(backMaterialWarning(loss.backMaterialFaces, 'COLLADA'))
+  warnings.add(skippedInstancesWarning(skipped))
+
   return {
     blob: textBlob(xml.join('\n'), 'model/vnd.collada+xml'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.dae`,
+    warnings: warnings.list(),
   }
 }
 

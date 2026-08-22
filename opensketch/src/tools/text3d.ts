@@ -34,11 +34,13 @@ import { newId } from '@/shared/ids'
 import { bus } from '@/shared/events'
 import type { AppEvents } from '@/shared/events'
 import { mapText3d, unsupportedText3dChars } from '@/shared/text3d'
+import { formatLength } from '@/shared/units'
 import { addFacePolygon, addPolyline } from '@/core'
 import { M, P, V } from '@/core/math'
 import { BaseTool } from './toolBase'
 import { COLORS } from './colors'
 import { layoutText3d } from './text3dFont'
+import { parseLengthInput } from './vcbInput'
 import type { Text3dLayout } from './text3dFont'
 
 export interface Text3dRequest {
@@ -100,6 +102,8 @@ export class Text3dTool extends BaseTool {
 
   protected onActivate(): void {
     this.reset()
+    // Sicherheitsnetz: nie zwei Abos auf denselben Auftrag.
+    this.onDeactivate()
     this.take(takePendingText3d())
     // Wird der Dialog bei laufendem Werkzeug erneut benutzt, kommt der
     // Auftrag direkt hier an - die Ablage bleibt dann leer.
@@ -139,6 +143,26 @@ export class Text3dTool extends BaseTool {
     this.origin = V.clone(inf.point)
     this.plane = inf.plane ?? this.workPlane(this.origin)
     this.commit()
+  }
+
+  /* ---------------- Massfeld ---------------- */
+
+  /**
+   * Die Versalhoehe laesst sich vor dem Absetzen noch aendern - dafuer muss
+   * niemand zurueck in den Dialog. Der Satz wird sofort neu gerechnet, die
+   * Vorschau zeigt die neue Groesse.
+   */
+  onValueEntry(text: string): boolean {
+    const request = this.request
+    if (!request) return false
+    const height = parseLengthInput(text, this.units())
+    if (height === null || !Number.isFinite(height) || height <= 0) {
+      this.notify(`3D-Text: „${text.trim()}" ist keine Höhe - z. B. „0,5 m" oder „50 cm"`, 'warn')
+      return false
+    }
+    this.take({ ...request, height })
+    this.requestRender()
+    return true
   }
 
   cancel(): void {
@@ -182,6 +206,7 @@ export class Text3dTool extends BaseTool {
     if (missing.length > 0) {
       this.notify(`3D-Text: ohne Entsprechung im Zeichensatz und ausgelassen: ${missing.join(' ')}`, 'warn')
     }
+    this.vcb('Höhe', formatLength(request.height, this.units(), { suffix: false }), 'Versalhöhe')
     this.status(this.hint, `„${mapText3d(request.text)}"`)
   }
 

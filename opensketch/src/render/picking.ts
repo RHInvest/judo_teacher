@@ -27,21 +27,26 @@ import * as core from '@/core'
 import { B, M, R, V, V2 } from '@/core/math'
 import type { Ray } from '@/core/math'
 import type {
+  DimensionEntity,
   Geometry,
   Id,
+  ImageEntity,
+  Mat4Like,
   PickHit,
   PickKind,
   PickOptions,
   Selection,
   SketchDocument,
+  TextEntity,
   Vec2Like,
   Vec3Like,
 } from '@/shared/types'
 import { emptySelection } from '@/shared/types'
+import { arcPoints, dimensionLayout, type LabelSource } from './annotations'
 import type { CameraController } from './camera'
 import type { DefinitionBuild, InstanceRecord, SceneSync } from './sceneSync'
 import type { RenderSnapshot } from './snapshot'
-import { warnOnce } from './util'
+import { attempt, warnOnce } from './util'
 
 export const DEFAULT_PICK_TOLERANCE = 8
 
@@ -337,9 +342,15 @@ function cross2(ax: number, ay: number, bx: number, by: number, px: number, py: 
 /* ------------------------------------------------------------------ */
 
 export class Picker {
+  /**
+   * `labels` ist optional: ohne Annotationsebene trifft man Bemassungen und
+   * Texte weiterhin ueber ihre Linien, nur nicht ueber die Beschriftung. Tests
+   * kommen so ohne die ganze Ebene aus.
+   */
   constructor(
     private readonly sync: SceneSync,
     private readonly camera: CameraController,
+    private readonly labels?: LabelSource,
   ) {}
 
   /* ---------------------------------------------------------------- */
@@ -420,7 +431,7 @@ export class Picker {
 
     if (best) return best
 
-    const entityHit = this.pickEntities(snapshot, worldRay, tolerancePx, options)
+    const entityHit = this.pickEntities(snapshot, worldRay, { x, y }, tolerancePx, options)
     if (entityHit) return entityHit
 
     if (!kinds || kinds.includes('ground')) {
@@ -469,10 +480,19 @@ export class Picker {
     }
   }
 
-  /** Hilfslinien, Hilfspunkte und Schnittebenen des aktiven Kontexts. */
+  /**
+   * Annotationen des aktiven Kontexts: Hilfslinien, Hilfspunkte, Bemassungen,
+   * Texte und Bilder.
+   *
+   * Alle Trefferzonen laufen ueber `worldTolerance()`, also ueber dieselbe
+   * Pixeltoleranz wie Kanten - sonst haenge die Bedienbarkeit an der Zoomstufe:
+   * eine Masslinie ist ein Strich, und ein fester Weltabstand waere weit
+   * herausgezoomt unerreichbar und nah dran viel zu grosszuegig.
+   */
   private pickEntities(
     snapshot: RenderSnapshot,
     ray: Ray,
+    screen: Vec2Like,
     tolerancePx: number,
     options?: PickOptions,
   ): PickHit | null {
@@ -487,50 +507,16 @@ export class Picker {
     if (!def) return null
 
     const skip = options?.ignore && options.ignore.length > 0 ? new Set(options.ignore) : null
+    const ownEntities = new Set<Id>(def.children ?? [])
     let best: PickHit | null = null
 
-    for (const childId of def.children ?? []) {
-      if (skip && skip.has(childId)) continue
-      const entity = doc.entities?.[childId]
-      if (!entity || entity.hidden) continue
-
-      let point: Vec3Like | null = null
-      let kind: PickKind = 'entity'
-
-      if (entity.type === 'guidePoint') {
-        point = M.transformPoint(contextRecord.worldTransform, entity.position)
-        kind = 'guide'
-      } else if (entity.type === 'guideLine') {
-        const origin = M.transformPoint(contextRecord.worldTransform, entity.origin)
-        const direction = V.normalizeOr(
-          M.transformDirection(contextRecord.worldTransform, entity.direction),
-          { x: 1, y: 0, z: 0 },
-        )
-        const span = Number.isFinite(entity.length) && entity.length ? entity.length : 1e4
-        const closest = R.rayToSegment(ray, V.addScaled(origin, direction, -span), V.addScaled(origin, direction, span))
-        const tolerance = this.worldTolerance(tolerancePx, closest.pointOnSegment)
-        if (closest.distance <= tolerance) {
-          point = closest.pointOnSegment
-          kind = 'guide'
-        }
-      } else if (entity.type === 'sectionPlane') {
-        point = null
-      }
-
-      if (!point) continue
-      if (kind === 'guide' && entity.type === 'guidePoint') {
-        const tolerance = this.worldTolerance(tolerancePx, point)
-        const along = V.dot(V.sub(point, ray.origin), ray.dir)
-        if (along < 0) continue
-        if (V.distance(V.addScaled(ray.origin, ray.dir, along), point) > tolerance) continue
-      }
-
+    const consider = (entityId: Id, point: Vec3Like, kind: PickKind): void => {
       const distance = V.distance(ray.origin, point)
-      if (best && best.distance <= distance) continue
+      if (best && best.distance <= distance) return
       const hit = emptyHit(point)
       hit.kind = kind
       hit.distance = distance
-      hit.id = entity.id
+      hit.id = entityId
       hit.definitionId = contextRecord.definitionId
       hit.instancePath = contextRecord.instancePath
       hit.worldTransform = contextRecord.worldTransform
@@ -539,6 +525,132 @@ export class Picker {
       best = hit
     }
 
+    for (const childId of def.children ?? []) {
+      if (skip && skip.has(childId)) continue
+      const entity = doc.entities?.[childId]
+      if (!entity || entity.hidden) continue
+      if (!snapshot.isTagVisible(entity.tagId)) continue
+
+      switch (entity.type) {
+        case 'guidePoint': {
+          if (snapshot.style.showGuides === false) break
+          const point = M.transformPoint(contextRecord.worldTransform, entity.position)
+          const tolerance = this.worldTolerance(tolerancePx, point)
+          const along = V.dot(V.sub(point, ray.origin), ray.dir)
+          if (along < 0) break
+          if (V.distance(V.addScaled(ray.origin, ray.dir, along), point) > tolerance) break
+          consider(entity.id, point, 'guide')
+          break
+        }
+        case 'guideLine': {
+          if (snapshot.style.showGuides === false) break
+          const origin = M.transformPoint(contextRecord.worldTransform, entity.origin)
+          const direction = V.normalizeOr(M.transformDirection(contextRecord.worldTransform, entity.direction), {
+            x: 1,
+            y: 0,
+            z: 0,
+          })
+          const span = Number.isFinite(entity.length) && entity.length ? entity.length : 1e4
+          const from = Number.isFinite(entity.length) && entity.length ? origin : V.addScaled(origin, direction, -span)
+          const closest = R.rayToSegment(ray, from, V.addScaled(origin, direction, span))
+          if (closest.distance <= this.worldTolerance(tolerancePx, closest.pointOnSegment)) {
+            consider(entity.id, closest.pointOnSegment, 'guide')
+          }
+          break
+        }
+        case 'dimension': {
+          const point = this.hitDimension(entity, contextRecord.worldTransform, ray, tolerancePx)
+          if (point) consider(entity.id, point, 'entity')
+          break
+        }
+        case 'text': {
+          const point = this.hitText(entity, contextRecord.worldTransform, ray, tolerancePx)
+          if (point) consider(entity.id, point, 'entity')
+          break
+        }
+        case 'image': {
+          // Wasserzeichen werden nicht gezeichnet, also auch nicht getroffen.
+          if (entity.usage === 'watermark') break
+          const point = hitImage(entity, contextRecord.worldTransform, ray)
+          if (point) consider(entity.id, point, 'entity')
+          break
+        }
+        default:
+          // Schnittebenen haben ihr eigenes Symbol und werden hier nicht gepickt.
+          break
+      }
+    }
+
+    // Der Text einer Bemassung ist oft das groesste sichtbare Element und das
+    // erste, worauf gezielt wird. Er liegt auf der 2D-Ebene, wird also im
+    // BILDSCHIRMRAUM geprueft - nicht mit dem Strahl.
+    const labelHit = this.hitLabel(ray, screen, skip, ownEntities)
+    if (labelHit) consider(labelHit.entityId, labelHit.point, 'entity')
+
+    return best
+  }
+
+  /** Treffer auf Masslinie, Bogen oder Hilfslinien einer Bemassung. */
+  private hitDimension(entity: DimensionEntity, transform: Mat4Like, ray: Ray, tolerancePx: number): Vec3Like | null {
+    const layout = dimensionLayout(entity, transform)
+    if (!layout) return null
+
+    const segments: [Vec3Like, Vec3Like][] = []
+    if (layout.arc && layout.center) {
+      let previous = layout.from
+      for (const point of arcPoints(layout.center, layout.arc.u, layout.arc.v, layout.arc.radius, layout.arc.angle)) {
+        segments.push([previous, point])
+        previous = point
+      }
+      segments.push([layout.center, layout.measured.a], [layout.center, layout.measured.b])
+    } else {
+      segments.push([layout.from, layout.to])
+      if (layout.kind === 'linear' && layout.offsetLength > 1e-9) {
+        segments.push([layout.measured.a, layout.from], [layout.measured.b, layout.to])
+      }
+    }
+
+    return closestSegmentHit(segments, ray, (p) => this.worldTolerance(tolerancePx, p))
+  }
+
+  /** Treffer auf Fuehrungslinie oder Ankerpunkt eines Texts. */
+  private hitText(entity: TextEntity, transform: Mat4Like, ray: Ray, tolerancePx: number): Vec3Like | null {
+    const position = M.transformPoint(transform, entity.position)
+    const anchor = M.transformPoint(transform, entity.anchor)
+    const segments: [Vec3Like, Vec3Like][] = []
+    if (entity.leader !== 'none' && V.distance(anchor, position) > 1e-9) segments.push([anchor, position])
+    // Auch ohne Fuehrungslinie muss der Textpunkt selbst treffbar sein.
+    segments.push([position, position])
+    return closestSegmentHit(segments, ray, (p) => this.worldTolerance(tolerancePx, p))
+  }
+
+  /**
+   * Treffer auf einen Annotationstext, im Bildschirmraum.
+   *
+   * Liefert null, solange keine Annotationsebene angeschlossen ist - dann
+   * bleibt es beim Treffer auf die Linien.
+   */
+  private hitLabel(
+    ray: Ray,
+    screen: Vec2Like,
+    skip: Set<Id> | null,
+    ownEntities: Set<Id>,
+  ): { entityId: Id; point: Vec3Like; distance: number } | null {
+    const source = this.labels
+    if (!source) return null
+
+    const boxes = attempt('annotations.labelBoxes', () => source.labelBoxes(this.camera), [])
+    let best: { entityId: Id; point: Vec3Like; distance: number } | null = null
+    for (const box of boxes) {
+      if (skip && skip.has(box.entityId)) continue
+      // Nur Texte des aktiven Kontexts - alles andere waehlt man ueber die
+      // Gruppe aus, genau wie bei der Geometrie.
+      if (!ownEntities.has(box.entityId)) continue
+      if (Math.abs(screen.x - box.x) > box.halfWidth || Math.abs(screen.y - box.y) > box.halfHeight) continue
+      const distance = V.distance(ray.origin, box.anchor)
+      if (best && best.distance <= distance) continue
+      best = { entityId: box.entityId, point: box.anchor, distance }
+    }
     return best
   }
 
@@ -777,6 +889,61 @@ function priorityBonus(kind: LocalHit['kind'], tolerance: number): number {
   if (kind === 'vertex') return tolerance * 4
   if (kind === 'edge') return tolerance * 2
   return 0
+}
+
+/**
+ * Naechster Treffer auf eine Liste von Weltstrecken, jeweils gegen die
+ * Pixeltoleranz an DIESER Stelle geprueft. Ein Paar identischer Punkte gilt als
+ * Punkttreffer.
+ */
+function closestSegmentHit(
+  segments: [Vec3Like, Vec3Like][],
+  ray: Ray,
+  toleranceAt: (p: Vec3Like) => number,
+): Vec3Like | null {
+  let best: Vec3Like | null = null
+  let bestDistance = Infinity
+  for (const [a, b] of segments) {
+    if (!V.isFinite3(a) || !V.isFinite3(b)) continue
+    const closest = R.rayToSegment(ray, a, b)
+    if (closest.distance > toleranceAt(closest.pointOnSegment)) continue
+    const along = V.distance(ray.origin, closest.pointOnSegment)
+    if (along >= bestDistance) continue
+    bestDistance = along
+    best = closest.pointOnSegment
+  }
+  return best
+}
+
+/**
+ * Treffer auf das Rechteck eines Bildes - echter Dreieckstest, damit die
+ * Trefferzone genau das Bild ist und nicht seine Huelle.
+ */
+function hitImage(entity: ImageEntity, transform: Mat4Like, ray: Ray): Vec3Like | null {
+  const width = Number.isFinite(entity.width) && entity.width > 0 ? entity.width : 1
+  const height = Number.isFinite(entity.height) && entity.height > 0 ? entity.height : 1
+  const local = Array.isArray(entity.transform) && entity.transform.length === 16 ? entity.transform : M.identity()
+  const world = M.multiply(transform, local)
+
+  const corners = [
+    M.transformPoint(world, { x: 0, y: 0, z: 0 }),
+    M.transformPoint(world, { x: width, y: 0, z: 0 }),
+    M.transformPoint(world, { x: width, y: height, z: 0 }),
+    M.transformPoint(world, { x: 0, y: height, z: 0 }),
+  ]
+  if (!corners.every(V.isFinite3)) return null
+
+  let best: { t: number; point: Vec3Like } | null = null
+  for (const [a, b, c] of [
+    [corners[0], corners[1], corners[2]],
+    [corners[0], corners[2], corners[3]],
+  ]) {
+    // Rueckseiten zaehlen mit: ein Bild ist beidseitig sichtbar.
+    const hit = R.intersectTriangle(ray, a, b, c, false)
+    if (!hit || hit.t < 0) continue
+    if (!best || hit.t < best.t) best = { t: hit.t, point: hit.point }
+  }
+  return best ? best.point : null
 }
 
 export function intersectGround(ray: Ray): Vec3Like | null {

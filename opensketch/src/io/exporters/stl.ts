@@ -14,6 +14,8 @@ import { binaryBlob, num, sanitizeFilename, textBlob } from '../common/util'
 import {
   STL_HINT,
   WarningList,
+  degenerateEdgesWarning,
+  degenerateFacesWarning,
   emptyExportWarning,
   facelessEdgesWarning,
   flatLoss,
@@ -31,7 +33,7 @@ export interface StlTriangle {
 
 /** Alle Dreiecke des Dokuments in Weltkoordinaten. */
 export function collectTriangles(doc: SketchDocument, opts: ExportOptions = {}): StlTriangle[] {
-  return trianglesOf(flattenFor(doc, opts))
+  return trianglesOf(flattenFor(doc, opts)).triangles
 }
 
 function flattenFor(doc: SketchDocument, opts: ExportOptions): FlatDocument {
@@ -41,9 +43,15 @@ function flattenFor(doc: SketchDocument, opts: ExportOptions): FlatDocument {
   })
 }
 
-function trianglesOf(flat: FlatDocument): StlTriangle[] {
+/**
+ * `degenerate` zaehlt Flaechen, die keinen einzigen brauchbaren Dreieckszug
+ * ergeben haben - sie fielen bisher lautlos aus der Schleife.
+ */
+function trianglesOf(flat: FlatDocument): { triangles: StlTriangle[]; degenerate: number } {
   const out: StlTriangle[] = []
+  let degenerate = 0
   for (const poly of flat.faces) {
+    const before = out.length
     for (const tri of triangulateFlatFace(poly)) {
       const raw = V.cross(V.sub(tri.b, tri.a), V.sub(tri.c, tri.a))
       const len = V.length(raw)
@@ -58,8 +66,9 @@ function trianglesOf(flat: FlatDocument): StlTriangle[] {
           : { normal: V.negate(normal), a: tri.a, b: tri.c, c: tri.b },
       )
     }
+    if (out.length === before) degenerate++
   }
-  return out
+  return { triangles: out, degenerate }
 }
 
 /* ------------------------------------------------------------------ */
@@ -68,12 +77,12 @@ function trianglesOf(flat: FlatDocument): StlTriangle[] {
 
 export function exportStlBinary(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
   const flat = flattenFor(doc, opts)
-  const triangles = trianglesOf(flat)
+  const { triangles, degenerate } = trianglesOf(flat)
   const bytes = writeStlBinary(triangles, `OpenSketch Studio - ${doc.meta.name}`)
   return {
     blob: binaryBlob(bytes, 'model/stl'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.stl`,
-    warnings: stlWarnings(doc, opts, flat, triangles.length),
+    warnings: stlWarnings(doc, opts, flat, triangles.length, degenerate),
   }
 }
 
@@ -114,12 +123,12 @@ export function writeStlBinary(triangles: readonly StlTriangle[], header: string
 
 export function exportStlAscii(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
   const flat = flattenFor(doc, opts)
-  const triangles = trianglesOf(flat)
+  const { triangles, degenerate } = trianglesOf(flat)
   const name = sanitizeFilename(opts.filename ?? doc.meta.name)
   return {
     blob: textBlob(writeStlAscii(triangles, name), 'model/stl'),
     filename: `${name}.stl`,
-    warnings: stlWarnings(doc, opts, flat, triangles.length),
+    warnings: stlWarnings(doc, opts, flat, triangles.length, degenerate),
   }
 }
 
@@ -152,6 +161,7 @@ function stlWarnings(
   opts: ExportOptions,
   flat: FlatDocument,
   triangleCount: number,
+  degenerateFaces: number,
 ): string[] {
   const warnings = new WarningList()
   const loss = flatLoss(flat)
@@ -161,6 +171,8 @@ function stlWarnings(
   } else {
     warnings.add(facelessEdgesWarning(loss.facelessEdges, 'STL'))
   }
+  warnings.add(degenerateFacesWarning(degenerateFaces + flat.degenerateFaces))
+  warnings.add(degenerateEdgesWarning(flat.degenerateEdges))
   warnings.add(stlMaterialsWarning(usedMaterials(doc, flat).length))
   warnings.add(skippedInstancesWarning(flat.skipped))
   return warnings.list()

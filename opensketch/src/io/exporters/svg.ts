@@ -12,8 +12,20 @@
 
 import type { SketchDocument, Vec3Like } from '@/shared/types'
 import type { ExportOptions, ExportResult, ExportView } from '../api-types'
-import { flattenDocument, type FacePolygon } from '../common/scene'
+import { flattenDocument, usedMaterials, type FacePolygon } from '../common/scene'
 import { escapeXml, num, sanitizeFilename, textBlob } from '../common/util'
+import {
+  WarningList,
+  degenerateEdgesWarning,
+  degenerateFacesWarning,
+  edgesDisabledWarning,
+  emptyExportWarning,
+  flatLoss,
+  skippedInstancesWarning,
+  svgProjectionWarning,
+  svgTexturesWarning,
+  usedTextures,
+} from '../common/warnings'
 import { V } from '@/core/math'
 
 /** Nutzbare Zeichenflaeche in Millimetern (A3 quer, 10 mm Rand). */
@@ -95,10 +107,23 @@ export function exportSvg(doc: SketchDocument, opts: ExportOptions = {}): Export
     fill: string
     opacity: number
   }
+  // Tiefenbereich in Blickrichtung: Er entscheidet, ob der Hinweis "das ist
+  // eine Projektion" ueberhaupt etwas aussagt. Bei einem flachen Grundriss
+  // in der Draufsicht geht nichts verloren, dort waere er nur Laerm.
+  let minDepth = Infinity
+  let maxDepth = -Infinity
+  const trackDepth = (p: Vec3Like): void => {
+    const d = depthOf(p)
+    if (!Number.isFinite(d)) return
+    if (d < minDepth) minDepth = d
+    if (d > maxDepth) maxDepth = d
+  }
+
   const faces: DrawFace[] = []
   for (const poly of flat.faces) {
     const points = poly.outer.map(to2)
     if (points.length < 3) continue
+    for (const p of poly.outer) trackDepth(p)
     const material = poly.frontMaterialId ? doc.materials[poly.frontMaterialId] : undefined
     faces.push({
       points,
@@ -115,6 +140,8 @@ export function exportSvg(doc: SketchDocument, opts: ExportOptions = {}): Export
   if (opts.includeEdges !== false) {
     for (const edge of flat.edges) {
       if (edge.soft) continue
+      trackDepth(edge.a)
+      trackDepth(edge.b)
       edges.push({ a: to2(edge.a), b: to2(edge.b) })
     }
   }
@@ -189,9 +216,36 @@ export function exportSvg(doc: SketchDocument, opts: ExportOptions = {}): Export
   out.push('</svg>')
   out.push('')
 
+  /* ---- Warnungen ---- */
+  const warnings = new WarningList()
+  const loss = flatLoss(flat)
+  if (faces.length === 0 && edges.length === 0) {
+    warnings.add(
+      emptyExportWarning(
+        'SVG-Zeichnung',
+        opts.selectionOnly === true,
+        opts.includeEdges === false
+          ? 'Zeichne Geometrie, oder schalte die Kanten wieder ein.'
+          : 'Zeichne Geometrie, bevor du eine Ansicht exportierst.',
+      ),
+    )
+  } else {
+    const depth = Number.isFinite(minDepth) ? maxDepth - minDepth : 0
+    // "Nicht triviale Tiefe": mehr als ein Prozent der Zeichnungsausdehnung.
+    if (depth > 1e-9 && depth > 0.01 * Math.max(widthM, heightM)) {
+      warnings.add(svgProjectionWarning(VIEW_LABEL[view]))
+    }
+    if (opts.includeEdges === false) warnings.add(edgesDisabledWarning(loss.facelessEdges, 'die Zeichnung'))
+    warnings.add(svgTexturesWarning(usedTextures(doc, usedMaterials(doc, flat)).length))
+  }
+  warnings.add(degenerateFacesWarning(flat.degenerateFaces))
+  warnings.add(degenerateEdgesWarning(flat.degenerateEdges))
+  warnings.add(skippedInstancesWarning(flat.skipped))
+
   return {
     blob: textBlob(out.join('\n'), 'image/svg+xml'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.svg`,
+    warnings: warnings.list(),
   }
 }
 

@@ -27,7 +27,6 @@ export type Stroke = readonly [number, number, number, number]
 /* Die Striche                                                         */
 /* ------------------------------------------------------------------ */
 
-/* eslint-disable prettier/prettier */
 export const TEXT3D_STROKES: Record<string, readonly Stroke[]> = {
   A: [[0, 0, 0.5, 1], [0.5, 1, 1, 0], [0.18, 0.34, 0.82, 0.34]],
   B: [[0, 0, 0, 1], [0, 1, 0.8, 1], [0.8, 1, 0.8, 0.55], [0, 0.55, 0.8, 0.55], [0.8, 0.55, 0.8, 0], [0, 0, 0.8, 0]],
@@ -103,7 +102,6 @@ export const TEXT3D_STROKES: Record<string, readonly Stroke[]> = {
   ],
   $: [[1, 0.88, 0, 0.88], [0, 0.88, 0, 0.52], [0, 0.52, 1, 0.52], [1, 0.52, 1, 0.16], [1, 0.16, 0, 0.16], [0.5, 1, 0.5, 0.04]],
 }
-/* eslint-enable prettier/prettier */
 
 /* ------------------------------------------------------------------ */
 /* Satz                                                                */

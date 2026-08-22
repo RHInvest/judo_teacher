@@ -20,7 +20,16 @@ export { OverlayRenderer, type OverlayHost } from './overlay'
 export { SceneSync, type DefinitionBuild, type InstanceRecord, type SceneStats, type FaceGroup } from './sceneSync'
 export { SelectionView } from './selection'
 export { SectionManager, toThreePlane, type ActiveSection } from './sections'
-export { AnnotationLayer, axisColor, type AnnotationHost } from './annotations'
+export {
+  AnnotationLayer,
+  axisColor,
+  dimensionLayout,
+  arcPoints,
+  type AnnotationHost,
+  type DimensionLayout,
+  type LabelBox,
+  type LabelSource,
+} from './annotations'
 export { Environment } from './styles'
 export { LightRig, type LightState } from './lights'
 export { MaterialCache, type FaceSide, type FaceMaterialOptions } from './materials'

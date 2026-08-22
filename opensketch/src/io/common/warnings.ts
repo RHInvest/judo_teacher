@@ -192,6 +192,33 @@ export function edgesDisabledWarning(count: number, format: string): string | nu
   )
 }
 
+/**
+ * Flaechen, die die Triangulierung nicht verwerten konnte. Bisher fielen sie
+ * lautlos aus der Schleife - entartete Eckpunkte, nicht ebene Ringe oder ein
+ * einzelner NaN-Vertex reichen dafuer.
+ */
+export function degenerateFacesWarning(count: number): string | null {
+  if (count <= 0) return null
+  const liess = count === 1 ? 'liess' : 'liessen'
+  const fehlt = count === 1 ? 'fehlt' : 'fehlen'
+  return (
+    `${plural(count, 'Fläche', 'Flächen')} ${liess} sich nicht in Dreiecke zerlegen und ${fehlt} ` +
+    `in der Datei — meist liegen die Eckpunkte zusammen oder nicht in einer Ebene. ` +
+    `Zeichne die betroffenen Flächen neu, wenn sie mit sollen.`
+  )
+}
+
+/** Kanten mit nicht endlichen Koordinaten - dieselbe Ursache, andere Entitaet. */
+export function degenerateEdgesWarning(count: number): string | null {
+  if (count <= 0) return null
+  const hat = count === 1 ? 'hat' : 'haben'
+  const fehlt = count === 1 ? 'fehlt' : 'fehlen'
+  return (
+    `${plural(count, 'Kante', 'Kanten')} ${hat} ungültige Koordinaten und ${fehlt} in der Datei. ` +
+    `Lösche die betroffenen Kanten und zeichne sie neu.`
+  )
+}
+
 /** Rueckseitenmaterialien in Formaten mit nur einem Material je Flaeche. */
 export function backMaterialWarning(count: number, format: string): string | null {
   if (count <= 0) return null

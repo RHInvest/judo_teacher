@@ -34,11 +34,26 @@ interface Rig {
   click(x: number, y: number, extra?: Partial<import('@/shared/types').PointerInfo>): void
 }
 
+/*
+ * Jeder Manager wird nach dem Test abgeraeumt.
+ *
+ * Grund: `text3d` haelt waehrend seiner Laufzeit ein Bus-Abo auf
+ * `text3d:create`. Bleibt ein Manager aus einem frueheren Test am Leben,
+ * fischt sein Werkzeug den Auftrag des naechsten Tests weg. In der Anwendung
+ * gibt es genau einen Manager; in den Tests muss er entsprechend enden.
+ */
+const managers: ToolManager[] = []
+
+afterEach(() => {
+  while (managers.length > 0) managers.pop()?.dispose()
+})
+
 function setup(tool: ToolId, geometry?: Geometry): Rig {
   const store = createFakeStore(geometry)
   const viewport = createFakeViewport()
   const inference = new InferenceEngine(store.handle, viewport.api)
   const manager = new ToolManager({ store: store.handle, viewport: viewport.api, inference })
+  managers.push(manager)
   manager.setTool(tool)
 
   const click = (x: number, y: number, extra: Partial<import('@/shared/types').PointerInfo> = {}): void => {
@@ -184,6 +199,32 @@ describe('Maßband', () => {
     expect(callsOf(rig.store, 'transformPrimitives')).toHaveLength(1)
   })
 
+  it('beginnt nach einer Messung eine neue, statt vom alten Punkt weiterzumessen', () => {
+    const rig = setup('tape')
+    rig.click(400, 300) // Start (0,0,0)
+    rig.click(600, 300) // Ende (2,0,0) - fertig gemessen
+
+    // Der naechste Klick ist ein neuer STARTpunkt, kein zweiter Endpunkt.
+    rig.click(400, 100) // (0,2,0)
+    rig.click(600, 100) // (2,2,0)
+
+    const guides = callsOf(rig.store, 'addEdge')
+    expect(guides).toHaveLength(2)
+    const [a, b] = guides[1].args as [Vec3Like, Vec3Like]
+    expect(a.y).toBeCloseTo(2)
+    expect(b.y).toBeCloseTo(2)
+    expect(rig.store.lastStatus()).toContain('2 m')
+  })
+
+  it('meldet ein unlesbares Zielmaß', () => {
+    const rig = setup('tape')
+    rig.click(400, 300)
+    rig.click(600, 300)
+    expect(rig.manager.handleValueEntry('viel')).toBe(false)
+    expect(rig.store.warnings().some((w) => w.includes('kein Zielmaß'))).toBe(true)
+    expect(callsOf(rig.store, 'openDialog')).toHaveLength(0)
+  })
+
   it('skaliert nicht, wenn das Zielmaß der Messung entspricht', () => {
     const rig = setup('tape', quadGeometry())
     rig.click(400, 300)
@@ -231,6 +272,22 @@ describe('Winkelmesser', () => {
     rig.click(600, 300) // zweiter Schenkel auf dem ersten
     expectAbgebrochenMitMeldung(rig.store)
     expect(rig.store.warnings()[0]).toContain('Winkel 0')
+  })
+
+  it('nimmt den Winkel aus dem Maßfeld und meldet unlesbare Eingaben', () => {
+    const rig = setup('protractor')
+    rig.click(400, 300)
+    rig.click(600, 300)
+    expect(rig.manager.handleValueEntry('schräg')).toBe(false)
+    expect(rig.store.warnings().some((w) => w.includes('kein Winkel'))).toBe(true)
+
+    expect(rig.manager.handleValueEntry('45')).toBe(true)
+    const guides = callsOf(rig.store, 'addEdge')
+    expect(guides).toHaveLength(1)
+    const [from, to] = guides[0].args as [Vec3Like, Vec3Like]
+    // 45 Grad um die blaue Achse aus der roten Richtung heraus.
+    expect(to.x - from.x).toBeCloseTo(to.y - from.y, 6)
+    expect(to.x - from.x).toBeGreaterThan(0)
   })
 
   it('sperrt die Messebene mit den Pfeiltasten', () => {
@@ -335,6 +392,19 @@ describe('Bemaßung', () => {
     expect(entity.center?.y).toBeCloseTo(0)
     // Start und Ende liegen sich auf dem Kreis gegenueber: Durchmesser 2.
     expect(Math.hypot(entity.end.x - entity.start.x, entity.end.y - entity.start.y)).toBeCloseTo(2)
+  })
+
+  it('übernimmt eine eigene Beschriftung aus dem Maßfeld', () => {
+    const rig = setup('dimension')
+    rig.click(400, 300)
+    rig.click(600, 300)
+    expect(rig.manager.handleValueEntry('Lichte Weite')).toBe(true)
+    rig.click(500, 200)
+
+    const entity = lastEntity<DimensionEntity>(rig.store)
+    expect(entity.text).toBe('Lichte Weite')
+    // Das gemessene Mass bleibt, was die Geometrie hergibt.
+    expect(Math.abs(entity.end.x - entity.start.x)).toBeCloseTo(2)
   })
 
   it('meldet zwei Punkte, die aufeinanderliegen', () => {
@@ -458,6 +528,25 @@ describe('3D-Text', () => {
     expect(rig.store.changedGeometry()).toBe(false)
     expect(rig.store.warnings().some((w) => w.includes('darstellbar'))).toBe(true)
     expect(rig.store.lastStatus()).toContain('darstellbar')
+  })
+
+  it('nimmt eine neue Höhe aus dem Maßfeld an', () => {
+    bus.emit('text3d:create', { text: 'L', height: 1, extrude: 0, filled: true, align: 'left' })
+    const rig = setup('text3d')
+    expect(rig.manager.handleValueEntry('2')).toBe(true)
+    rig.click(400, 300)
+
+    const definition = callsOf(rig.store, 'upsertDefinition')[0].args[0] as import('@/shared/types').Definition
+    const ys = Object.values(definition.geometry.vertices).map((v) => v.p.y)
+    // Versalhoehe 2 m: der hoechste Punkt liegt bei 2 m plus halber Strichstaerke.
+    expect(Math.max(...ys)).toBeGreaterThan(1.9)
+  })
+
+  it('meldet eine unlesbare Höhe', () => {
+    bus.emit('text3d:create', { text: 'L', height: 1, extrude: 0, filled: true, align: 'left' })
+    const rig = setup('text3d')
+    expect(rig.manager.handleValueEntry('hoch')).toBe(false)
+    expect(rig.store.warnings().some((w) => w.includes('keine Höhe'))).toBe(true)
   })
 
   it('öffnet den Dialog, wenn kein Auftrag vorliegt', () => {

@@ -10,6 +10,7 @@ import type { SketchDocument } from '@/shared/types'
 import { serializeDocument } from '@/model'
 import type { ExportFormat, ExportOptions, ExportResult } from '../api-types'
 import { sanitizeFilename, textBlob } from '../common/util'
+import { WarningList, selectionIgnoredWarning } from '../common/warnings'
 import { exportObj } from './obj'
 import { exportStlAscii, exportStlBinary } from './stl'
 import { exportGlb, exportGltf } from './gltf'
@@ -34,9 +35,17 @@ export { exportPng, pngFromDataUrl } from './png'
  * aber bei der naechsten Formatversion still falsch interpretiert.
  */
 export function exportOsk(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
+  const warnings = new WarningList()
+  // Das eigene Format ist verlustfrei - die einzige Abweichung von der
+  // Bestellung ist eine Auswahl, die es nicht auswerten kann.
+  warnings.addIf(
+    opts.selectionOnly === true,
+    selectionIgnoredWarning('Das OpenSketch-Format speichert immer das vollständige Dokument.'),
+  )
   return {
     blob: textBlob(serializeDocument(doc, { pretty: true }), 'application/json'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.osk`,
+    warnings: warnings.list(),
   }
 }
 
@@ -48,23 +57,32 @@ export function exportAs(
   return new Promise((resolve) => {
     switch (format) {
       case 'osk':
-        return resolve(exportOsk(doc, opts))
+        resolve(exportOsk(doc, opts))
+        return
       case 'obj':
-        return resolve(exportObj(doc, opts))
+        resolve(exportObj(doc, opts))
+        return
       case 'stl':
-        return resolve(exportStlBinary(doc, opts))
+        resolve(exportStlBinary(doc, opts))
+        return
       case 'stl-ascii':
-        return resolve(exportStlAscii(doc, opts))
+        resolve(exportStlAscii(doc, opts))
+        return
       case 'gltf':
-        return resolve(exportGltf(doc, opts))
+        resolve(exportGltf(doc, opts))
+        return
       case 'glb':
-        return resolve(exportGlb(doc, opts))
+        resolve(exportGlb(doc, opts))
+        return
       case 'dae':
-        return resolve(exportDae(doc, opts))
+        resolve(exportDae(doc, opts))
+        return
       case 'svg':
-        return resolve(exportSvg(doc, opts))
+        resolve(exportSvg(doc, opts))
+        return
       case 'png':
-        return resolve(exportPng(doc, opts))
+        resolve(exportPng(doc, opts))
+        return
       default:
         throw new Error(`Unbekanntes Exportformat: ${String(format)}`)
     }

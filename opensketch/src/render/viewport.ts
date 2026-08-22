@@ -136,7 +136,9 @@ export class Viewport implements ViewportApi {
     this.sync = new SceneSync(this.materials, this.edgeMaterials)
     this.annotations = new AnnotationLayer(() => this.requestRender())
     this.selectionView = new SelectionView(this.sync)
-    this.picker = new Picker(this.sync, this.cameraController)
+    // Die Annotationsebene kennt die Textrechtecke auf dem Bildschirm - ohne
+    // sie traefe ein Klick auf "2,40 m" die Flaeche dahinter statt die Bemassung.
+    this.picker = new Picker(this.sync, this.cameraController, this.annotations)
 
     this.overlay = new OverlayRenderer({
       worldToScreen: (p) => this.cameraController.worldToScreen(p),

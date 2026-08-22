@@ -108,9 +108,17 @@ export function cloneGeometry(g: Geometry): Geometry {
 }
 
 export function isGeometryEmpty(g: Geometry): boolean {
+  /*
+   * Die Schleifen brechen absichtlich beim ersten Schluessel ab - das ist der
+   * allokationsfreie Weg, "ist dieses Objekt leer?" zu beantworten.
+   * Object.keys() wuerde bei jeder Abfrage ein Array fuer moeglicherweise
+   * hunderttausend Primitive bauen, nur um dessen Laenge zu lesen.
+   */
+  /* eslint-disable no-unreachable-loop */
   for (const _ in g.vertices) return false
   for (const _ in g.edges) return false
   for (const _ in g.faces) return false
+  /* eslint-enable no-unreachable-loop */
   return true
 }
 

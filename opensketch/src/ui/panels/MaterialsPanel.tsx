@@ -48,7 +48,12 @@ export function MaterialsPanel() {
   const active = activeId ? doc?.materials?.[activeId] : undefined
   const activeTexture = active?.textureId ? doc?.textures?.[active.textureId] : null
 
-  const useMaterial = (material: Material, fromLibrary: boolean) => {
+  /*
+   * Bewusst NICHT "useMaterial": ein Name mit use-Praefix liest sich wie ein
+   * React-Hook, und sowohl der Linter als auch jeder kuenftige Leser halten ihn
+   * dafuer. Das hier ist ein gewoehnlicher Klick-Handler.
+   */
+  const applyMaterial = (material: Material, fromLibrary: boolean) => {
     if (!fromLibrary) {
       act((s) => s.setActiveMaterial(material.id))
       setTool('paint')
@@ -164,7 +169,7 @@ export function MaterialsPanel() {
                 material={material}
                 texture={doc?.textures?.[material.textureId ?? '']}
                 selected={activeId === material.id}
-                onClick={() => useMaterial(material, view === 'library')}
+                onClick={() => applyMaterial(material, view === 'library')}
                 label={`${material.name}${material.category ? ` (${material.category})` : ''}`}
               />
             ))}

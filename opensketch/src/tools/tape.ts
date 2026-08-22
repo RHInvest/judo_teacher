@@ -112,7 +112,12 @@ export class TapeTool extends BaseTool {
     const measured = this.measured
     if (!measured) return false
     const target = parseLengthInput(text, this.units())
-    if (target === null || !Number.isFinite(target) || target <= 0) return false
+    if (target === null || !Number.isFinite(target) || target <= 0) {
+      // KEIN STILLES SCHEITERN: das Massfeld heisst "Zielmass", also erwartet
+      // der Nutzer eine Reaktion - auch auf eine unlesbare Eingabe.
+      this.notify(`Maßband: „${text.trim()}" ist kein Zielmaß - z. B. „4 m" oder „350 cm"`, 'warn')
+      return false
+    }
     if (Math.abs(target - measured.length) < POINT_TOL) {
       this.notify('Maßband: das Zielmaß entspricht der Messung - nichts geändert')
       return true
@@ -250,7 +255,7 @@ export class TapeTool extends BaseTool {
     const message =
       `Die gemessene Strecke ist ${formatLength(measured.length, units)} lang, ` +
       `eingegeben wurde ${formatLength(target, units)}. ` +
-      `Soll das gesamte Modell um den Faktor ${factor.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')} skaliert werden? ` +
+      `Soll das gesamte Modell um den Faktor ${formatFactor(factor)} skaliert werden? ` +
       'Das verändert jede Geometrie im aktuellen Kontext.'
     this.notify('Maßband: Modell skalieren? Bitte die Rückfrage beantworten.', 'warn')
     const opened = this.read((state) => {
@@ -278,7 +283,7 @@ export class TapeTool extends BaseTool {
     }
     this.applyMatrix('Modell skalieren (Maßband)', selection, M.scalingAbout(origin, factor), false)
     this.measured = null
-    this.notify(`Modell um Faktor ${factor.toFixed(3)} skaliert`, 'success')
+    this.notify(`Modell um Faktor ${formatFactor(factor)} skaliert`, 'success')
     this.reset()
     this.status(this.hint)
   }
@@ -292,6 +297,17 @@ export class TapeTool extends BaseTool {
     this.guideMode = true
     this.vcb('Länge', '', 'Zielmaß')
   }
+}
+
+/**
+ * Skalierungsfaktor fuer die Anzeige.
+ *
+ * Bewusst ueber Runden statt ueber `toFixed(4)` mit abgeschnittenen Nullen:
+ * dabei verliert der Faktor 20 seine Null und wird zu "2" - eine Zahl, die
+ * dem Nutzer eine zehnfach kleinere Aenderung vorspiegelt, als er auslöst.
+ */
+function formatFactor(factor: number): string {
+  return String(Math.round(factor * 10000) / 10000)
 }
 
 /** Alles, was im aktiven Kontext liegt - Geometrie und eigene Entities. */

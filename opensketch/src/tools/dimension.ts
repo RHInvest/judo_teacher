@@ -63,6 +63,8 @@ export class DimensionTool extends BaseTool {
   private circle: CircleFit | null = null
   /** Was der Kreis von sich aus hergibt; `Strg` kehrt es um. */
   private circleKind: DimensionKind = 'diameter'
+  /** Eigene Beschriftung aus dem Massfeld statt des gemessenen Masses. */
+  private override: string | null = null
 
   protected onActivate(): void {
     this.reset()
@@ -117,6 +119,28 @@ export class DimensionTool extends BaseTool {
 
     this.updateOffset(e)
     this.commit()
+  }
+
+  /* ---------------- Massfeld ---------------- */
+
+  /**
+   * Eingetippter Text ueberschreibt die Beschriftung der Bemassung
+   * (`DimensionEntity.text`) - so entsteht "Lichte Weite" statt "1,20 m".
+   *
+   * Das gemessene MASS bleibt davon unberuehrt: es kommt aus der Geometrie.
+   * Wer die Laenge aendern will, aendert die Geometrie - alles andere waere
+   * eine Bemassung, die luegt.
+   */
+  onValueEntry(text: string): boolean {
+    if (this.phase === 'first') return false
+    const entered = text.trim()
+    this.override = entered === '' ? null : entered
+    this.notify(
+      this.override === null
+        ? 'Bemaßung: eigene Beschriftung entfernt, es gilt wieder das gemessene Maß'
+        : `Bemaßung: Beschriftung „${this.override}" statt des gemessenen Maßes`,
+    )
+    return true
   }
 
   cancel(): void {
@@ -249,6 +273,7 @@ export class DimensionTool extends BaseTool {
   }
 
   private label(): string {
+    if (this.override !== null) return this.override
     const start = this.start
     const end = this.end
     if (!start || !end) return ''
@@ -266,7 +291,7 @@ export class DimensionTool extends BaseTool {
       return
     }
     const label = this.kind === 'radius' ? 'Radius' : this.kind === 'diameter' ? 'Durchmesser' : 'Länge'
-    this.vcb(label, formatLength(V.distance(start, end), this.units(), { suffix: false }), label)
+    this.vcb(label, formatLength(V.distance(start, end), this.units(), { suffix: false }), 'eigene Beschriftung')
   }
 
   private commit(): void {
@@ -301,7 +326,7 @@ export class DimensionTool extends BaseTool {
       // Bei Radius und Durchmesser braucht der Renderer den Kreismittelpunkt,
       // um Pfeil und Anschlusslinie richtig zu setzen.
       ...(circle ? { center: V.clone(circle.center) } : {}),
-      text: null,
+      text: this.override,
       fontSize: FONT_SIZE,
       color: TEXT_COLOR,
       screenSpace: true,
@@ -321,6 +346,7 @@ export class DimensionTool extends BaseTool {
     this.kind = 'linear'
     this.circle = null
     this.circleKind = 'diameter'
+    this.override = null
     this.clearVcb()
   }
 }

@@ -21,6 +21,8 @@ import { hexToRgb01, num, sanitizeFilename, textBlob } from '../common/util'
 import {
   WarningList,
   backMaterialWarning,
+  degenerateEdgesWarning,
+  degenerateFacesWarning,
   edgesDisabledWarning,
   emptyExportWarning,
   flatLoss,
@@ -95,6 +97,7 @@ export function exportObj(doc: SketchDocument, opts: ExportOptions = {}): Export
   const groups = new Map<string, Map<string, FaceRecord[]>>()
   const groupOrder: string[] = []
   let writtenFaces = 0
+  let degenerateFaces = 0
 
   for (const poly of flat.faces) {
     const groupName = objName(poly.groupName)
@@ -112,7 +115,14 @@ export function exportObj(doc: SketchDocument, opts: ExportOptions = {}): Export
       byMaterial.set(materialName, list)
     }
     const record = encodeFace(poly, material, opts.triangulate === true, vIdx, tIdx, nIdx, scale)
-    if (record.corners.length > 0) list.push(record)
+    if (record.corners.length > 0) {
+      list.push(record)
+      writtenFaces += record.corners.length
+    } else {
+      // Weder N-Gon noch Dreieck herausgekommen - die Flaeche ist entartet
+      // und verschwand hier bisher wortlos.
+      degenerateFaces++
+    }
   }
 
   /* ---- Kanten ---- */
@@ -163,10 +173,38 @@ export function exportObj(doc: SketchDocument, opts: ExportOptions = {}): Export
     lines.push('')
   }
 
+  /* ---- Warnungen ---- */
+  const warnings = new WarningList()
+  const loss = flatLoss(flat)
+  if (writtenFaces === 0 && edgeLines.length === 0) {
+    warnings.add(
+      emptyExportWarning(
+        'OBJ',
+        opts.selectionOnly === true,
+        'Zeichne Geometrie oder schalte „Kanten mitexportieren“ ein, wenn nur Linien vorhanden sind.',
+      ),
+    )
+  } else if (!opts.includeEdges) {
+    // Mit `includeEdges` landen die Kanten als `l`-Zeilen in der Datei, ohne
+    // sie verschwinden genau die, die an keiner Flaeche haengen.
+    warnings.add(edgesDisabledWarning(loss.facelessEdges, 'OBJ'))
+  }
+  warnings.add(degenerateFacesWarning(degenerateFaces + flat.degenerateFaces))
+  warnings.add(degenerateEdgesWarning(flat.degenerateEdges))
+  const textureIds = usedTextures(doc, materials)
+  warnings.add(
+    opts.embedTextures === false
+      ? texturesDisabledWarning(textureIds.length)
+      : objTexturesReferencedWarning(textureIds.length),
+  )
+  warnings.add(backMaterialWarning(loss.backMaterialFaces, 'OBJ'))
+  warnings.add(skippedInstancesWarning(flat.skipped))
+
   const objText = lines.join('\n')
   const result: ExportResult = {
     blob: textBlob(objText, 'model/obj'),
     filename: `${base}.obj`,
+    warnings: warnings.list(),
   }
   if (materials.length > 0) {
     result.files = [
