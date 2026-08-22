@@ -21,22 +21,104 @@ import { findSubstituteSpellings, spellingHint } from './spelling'
  * Alle Quelldateien der Oberflaeche als Rohtext.
  *
  * Bewusst ueber `import.meta.glob` und nicht ueber `node:fs`: die
- * Typkonfiguration des Projekts kennt die Node-Typen nicht, und der Weg ueber
- * den Bundler laeuft ausserdem mit denselben Pfadregeln wie die Anwendung.
+ * Typkonfiguration des Projekts bindet weder die Node- noch die
+ * `vite/client`-Typen ein. Der Cast liefert deshalb die Signatur, die der
+ * Bundler zur Laufzeit ohnehin erfuellt.
  */
-const SOURCES = import.meta.glob('../**/*.{ts,tsx}', {
+type GlobFn = (
+  pattern: string,
+  options: { query: string; import: string; eager: true },
+) => Record<string, string>
+
+const SOURCES = (import.meta as unknown as { glob: GlobFn }).glob('../**/*.{ts,tsx}', {
   query: '?raw',
   import: 'default',
   eager: true,
-}) as Record<string, string>
+})
 
+/**
+ * Ersetzt Kommentare durch Leerzeichen und laesst Zeichenketten stehen.
+ *
+ * Ein blosses Streichen der Blockkommentare per regulaerem Ausdruck wuerde an
+ * Zeichenketten scheitern, die selbst eine Kommentarklammer enthalten -
+ * deshalb der kleine Zustandsautomat.
+ */
+function stripComments(source: string): string {
+  const out: string[] = []
+  let index = 0
+  let mode = ''
+  while (index < source.length) {
+    const char = source[index]
+    const next = source[index + 1] ?? ''
+    if (mode === '') {
+      if (char === '/' && next === '/') {
+        mode = 'line'
+        index += 2
+        continue
+      }
+      if (char === '/' && next === '*') {
+        mode = 'block'
+        index += 2
+        continue
+      }
+      if (char === '"' || char === "'" || char === '`') mode = char
+      out.push(char)
+      index += 1
+      continue
+    }
+    if (mode === 'line') {
+      if (char === '\n') {
+        mode = ''
+        out.push('\n')
+      }
+      index += 1
+      continue
+    }
+    if (mode === 'block') {
+      if (char === '*' && next === '/') {
+        mode = ''
+        index += 2
+        continue
+      }
+      if (char === '\n') out.push('\n')
+      index += 1
+      continue
+    }
+    if (char === '\\') {
+      out.push(char, next)
+      index += 2
+      continue
+    }
+    if (char === mode) mode = ''
+    out.push(char)
+    index += 1
+  }
+  return out.join('')
+}
+
+/** Zeichenketten und JSX-Text einer Datei. */
+function visibleTexts(source: string): string[] {
+  const code = stripComments(source)
+  const texts: string[] = []
+  for (const pattern of [/"([^"\n]*)"/g, /'([^'\n]*)'/g, /`([^`]*)`/g]) {
+    for (const match of code.matchAll(pattern)) texts.push(match[1])
+  }
+  for (const match of code.matchAll(/>([^<>{}"'`]*)</g)) texts.push(match[1])
+  return texts
+}
+
+/*
+ * Das Muster ist relativ zu dieser Datei: Geschwister im Testverzeichnis
+ * erscheinen als "./name.ts" und muessen heraus - geprueft wird die
+ * Anwendung, nicht ihre Tests.
+ */
 const FILES = Object.entries(SOURCES)
-  .filter(([path]) => !path.includes('/__tests__/'))
+  .filter(([path]) => !path.startsWith('./') && !path.includes('/__tests__/'))
   .sort(([a], [b]) => a.localeCompare(b))
 
 describe('Rechtschreibung der sichtbaren Texte', () => {
   it('findet ueberhaupt Dateien', () => {
-    // Ohne diese Zusicherung waere ein leeres Verzeichnis stillschweigend gruen.
+    // Ohne diese Zusicherung waere ein leeres Ergebnis stillschweigend gruen.
     expect(FILES.length).toBeGreaterThan(30)
   })
 
@@ -51,7 +133,7 @@ describe('Rechtschreibung der sichtbaren Texte', () => {
     expect(problems, `Ersatzschreibungen gefunden:\n${problems.join('\n')}`).toEqual([])
   })
 
-  it('haelt "Maß" und "Mass" nicht nebeneinander', () => {
+  it('haelt die beiden Schreibweisen des Wortes Mass nicht nebeneinander', () => {
     // Der haeufigste Rueckfall: eine Datei wird umgestellt, eine zweite nicht,
     // und der Nutzer sieht beide Schreibweisen im selben Fenster.
     let withEszett = 0
@@ -62,7 +144,7 @@ describe('Rechtschreibung der sichtbaren Texte', () => {
         if (/(?<![A-Za-zÄÖÜäöüß])Mass(?![A-Za-zÄÖÜäöüß])/.test(text)) withDoubleS += 1
       }
     }
-    expect(withEszett, 'kein einziges "Maß" gefunden - der Sweep hat nicht gegriffen').toBeGreaterThan(0)
-    expect(withDoubleS, '"Mass" steht noch neben "Maß"').toBe(0)
+    expect(withEszett, 'kein einziges Maszeichen gefunden - die Umstellung hat nicht gegriffen').toBeGreaterThan(0)
+    expect(withDoubleS, 'die alte Schreibweise steht noch neben der neuen').toBe(0)
   })
 })

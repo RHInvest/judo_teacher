@@ -430,6 +430,35 @@ describe('Text', () => {
     expect(rec.strokes).toBe(0)
   })
 
+  it('legt Modelltext ohne `plane` in die XY-Ebene des Kontexts', () => {
+    const doc = emptyDocument()
+    addEntity(doc, textEntity({ screenSpace: false, fontSize: 0.5, leader: 'none' }))
+    const rec = recorder()
+    build(doc).layer.draw2d(rec.ctx, host())
+    const t = rec.texts[0].transform as number[]
+    // u = +X zeigt nach rechts, v = +Y nach oben (Leinwand-y laeuft nach unten)
+    expect(t[1]).toBeCloseTo(0, 6)
+    expect(t[2]).toBeCloseTo(0, 6)
+    expect(t[0]).toBeGreaterThan(0)
+    expect(t[3]).toBeGreaterThan(0)
+  })
+
+  it('nutzt `plane`, wenn die Entitaet eine mitbringt', () => {
+    const doc = emptyDocument()
+    // Ebene mit Normale +X: der Text steht senkrecht, seine Achsen liegen in YZ
+    addEntity(
+      doc,
+      textEntity({ screenSpace: false, fontSize: 0.5, leader: 'none', plane: { n: { x: 1, y: 0, z: 0 }, d: 0 } }),
+    )
+    const rec = recorder()
+    build(doc).layer.draw2d(rec.ctx, host())
+    const t = rec.texts[0].transform as number[]
+    // Die Kamera blickt von +Z: eine Achse in YZ hat keine x-Komponente mehr,
+    // die Abbildung ist entartet - dann wird nicht gezeichnet oder es bleibt
+    // nur die y-Richtung uebrig. Entscheidend: es ist NICHT mehr die XY-Ebene.
+    expect(Math.abs(t[1]) > 1e-6 || Math.abs(t[2]) > 1e-6).toBe(true)
+  })
+
   it('zeichnet ohne Fuehrungslinie bei leader none', () => {
     const doc = emptyDocument()
     addEntity(doc, textEntity({ leader: 'none' }))
@@ -556,6 +585,22 @@ describe('Sichtbarkeit und Auswahl', () => {
     expect(hasColor(layer, SELECT_COLOR)).toBe(true)
   })
 
+  it('zeichnet die Annotation einer Komponente in jeder Platzierung', () => {
+    const doc = documentWithSquare(2)
+    addInstance(doc, 'fenster', squareGeometry(1), M.translation({ x: 5, y: 0, z: 0 }), 'inst-a')
+    // Zweite Instanz DERSELBEN Definition
+    doc.entities['inst-b'] = { ...doc.entities['inst-a'], id: 'inst-b', transform: M.translation({ x: 9, y: 0, z: 0 }) }
+    doc.definitions.root.children.push('inst-b')
+    doc.entities['gp-fenster'] = guidePoint({ id: 'gp-fenster', position: { x: 0, y: 0, z: 0 } })
+    doc.definitions.fenster.children.push('gp-fenster')
+
+    const { layer } = build(doc)
+    expect(layer.counts.guidePoints).toBe(2)
+    const centers = segments(layer).map((s) => V.midpoint(s.a, s.b).x)
+    expect(centers.some((x) => Math.abs(x - 5) < 1e-6)).toBe(true)
+    expect(centers.some((x) => Math.abs(x - 9) < 1e-6)).toBe(true)
+  })
+
   it('zeichnet Annotationen verschachtelter Definitionen mit deren Welttransformation', () => {
     const doc = documentWithSquare(2)
     addInstance(doc, 'raum', squareGeometry(2), M.translation({ x: 10, y: 0, z: 0 }))
@@ -568,6 +613,47 @@ describe('Sichtbarkeit und Auswahl', () => {
     const lines = segments(layer)
     // Der Kreuzmarker sitzt bei x = 10, nicht im Ursprung
     expect(lines.every((s) => Math.abs(V.midpoint(s.a, s.b).x - 10) < 1e-6)).toBe(true)
+  })
+})
+
+describe('Schnittebenen', () => {
+  /**
+   * Der Renderer schneidet die WebGL-Objekte selbst; die Textebene weiss davon
+   * nichts. Ohne diese Pruefung bliebe der Masstext eines weggeschnittenen
+   * Bauteils im Bild stehen.
+   */
+  const behind = { n: { x: 1, y: 0, z: 0 }, d: 1 } // stehen bleibt x <= 1
+
+  it('verwirft Text hinter einer aktiven Schnittebene', () => {
+    const doc = emptyDocument()
+    // Masslinienmitte liegt bei x = 2, also im weggeschnittenen Bereich
+    addEntity(doc, dimension({ start: { x: 0, y: 0, z: 0 }, end: { x: 4, y: 0, z: 0 } }))
+    const { layer, snapshot, sync } = build(doc)
+    layer.update(snapshot, sync, [behind])
+
+    const rec = recorder()
+    layer.draw2d(rec.ctx, host())
+    expect(rec.texts.length).toBe(0)
+  })
+
+  it('laesst Text vor der Schnittebene stehen', () => {
+    const doc = emptyDocument()
+    addEntity(doc, dimension({ start: { x: -2, y: 0, z: 0 }, end: { x: 0, y: 0, z: 0 } }))
+    const { layer, snapshot, sync } = build(doc)
+    layer.update(snapshot, sync, [behind])
+
+    const rec = recorder()
+    layer.draw2d(rec.ctx, host())
+    expect(rec.texts.length).toBe(1)
+  })
+
+  it('aendert durch Schnittebenen nichts am Aufbau', () => {
+    const doc = emptyDocument()
+    addEntity(doc, dimension())
+    const { layer, snapshot, sync } = build(doc)
+    const before = layer.group.children[0]
+    layer.update(snapshot, sync, [behind])
+    expect(layer.group.children[0]).toBe(before)
   })
 })
 

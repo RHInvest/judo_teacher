@@ -320,7 +320,14 @@ export class Viewport implements ViewportApi {
     attempt('edgeMaterials.apply', () => this.edgeMaterials.apply(snapshot.style, worldScale, depth.near, depth.far), undefined)
 
     attempt('sections.update', () => this.sections.update(snapshot, this.sync, this.renderer), undefined)
-    attempt('annotations.update', () => this.annotations.update(snapshot, this.sync), undefined)
+    // Nach `sections.update`: die Textebene der Annotationen muss dieselben
+    // Schnittebenen kennen, sonst bleibt der Masstext eines weggeschnittenen
+    // Bauteils stehen.
+    attempt(
+      'annotations.update',
+      () => this.annotations.update(snapshot, this.sync, this.sections.clippingPlanes),
+      undefined,
+    )
     attempt('selection.update', () => this.selectionView.update(snapshot), undefined)
 
     this.lastRevisions = { ...snapshot.revisions }

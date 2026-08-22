@@ -29,7 +29,7 @@ export function createToolManager(deps: ToolDeps & { inference: InferenceApi }):
 /* Wiederverwendbare Teile (UI, Tests, andere Werkzeuge)               */
 /* ------------------------------------------------------------------ */
 
-export { TOOL_SHORTCUTS, ToolManager, toolForKey } from './toolManager'
+export { ALL_TOOL_IDS, TOOL_FACTORIES, TOOL_NAMES, TOOL_SHORTCUTS, ToolManager, toolForKey } from './toolManager'
 export { AXIS_COLORS, COLORS, axisColor } from './colors'
 export { BaseTool } from './toolBase'
 export { PlaceholderTool } from './placeholder'

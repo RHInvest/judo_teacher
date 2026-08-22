@@ -28,7 +28,7 @@ export type Stroke = readonly [number, number, number, number]
 /* ------------------------------------------------------------------ */
 
 /* eslint-disable prettier/prettier */
-const GLYPHS: Record<string, readonly Stroke[]> = {
+export const TEXT3D_STROKES: Record<string, readonly Stroke[]> = {
   A: [[0, 0, 0.5, 1], [0.5, 1, 1, 0], [0.18, 0.34, 0.82, 0.34]],
   B: [[0, 0, 0, 1], [0, 1, 0.8, 1], [0.8, 1, 0.8, 0.55], [0, 0.55, 0.8, 0.55], [0.8, 0.55, 0.8, 0], [0, 0, 0.8, 0]],
   C: [[1, 1, 0, 1], [0, 1, 0, 0], [0, 0, 1, 0]],
@@ -181,7 +181,7 @@ export function layoutText3d(text: string, opts: Text3dOptions): Text3dLayout {
       align === 'center' ? -widths[lineIndex] / 2 : align === 'right' ? -widths[lineIndex] : 0
     let penX = lineOffset
     for (const char of line) {
-      const strokes = GLYPHS[char]
+      const strokes = TEXT3D_STROKES[char]
       if (strokes) {
         glyphCount += 1
         for (const stroke of strokes) {

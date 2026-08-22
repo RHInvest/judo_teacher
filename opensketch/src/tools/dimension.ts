@@ -61,6 +61,8 @@ export class DimensionTool extends BaseTool {
   private offset: Vec3Like = V.v3()
   private kind: DimensionKind = 'linear'
   private circle: CircleFit | null = null
+  /** Was der Kreis von sich aus hergibt; `Strg` kehrt es um. */
+  private circleKind: DimensionKind = 'diameter'
 
   protected onActivate(): void {
     this.reset()
@@ -172,7 +174,10 @@ export class DimensionTool extends BaseTool {
     const fit = this.read((state) => fitCircle(state, hit))
     if (fit) {
       this.circle = fit
-      this.kind = fit.closed ? 'diameter' : 'radius'
+      // Ein geschlossener Kreis wird bemasst wie in SketchUp: Durchmesser.
+      // Ein Bogen hat keinen, also Radius. `Strg` kehrt die Wahl um.
+      this.circleKind = fit.closed ? 'diameter' : 'radius'
+      this.kind = this.circleKind
       this.applyCircle(hit.point)
       this.phase = 'offset'
       this.status(
@@ -214,11 +219,18 @@ export class DimensionTool extends BaseTool {
 
   private updateOffset(e: PointerInfo): void {
     if (!this.start || !this.end) return
-    const wantDiameter = e.ctrl || e.meta
-    if (this.circle && wantDiameter !== (this.kind === 'diameter')) {
-      // Strg schaltet die Kreisbemassung um, ohne den Ablauf zu unterbrechen.
-      this.kind = wantDiameter ? 'diameter' : 'radius'
-      this.applyCircle(this.end)
+    if (this.circle) {
+      const inverted = e.ctrl || e.meta
+      const wanted: DimensionKind = inverted
+        ? this.circleKind === 'diameter'
+          ? 'radius'
+          : 'diameter'
+        : this.circleKind
+      if (wanted !== this.kind) {
+        // Strg kehrt die Kreisbemassung um, ohne den Ablauf zu unterbrechen.
+        this.kind = wanted
+        this.applyCircle(this.end)
+      }
     }
     const start = this.start
     const end = this.end
@@ -301,6 +313,7 @@ export class DimensionTool extends BaseTool {
     this.offset = V.v3()
     this.kind = 'linear'
     this.circle = null
+    this.circleKind = 'diameter'
     this.clearVcb()
   }
 }

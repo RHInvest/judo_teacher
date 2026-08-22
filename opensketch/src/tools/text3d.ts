@@ -282,14 +282,18 @@ export function buildTextGeometry(layout: Text3dLayout, request: Text3dRequest):
   for (const rect of layout.rects) {
     const bottom = rect.map((p) => ({ x: p.x, y: p.y, z: 0 }))
     if (!request.filled) {
-      // Nur Umrisse: der Ring unten, bei Tiefe zusaetzlich oben und die
-      // vier senkrechten Kanten.
-      addPolyline(geometry, bottom, true, { guide: false })
+      /*
+       * Nur Umrisse: der Ring unten, bei Tiefe zusaetzlich oben und die vier
+       * senkrechten Kanten. `autoFace: false` ist hier zwingend - der Kern
+       * schliesst jede ebene Kantenschleife sonst automatisch zu einer
+       * Flaeche, und genau die soll hier nicht entstehen.
+       */
+      addPolyline(geometry, bottom, true, { autoFace: false })
       if (depth > 0) {
         const top = rect.map((p) => ({ x: p.x, y: p.y, z: depth }))
-        addPolyline(geometry, top, true, { guide: false })
+        addPolyline(geometry, top, true, { autoFace: false })
         for (let i = 0; i < bottom.length; i++) {
-          addPolyline(geometry, [bottom[i], top[i]], false, { guide: false })
+          addPolyline(geometry, [bottom[i], top[i]], false, { autoFace: false })
         }
       }
       continue

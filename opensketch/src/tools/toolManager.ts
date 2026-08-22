@@ -174,7 +174,14 @@ export function toolForKey(e: KeyInfo): ToolId | null {
 
 type ToolFactory = () => Tool
 
-const TOOL_NAMES: Record<ToolId, string> = {
+/**
+ * Anzeigename je Werkzeug.
+ *
+ * Der Typ `Record<ToolId, string>` ist die eigentliche Absicherung: kommt im
+ * Contract eine ToolId dazu, schlaegt hier der Typcheck fehl. Daraus leitet
+ * sich auch `ALL_TOOL_IDS` ab - eine Liste, die nicht veralten kann.
+ */
+export const TOOL_NAMES: Record<ToolId, string> = {
   select: 'Auswahl',
   lasso: 'Lasso',
   eraser: 'Radiergummi',
@@ -212,7 +219,8 @@ const TOOL_NAMES: Record<ToolId, string> = {
   lookaround: 'Umsehen',
 }
 
-const TOOL_FACTORIES: Partial<Record<ToolId, ToolFactory>> = {
+/** Jede ToolId muss hier stehen - sonst entsteht ein `PlaceholderTool`. */
+export const TOOL_FACTORIES: Partial<Record<ToolId, ToolFactory>> = {
   select: () => new SelectTool(),
   lasso: () => new LassoTool(),
   eraser: () => new EraserTool(),
@@ -253,6 +261,9 @@ const TOOL_FACTORIES: Partial<Record<ToolId, ToolFactory>> = {
   walk: () => new WalkTool(),
   lookaround: () => new LookAroundTool(),
 }
+
+/** Alle Werkzeugkennungen, aus dem Contract abgeleitet. */
+export const ALL_TOOL_IDS = Object.keys(TOOL_NAMES) as ToolId[]
 
 /** Werkzeuge, die das Mausrad selbst auswerten. */
 const HANDLES_WHEEL: ReadonlySet<ToolId> = new Set<ToolId>(['zoom', 'walk'])

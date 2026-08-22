@@ -1,9 +1,12 @@
 /**
  * Direkter Geometrie-Aufbau fuer Importer und Bibliothek.
  *
- * Der Geometriekern (`@/core`) wird parallel entwickelt und wirft bis dahin
- * `not implemented`. Import und Bibliothek bauen `Geometry` deshalb selbst -
- * das ist auch schneller, weil kein Kantenschnitt-Suchlauf noetig ist.
+ * Import und Bibliothek bauen `Geometry` selbst, statt ueber `@/core`
+ * aufzubauen: beim Laden einer Datei sind Kantenschnitte und automatische
+ * Flaechenfindung nicht noetig - die Topologie steht ja schon fest -, und der
+ * Suchlauf waere bei zehntausenden Kanten der Flaschenhals. Die Struktur aus
+ * `@/shared/types` wird dabei exakt eingehalten, `core.validate()` laeuft
+ * ueber das Ergebnis sauber durch (siehe `__tests__/library.test.ts`).
  *
  * Die Datenstruktur aus `@/shared/types` wird dabei exakt eingehalten:
  *  - `Vertex.edges` enthaelt jede anliegende Kante genau einmal
@@ -259,8 +262,11 @@ export function geometryBounds(geom: Geometry): { min: Vec3Like; max: Vec3Like }
 
 /**
  * Fasst koplanare Nachbarflaechen zusammen (STL-Import: Dreieckssuppe ->
- * brauchbare N-Gons). Nutzt `core.mergeCoplanarFaces`, sobald der Kernel das
- * kann, und faellt sonst auf eine eigene Implementierung zurueck.
+ * brauchbare N-Gons). Nutzt `core.mergeCoplanarFaces`; nur wenn der Aufruf
+ * fehlschlaegt, greift die einfachere IO-eigene Variante. Der Kern kann das
+ * inzwischen - der Rueckfallweg bleibt trotzdem stehen, damit ein Import nicht
+ * an einer Kernel-Ausnahme scheitert, sondern hoechstens feiner unterteilte
+ * (aber korrekte) Geometrie liefert.
  */
 export function mergeCoplanar(geom: Geometry, core?: { mergeCoplanarFaces(g: Geometry): unknown }): number {
   if (core) {
@@ -268,7 +274,7 @@ export function mergeCoplanar(geom: Geometry, core?: { mergeCoplanarFaces(g: Geo
       core.mergeCoplanarFaces(geom)
       return 0
     } catch {
-      /* Kernel noch nicht implementiert - eigene Variante benutzen */
+      /* Kern hat abgelehnt - eigene Variante benutzen */
     }
   }
   return mergeCoplanarLocal(geom)

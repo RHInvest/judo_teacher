@@ -1,9 +1,12 @@
 /**
  * Eigenstaendige 2D-Triangulierung (Ohren-Clipping mit Loch-Bruecken).
  *
- * Der Geometriekern bringt spaeter `core.triangulatePolygon2D` mit; solange der
- * noch `not implemented` wirft, braucht die IO-Schicht eine eigene, robuste
- * Variante - Exporter (STL, glTF, DAE, SVG) haengen komplett daran.
+ * Der Geometriekern hat mit `core.triangulatePolygon2D` eine eigene Variante.
+ * Die IO-Schicht benutzt sie bewusst NICHT: die Exporter (STL, glTF, DAE, SVG)
+ * haengen komplett an der Triangulierung, und sie sollen ohne den Kern
+ * lauffaehig bleiben - auch beim Export in einem Worker oder wenn der Kern
+ * gerade eine andere Toleranz fuer Koplanaritaet ansetzt. Die Ergebnisse
+ * muessen nicht identisch sein, nur beide korrekt.
  */
 
 import type { Vec3Like } from '@/shared/types'

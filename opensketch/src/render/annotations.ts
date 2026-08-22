@@ -22,8 +22,13 @@
  * Parallelprojektion und in der Perspektive praktisch nicht unterscheidbar.
  *
  * EINHEIT VON `fontSize`: Pixel bei `screenSpace: true`, Meter bei
- * `screenSpace: false`. Der Contract laesst das offen; so ist es die einzige
- * Auslegung, bei der beide Faelle sinnvolle Groessen ergeben.
+ * `screenSpace: false` - so im Contract festgehalten.
+ *
+ * BEKANNTE EINSCHRAENKUNG: Linien und Text werden unterschiedlich verdeckt.
+ * Die Linien liegen im WebGL und verschwinden hinter Geometrie; der Text liegt
+ * darueber und bleibt sichtbar - wie in SketchUp, wo Bemassungstext ebenfalls
+ * lesbar bleibt. Aktive Schnittebenen gelten dagegen fuer BEIDE: die Linien
+ * schneidet der Renderer, den Text verwirft `isClipped` von Hand.
  *
  * OWNERSHIP: Render-Entwickler.
  */
@@ -31,7 +36,7 @@
 import * as THREE from 'three'
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js'
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js'
-import { B, M, V } from '@/core/math'
+import { B, M, P, V } from '@/core/math'
 import type {
   DimensionEntity,
   Entity,
@@ -39,6 +44,7 @@ import type {
   GuidePointEntity,
   Id,
   ImageEntity,
+  PlaneLike,
   SketchDocument,
   TextEntity,
   UnitSettings,
@@ -64,9 +70,15 @@ const DIM_OPACITY = 0.4
 /** Schriftgroesse, in der die Ebenentexte gerastert werden. */
 const PLANE_FONT_PX = 64
 
-/** Kleinste und groesste Pixelgroesse eines Ebenentexts - sonst Flimmern. */
+/**
+ * Grenzen fuer die Bildschirmgroesse eines Ebenentexts.
+ *
+ * Unter `MIN` ist er ohnehin nicht mehr lesbar und flimmert nur; ueber `MAX`
+ * fuellt ein einzelner Buchstabe den Bildschirm und die Leinwand rastert eine
+ * absurd grosse Glyphe - beides wird uebersprungen.
+ */
 const MIN_PLANE_TEXT_PX = 4
-const MAX_PLANE_TEXT_PX = 4000
+const MAX_PLANE_TEXT_PX = 10000
 
 const FONT_STACK = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif'
 
@@ -132,13 +144,14 @@ export class AnnotationLayer {
   private buckets = new Map<string, LineBucket>()
   private labels: LabelCommand[] = []
   private screenLeaders: ScreenLeaderCommand[] = []
+  private clipPlanes: readonly PlaneLike[] = []
 
   private width = 1
   private height = 1
   private signature = ''
   private dirty = true
 
-  /** Anzahl gezeichneter Annotationen des letzten Aufbaus (fuer Tests). */
+  /** Anzahl beruecksichtigter Annotationen des letzten Aufbaus (fuer Tests). */
   counts = { dimensions: 0, texts: 0, guideLines: 0, guidePoints: 0, images: 0 }
 
   constructor(private readonly onTextureLoad: () => void = () => undefined) {
@@ -165,7 +178,18 @@ export class AnnotationLayer {
   /* Aufbau                                                           */
   /* ---------------------------------------------------------------- */
 
-  update(snapshot: RenderSnapshot, sync: SceneSync): void {
+  /**
+   * `clipPlanes` sind die aktiven Schnittebenen im WELTRAUM. Die WebGL-Objekte
+   * dieser Ebene schneidet der Renderer ohnehin mit; der Text auf der 2D-Ebene
+   * dagegen weiss nichts vom Stencil-Durchgang und muss beim Zeichnen von Hand
+   * verworfen werden - sonst schwebt die Massangabe eines weggeschnittenen
+   * Bauteils weiter im Bild.
+   */
+  update(snapshot: RenderSnapshot, sync: SceneSync, clipPlanes: readonly PlaneLike[] = []): void {
+    // Bewusst VOR der Signaturpruefung: die Schnittebenen aendern nur, was
+    // gezeichnet wird, nicht was gebaut wird.
+    this.clipPlanes = clipPlanes
+
     const signature = this.signatureOf(snapshot)
     if (!this.dirty && signature === this.signature) return
     this.dirty = false
@@ -193,12 +217,26 @@ export class AnnotationLayer {
     const hover = snapshot.hover
     const hovered = hover && hover.id && (hover.kind === 'entity' || hover.kind === 'guide') ? hover.id : null
 
-    for (const record of sync.records) {
-      const def = doc.definitions[record.definitionId]
-      if (!def) continue
-      for (const childId of def.children ?? []) {
+    // Welche Definition ueberhaupt Annotationen enthaelt, wird EINMAL je
+    // Definition bestimmt, nicht je Platzierung: bei tausenden Instanzen
+    // derselben Definition ist das der Unterschied zwischen einer Handvoll
+    // Durchlaeufen und tausenden.
+    const perDefinition = new Map<Id, Entity[]>()
+    const annotationsOf = (definitionId: Id): Entity[] => {
+      const cached = perDefinition.get(definitionId)
+      if (cached) return cached
+      const out: Entity[] = []
+      for (const childId of doc.definitions[definitionId]?.children ?? []) {
         const entity = doc.entities?.[childId]
         if (!entity || entity.type === 'instance' || entity.type === 'sectionPlane') continue
+        out.push(entity)
+      }
+      perDefinition.set(definitionId, out)
+      return out
+    }
+
+    for (const record of sync.records) {
+      for (const entity of annotationsOf(record.definitionId)) {
         if (entity.hidden) continue
         if (!snapshot.isTagVisible(entity.tagId)) continue
 
@@ -805,11 +843,31 @@ export class AnnotationLayer {
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
 
-    for (const leader of this.screenLeaders) this.drawLeader(ctx, host, leader)
-    for (const label of this.labels) this.drawLabel(ctx, host, label)
+    for (const leader of this.screenLeaders) {
+      if (this.isClipped(leader.to)) continue
+      this.drawLeader(ctx, host, leader)
+    }
+    for (const label of this.labels) {
+      if (this.isClipped(label.anchor)) continue
+      this.drawLabel(ctx, host, label)
+    }
 
     ctx.globalAlpha = 1
     ctx.restore()
+  }
+
+  /**
+   * true, wenn eine aktive Schnittebene den Punkt wegschneidet.
+   *
+   * Vorzeichen wie in `sections.toThreePlane`: `PlaneLike` beschreibt
+   * `dot(n,p) - d = 0`, stehen bleibt die Haelfte mit `dot(n,p) <= d`.
+   */
+  private isClipped(point: Vec3Like): boolean {
+    for (const plane of this.clipPlanes) {
+      if (!plane || !plane.n) continue
+      if (V.dot(plane.n, point) > plane.d) return true
+    }
+    return false
   }
 
   private drawLeader(ctx: CanvasRenderingContext2D, host: AnnotationHost, leader: ScreenLeaderCommand): void {

@@ -102,7 +102,7 @@ pruefeRoundTrip(
   createDefaultStyle() as unknown as Record<string, unknown>,
   (doc, wert) => {
     const id = doc.activeStyleId
-    doc.styles[id] = { ...(wert as never), id }
+    doc.styles[id] = { ...(wert as Record<string, unknown>), id } as never
   },
   (doc) => doc.styles[doc.activeStyleId] as unknown as Record<string, unknown>,
 )

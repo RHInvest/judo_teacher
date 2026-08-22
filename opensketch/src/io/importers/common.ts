@@ -172,10 +172,12 @@ export function builderFor(definition: Definition): GeomBuilder {
 }
 
 /**
- * Fasst koplanare Nachbardreiecke ueber den Geometriekern zusammen. Der Kern
- * wird bewusst dynamisch importiert und der Aufruf gekapselt: schlaegt er
- * fehl, bleibt die (korrekte, nur feiner unterteilte) Dreiecksgeometrie
- * stehen und es gibt eine Warnung statt eines Abbruchs.
+ * Fasst koplanare Nachbardreiecke ueber den Geometriekern zusammen.
+ *
+ * Der Kern wird dynamisch importiert und der Aufruf gekapselt: schlaegt er an
+ * einer entarteten Datei fehl, greift das einfachere IO-eigene Verfahren. Der
+ * Import liefert dann feiner unterteilte, aber korrekte Geometrie - besser als
+ * ein Abbruch mitten im Laden. Der Nutzer erfaehrt es ueber eine Warnung.
  */
 export async function mergeCoplanarSafely(geometry: Geometry, scene: ImportScene): Promise<void> {
   try {
@@ -189,7 +191,8 @@ export async function mergeCoplanarSafely(geometry: Geometry, scene: ImportScene
     simplifyFaceLoops(geometry)
     removeOrphanVertices(geometry)
     scene.warn(
-      'Koplanare Flächen wurden mit dem einfachen IO-Verfahren zusammengefasst (Geometriekern nicht verfügbar).',
+      'Der Geometriekern konnte die Dreiecke nicht zusammenfassen. Es wurde das einfachere ' +
+        'Verfahren benutzt - die Geometrie ist korrekt, aber feiner unterteilt als nötig.',
     )
   }
 }

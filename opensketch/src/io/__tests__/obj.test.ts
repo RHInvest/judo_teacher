@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { exportObj } from '../exporters/obj'
 import { parseMtl, parseObj } from '../importers/obj'
 import { blobText, cubeDoc, cubeWithMaterial, emptyDoc, rootGeometry, addBox } from './helpers'
-import { faceRing } from '../common/geom'
+import { GeomBuilder, faceRing } from '../common/geom'
 import { M } from '@/core/math'
 import { addGroup } from './helpers'
 
@@ -126,6 +126,32 @@ describe('OBJ-Export', () => {
     const withEdges = await blobText(exportObj(doc, { includeEdges: true }).blob)
     expect(withEdges).toContain('g OpenSketch_Kanten')
     expect(withEdges.split('\n').filter((l) => l.startsWith('l ')).length).toBe(12)
+  })
+
+  it('exportiert auch ein Modell, das nur aus Kanten besteht', async () => {
+    // Ein gezeichneter, noch nicht geschlossener Grundriss hat keine einzige
+    // Flaeche. Seine Kantenendpunkte muessen trotzdem in den Vertexpuffer -
+    // sonst enthaelt die Datei nur den Kommentarkopf.
+    const doc = emptyDoc('Linien')
+    const g = new GeomBuilder(rootGeometry(doc))
+    g.edgePoints({ x: 0, y: 0, z: 0 }, { x: 3, y: 0, z: 0 })
+    g.edgePoints({ x: 3, y: 0, z: 0 }, { x: 3, y: 4, z: 0 })
+    const text = await blobText(exportObj(doc, { includeEdges: true }).blob)
+    expect(text.split('\n').filter((l) => l.startsWith('v ')).length).toBe(3)
+    expect(text.split('\n').filter((l) => l.startsWith('l ')).length).toBe(2)
+    expect(text).toContain('v 3 4 0')
+
+    // und der Reimport bringt sie zurueck
+    const geom = firstGeometry(parseObj(text, 'linien.obj'))
+    expect(Object.keys(geom.vertices).length).toBe(3)
+    expect(Object.keys(geom.edges).length).toBe(2)
+  })
+
+  it('schreibt Kanten, die zusaetzlich an Flaechen haengen, nur einmal', async () => {
+    const text = await blobText(exportObj(cubeDoc(2), { includeEdges: true }).blob)
+    // der Wuerfel behaelt seine 8 Vertices, die Kanten bringen keine neuen
+    expect(text.split('\n').filter((l) => l.startsWith('v ')).length).toBe(8)
+    expect(text.split('\n').filter((l) => l.startsWith('l ')).length).toBe(12)
   })
 
   it('skaliert ueber unitScale', async () => {

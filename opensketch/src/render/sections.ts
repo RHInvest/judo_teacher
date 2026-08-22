@@ -60,6 +60,7 @@ export class SectionManager {
   private readonly stencilMaterials: THREE.Material[] = []
 
   private planes: THREE.Plane[] = []
+  private activePlanes: PlaneLike[] = []
   private signature = ''
 
   constructor() {
@@ -151,8 +152,21 @@ export class SectionManager {
 
     // Clipping ist unabhaengig von der Fuellung: ohne `showSectionCuts` bleibt
     // das Modell ungeschnitten, die Symbole sind aber weiter sichtbar.
-    this.planes = style.showSectionCuts === false ? [] : active.map((s) => toThreePlane(s.plane))
+    const clipping = style.showSectionCuts === false ? [] : active
+    this.activePlanes = clipping.map((s) => s.plane)
+    this.planes = clipping.map((s) => toThreePlane(s.plane))
     renderer.clippingPlanes = this.planes
+  }
+
+  /**
+   * Die tatsaechlich schneidenden Ebenen im Weltraum.
+   *
+   * Der Renderer schneidet damit jedes Material selbst. Wer AUSSERHALB von
+   * WebGL zeichnet - die Textebene der Annotationen - bekommt davon nichts mit
+   * und muss hier nachfragen.
+   */
+  get clippingPlanes(): readonly PlaneLike[] {
+    return this.activePlanes
   }
 
   /* ---------------------------------------------------------------- */
