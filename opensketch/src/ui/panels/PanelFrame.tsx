@@ -78,7 +78,7 @@ export function PanelFrame({
             event.stopPropagation()
             onClose()
           }}
-          aria-label={`${meta.title} schliessen`}
+          aria-label={`${meta.title} schließen`}
           className={clsx('flex h-5 w-5 shrink-0 items-center justify-center rounded opacity-0 group-hover:opacity-100', skin.iconBtn, skin.ring)}
         >
           <X size={13} />

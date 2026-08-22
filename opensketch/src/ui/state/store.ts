@@ -17,7 +17,7 @@ let announced = false
 function announce(err: unknown): void {
   if (announced) return
   announced = true
-  console.info('[ui] Store noch nicht verfuegbar - Oberflaeche laeuft im Fallback-Modus.', err)
+  console.info('[ui] Store noch nicht verfügbar - Oberfläche läuft im Fallback-Modus.', err)
 }
 
 /** Aktueller Zustand, niemals werfend. */

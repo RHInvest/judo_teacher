@@ -87,7 +87,7 @@ export function Dialog({
           <h2 className={clsx('min-w-0 flex-1 truncate text-[13px] font-medium', skin.text)}>{title}</h2>
           <button
             type="button"
-            aria-label="Dialog schliessen"
+            aria-label="Dialog schließen"
             onClick={onClose}
             className={clsx('flex h-6 w-6 items-center justify-center rounded', skin.iconBtn, skin.ring)}
           >

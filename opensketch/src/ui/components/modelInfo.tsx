@@ -27,8 +27,8 @@ const LENGTH_UNITS: { value: LengthUnit; label: string }[] = [
   { value: 'cm', label: 'Zentimeter' },
   { value: 'mm', label: 'Millimeter' },
   { value: 'in', label: 'Zoll' },
-  { value: 'ft', label: 'Fuss' },
-  { value: 'ftin', label: 'Fuss und Zoll' },
+  { value: 'ft', label: 'Fuß' },
+  { value: 'ftin', label: 'Fuß und Zoll' },
   { value: 'yd', label: 'Yard' },
 ]
 
@@ -61,17 +61,17 @@ export function UnitsEditor() {
       <Row label="Format">
         <Select ariaLabel="Zahlenformat" value={units.format} options={FORMATS} onChange={(value) => patch({ format: value })} />
       </Row>
-      <Row label="Laenge">
+      <Row label="Länge">
         <Select
-          ariaLabel="Laengeneinheit"
+          ariaLabel="Längeneinheit"
           value={units.lengthUnit}
           options={LENGTH_UNITS}
           onChange={(value) => patch({ lengthUnit: value })}
         />
       </Row>
-      <Row label="Flaeche">
+      <Row label="Fläche">
         <Select
-          ariaLabel="Flaecheneinheit"
+          ariaLabel="Flächeneinheit"
           value={units.areaUnit}
           options={AREA_UNITS}
           onChange={(value) => patch({ areaUnit: value })}
@@ -124,7 +124,7 @@ export function UnitsEditor() {
         />
         <Checkbox
           checked={units.enableLengthSnap}
-          label="Laengenfang"
+          label="Längenfang"
           onChange={(checked) => patch({ enableLengthSnap: checked })}
         />
         <Checkbox
@@ -133,13 +133,13 @@ export function UnitsEditor() {
           onChange={(checked) => patch({ enableAngleSnap: checked })}
         />
       </div>
-      <Row label="Laengenschritt">
+      <Row label="Längenschritt">
         <NumberInput
           value={units.lengthSnap}
           min={0}
           step={0.001}
           suffix="m"
-          ariaLabel="Laengenfang in Metern"
+          ariaLabel="Längenfang in Metern"
           disabled={!units.enableLengthSnap}
           onChange={(value) => patch({ lengthSnap: value })}
         />
@@ -189,7 +189,7 @@ export function StatsTable() {
 
   const rows: { label: string; value: string }[] = [
     { label: 'Kanten', value: fmtCount(stats?.edges ?? 0) },
-    { label: 'Flaechen', value: fmtCount(stats?.faces ?? 0) },
+    { label: 'Flächen', value: fmtCount(stats?.faces ?? 0) },
     { label: 'Punkte', value: fmtCount(stats?.vertices ?? 0) },
     { label: 'Instanzen', value: fmtCount(stats?.instances ?? 0) },
     { label: 'Gruppen', value: fmtCount(stats?.groups ?? 0) },
@@ -244,7 +244,7 @@ export function MetaEditor() {
           {meta?.createdAt ? fmtTimestamp(meta.createdAt) : '-'}
         </span>
       </Row>
-      <Row label="Geaendert">
+      <Row label="Geändert">
         <span className={clsx('truncate text-[11px] tabular-nums', skin.muted)}>
           {meta?.modifiedAt ? fmtTimestamp(meta.modifiedAt) : '-'}
         </span>

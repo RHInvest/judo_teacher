@@ -93,10 +93,10 @@ describe('Komponentenbibliothek', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('nennt in getLibraryCategories genau die Kategorien der Eintraege', () => {
+  it('nennt in getLibraryCategories genau die Kategorien der Einträge', () => {
     const used = new Set(entries.map((entry) => entry.category))
     for (const category of categories) {
-      expect(used.has(category), `Kategorie "${category}" ohne Eintraege`).toBe(true)
+      expect(used.has(category), `Kategorie "${category}" ohne Einträge`).toBe(true)
     }
     for (const category of used) {
       expect(categories, `Kategorie "${category}" fehlt in der Auswahlliste`).toContain(category)
@@ -139,7 +139,7 @@ describe('Anbindung an den Store', () => {
     expect(storeReady()).toBe(true)
   })
 
-  it('liest die Oberflaeche aus dem echten Store, nicht aus dem Fallback', () => {
+  it('liest die Oberfläche aus dem echten Store, nicht aus dem Fallback', () => {
     const state = appState()
     expect(state).not.toBe(FALLBACK_STATE)
     expect(state).toBe(store.getState())
@@ -152,7 +152,7 @@ describe('Anbindung an den Store', () => {
     expect(doc.definitions[doc.rootId], 'Wurzeldefinition fehlt').toBeDefined()
   })
 
-  it('haelt der Store die UI-Felder bereit, aus denen die Panels lesen', () => {
+  it('hält der Store die UI-Felder bereit, aus denen die Panels lesen', () => {
     const state = appState()
     expect(state.ui, 'kein UI-Zustand').toBeTruthy()
     expect(Array.isArray(state.ui.openPanels)).toBe(true)
@@ -162,7 +162,7 @@ describe('Anbindung an den Store', () => {
     expect(state.ui.stats.triangles, 'stats.triangles fehlt').toBeTypeOf('number')
   })
 
-  it('haelt der Store Materialien, Tags, Stile und Szenen als eigene Toepfe', () => {
+  it('hält der Store Materialien, Tags, Stile und Szenen als eigene Toepfe', () => {
     const doc = appState().doc
     expect(doc.materials, 'materials fehlt').toBeTruthy()
     expect(doc.tags, 'tags fehlt').toBeTruthy()
@@ -204,7 +204,7 @@ describe('Importformate', () => {
     }
   })
 
-  it('laesst keine erkannte Bildendung aus', () => {
+  it('lässt keine erkannte Bildendung aus', () => {
     for (const extension of ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']) {
       expect(importAccept(), `Endung "${extension}" fehlt im Dateidialog`).toContain(extension)
     }

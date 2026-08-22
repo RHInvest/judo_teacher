@@ -42,7 +42,7 @@ const ENTITY_ICONS: Record<Entity['type'], LucideIcon> = {
 
 const ENTITY_LABELS: Record<Entity['type'], string> = {
   instance: 'Instanz',
-  dimension: 'Bemassung',
+  dimension: 'Bemaßung',
   text: 'Text',
   sectionPlane: 'Schnittebene',
   guidePoint: 'Hilfspunkt',
@@ -133,7 +133,7 @@ export function OutlinerPanel() {
         {rows.length === 0 ? (
           <EmptyHint>
             {tree.length === 0
-              ? 'Das Modell enthaelt noch keine Gruppen, Komponenten oder Annotationen.'
+              ? 'Das Modell enthält noch keine Gruppen, Komponenten oder Annotationen.'
               : 'Kein Eintrag passt zur Suche.'}
           </EmptyHint>
         ) : (

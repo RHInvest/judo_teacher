@@ -62,5 +62,5 @@ export function vcbInitialValue(initial: string | undefined): string {
  */
 export function vcbLabelText(label: string | undefined): string {
   const text = (label ?? '').trim()
-  return text === '' ? 'Mass' : text
+  return text === '' ? 'Maß' : text
 }

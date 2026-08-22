@@ -21,10 +21,10 @@ export function SceneTabs() {
     <div className={clsx('flex h-7 shrink-0 items-center gap-1 border-b px-1.5', skin.chrome, skin.border)}>
       {nested ? (
         <div className="flex min-w-0 shrink-0 items-center gap-0.5">
-          <Tooltip label="Zurueck zum Modell" side="bottom">
+          <Tooltip label="Zurück zum Modell" side="bottom">
             <button
               type="button"
-              aria-label="Zurueck zum Modell"
+              aria-label="Zurück zum Modell"
               onClick={() => act((s) => s.exitAllContexts())}
               className={clsx('flex h-5 w-5 items-center justify-center rounded', skin.iconBtn, skin.ring)}
             >
@@ -87,8 +87,8 @@ export function SceneTabs() {
         <Tooltip label="Szene aus aktueller Ansicht" side="bottom">
           <button
             type="button"
-            aria-label="Szene hinzufuegen"
-            onClick={() => edit('Szene hinzufuegen', (s) => s.addScene())}
+            aria-label="Szene hinzufügen"
+            onClick={() => edit('Szene hinzufügen', (s) => s.addScene())}
             className={clsx('flex h-5 w-5 shrink-0 items-center justify-center rounded', skin.iconBtn, skin.ring)}
           >
             <Plus size={12} />

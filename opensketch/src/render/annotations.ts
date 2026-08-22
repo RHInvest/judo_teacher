@@ -110,7 +110,8 @@ interface ScreenLeaderCommand {
 
 interface LineBucket {
   width: number
-  dashed: boolean
+  /** Strichlaenge in Metern; 0 = durchgezogen */
+  dashSize: number
   opacity: number
   positions: number[]
   colors: number[]
@@ -183,6 +184,10 @@ export class AnnotationLayer {
     const diagonal = B.isEmpty(sync.modelBounds) ? 0 : B.diagonal(sync.modelBounds)
     const infiniteSpan = Math.max(diagonal * 4, 50)
     const markerSize = Math.max(diagonal * 0.01, 0.05)
+    // Strichlaenge mit dem Modell mitwachsen lassen: eine feste Laenge von ein
+    // paar Zentimetern loest sich in einem 500-m-Gelaende zu einer grauen Linie
+    // auf und kostet zehntausende Striche.
+    const dashSize = Math.max(diagonal * 0.008, 0.05)
 
     const selected = new Set<Id>(snapshot.selection?.entityIds ?? [])
     const hover = snapshot.hover
@@ -205,6 +210,7 @@ export class AnnotationLayer {
           highlight: selected.has(entity.id) ? SELECT_COLOR : hovered === entity.id ? HOVER_COLOR : null,
           infiniteSpan,
           markerSize,
+          dashSize,
         }
 
         try {
@@ -264,6 +270,10 @@ export class AnnotationLayer {
       this.addAngularDimension(entity, ctx, start, end, color)
       return
     }
+    if (entity.kind === 'radius' || entity.kind === 'diameter') {
+      this.addRadialDimension(entity, ctx, start, end, color)
+      return
+    }
 
     const offset = this.toWorldDirection(ctx.record, entity.offset ?? V.ORIGIN)
     const span = V.sub(end, start)
@@ -284,14 +294,14 @@ export class AnnotationLayer {
     const tick = Math.max(textHeight * 0.6, spanLength * 0.02)
 
     /* --- Masslinie --- */
-    this.pushLine(lineStart, lineEnd, color, 2, false, ctx.opacity)
+    this.pushLine(lineStart, lineEnd, color, 2, 0, ctx.opacity)
 
     /* --- Hilfslinien an den Messpunkten --- */
     if (offsetLength > 1e-9) {
       const gap = Math.min(tick * 0.4, offsetLength * 0.5)
       const overshoot = tick * 0.5
-      this.pushLine(V.addScaled(start, away, gap), V.addScaled(lineStart, away, overshoot), color, 1.2, false, ctx.opacity)
-      this.pushLine(V.addScaled(end, away, gap), V.addScaled(lineEnd, away, overshoot), color, 1.2, false, ctx.opacity)
+      this.pushLine(V.addScaled(start, away, gap), V.addScaled(lineStart, away, overshoot), color, 1.2, 0, ctx.opacity)
+      this.pushLine(V.addScaled(end, away, gap), V.addScaled(lineEnd, away, overshoot), color, 1.2, 0, ctx.opacity)
     }
 
     /* --- Pfeile / Schraegstriche --- */
@@ -300,6 +310,53 @@ export class AnnotationLayer {
 
     /* --- Masstext --- */
     this.pushLabel(entity, ctx, V.midpoint(lineStart, lineEnd), away, dir, this.dimensionText(entity, ctx.units, spanLength))
+  }
+
+  /**
+   * Radius- und Durchmesserbemassung.
+   *
+   * `center` ist der KREISMITTELPUNKT (vom Lead praezisiert). Ohne ihn waere
+   * nicht bestimmt, wohin die Masslinie zeigt; fehlt er trotzdem, gilt `start`
+   * als Mittelpunkt. Der Kreispunkt ist der von beiden Messpunkten, der weiter
+   * vom Mittelpunkt entfernt liegt - so ist es gleichgueltig, ob das Werkzeug
+   * `start` oder `end` auf den Kreis gesetzt hat.
+   */
+  private addRadialDimension(
+    entity: DimensionEntity,
+    ctx: BuildContext,
+    start: Vec3Like,
+    end: Vec3Like,
+    color: string,
+  ): void {
+    const center = entity.center ? this.toWorld(ctx.record, entity.center) : start
+    if (!V.isFinite3(center)) return
+
+    const toStart = V.distance(start, center)
+    const toEnd = V.distance(end, center)
+    const point = toEnd >= toStart ? end : start
+    const radius = Math.max(toStart, toEnd)
+    if (radius < 1e-9) return
+
+    const dir = V.mul(V.sub(point, center), 1 / radius)
+    const offset = this.toWorldDirection(ctx.record, entity.offset ?? V.ORIGIN)
+    const side = V.normalizeOr(V.sub(offset, V.projectOnVector(offset, dir)), V.normalizeOr(V.anyPerpendicular(dir), V.AXIS_Z))
+
+    // Der Durchmesser laeuft durch den Mittelpunkt hindurch, der Radius nur
+    // vom Mittelpunkt nach aussen.
+    const from = V.add(entity.kind === 'diameter' ? V.addScaled(center, dir, -radius) : center, offset)
+    const to = V.add(V.addScaled(center, dir, radius), offset)
+
+    const textHeight = this.worldTextHeight(entity, radius)
+    const tick = Math.max(textHeight * 0.6, radius * 0.04)
+
+    this.pushLine(from, to, color, 2, 0, ctx.opacity)
+    this.pushArrow(to, dir, side, tick, entity.arrowStyle, color, ctx.opacity)
+    if (entity.kind === 'diameter') this.pushArrow(from, V.negate(dir), side, tick, entity.arrowStyle, color, ctx.opacity)
+    // Mittelpunktkreuz: macht sichtbar, worauf sich das Mass bezieht
+    else this.pushCross(V.add(center, offset), tick, color, 1.2, ctx.opacity)
+
+    const value = entity.kind === 'diameter' ? radius * 2 : radius
+    this.pushLabel(entity, ctx, V.midpoint(from, to), side, dir, this.radialText(entity, ctx.units, value))
   }
 
   private addAngularDimension(
@@ -330,15 +387,15 @@ export class AnnotationLayer {
     const tick = Math.max(textHeight * 0.6, radius * 0.05)
 
     /* --- Schenkel --- */
-    this.pushLine(center, V.addScaled(center, u, lengthA), color, 1.2, false, ctx.opacity)
-    this.pushLine(center, V.addScaled(center, other, lengthB), color, 1.2, false, ctx.opacity)
+    this.pushLine(center, V.addScaled(center, u, lengthA), color, 1.2, 0, ctx.opacity)
+    this.pushLine(center, V.addScaled(center, other, lengthB), color, 1.2, 0, ctx.opacity)
 
     /* --- Bogen --- */
     const segments = Math.max(8, Math.min(64, Math.round((angle / Math.PI) * 48)))
     let previous = pointOnArc(center, u, v, radius, 0)
     for (let i = 1; i <= segments; i++) {
       const point = pointOnArc(center, u, v, radius, (angle * i) / segments)
-      this.pushLine(previous, point, color, 2, false, ctx.opacity)
+      this.pushLine(previous, point, color, 2, 0, ctx.opacity)
       previous = point
     }
 
@@ -361,24 +418,23 @@ export class AnnotationLayer {
   /**
    * Der gemessene Wert. `text` der Entitaet gewinnt, wenn gesetzt - so kann der
    * Nutzer "ca. 4 m" oder eine Bauteilnummer eintragen.
-   *
-   * AUSLEGUNG der Punkte je Art (der Contract sagt dazu nichts):
-   *   linear   `start`/`end` sind die Messpunkte
-   *   radius   `start` ist der Mittelpunkt, `end` liegt auf dem Kreis
-   *   diameter wie radius, angezeigt wird der doppelte Wert
    */
   private dimensionText(entity: DimensionEntity, units: UnitSettings, spanLength: number): string {
-    const override = typeof entity.text === 'string' ? entity.text.trim() : ''
-    if (override.length > 0) return override
-    if (entity.kind === 'radius') return `R ${formatLength(spanLength, units)}`
-    if (entity.kind === 'diameter') return `⌀ ${formatLength(spanLength * 2, units)}`
-    return formatLength(spanLength, units)
+    return this.overrideOr(entity, formatLength(spanLength, units))
+  }
+
+  private radialText(entity: DimensionEntity, units: UnitSettings, value: number): string {
+    const prefix = entity.kind === 'diameter' ? '⌀ ' : 'R '
+    return this.overrideOr(entity, `${prefix}${formatLength(value, units)}`)
   }
 
   private angleText(entity: DimensionEntity, units: UnitSettings, radians: number): string {
+    return this.overrideOr(entity, formatAngle(radians, units))
+  }
+
+  private overrideOr(entity: DimensionEntity, measured: string): string {
     const override = typeof entity.text === 'string' ? entity.text.trim() : ''
-    if (override.length > 0) return override
-    return formatAngle(radians, units)
+    return override.length > 0 ? override : measured
   }
 
   /* ---------------------------------------------------------------- */
@@ -398,7 +454,7 @@ export class AnnotationLayer {
       if (entity.leader === 'pushPin') {
         // Am Ankerpunkt festgenagelt: die Fuehrungslinie lebt im Weltraum,
         // dreht sich also mit dem Modell und wird von Geometrie verdeckt.
-        this.pushLine(anchor, position, color, 1.5, false, ctx.opacity)
+        this.pushLine(anchor, position, color, 1.5, 0, ctx.opacity)
         this.pushCross(anchor, ctx.markerSize * 0.6, color, 1.2, ctx.opacity)
       } else {
         // Ansichtsbezogen: die Linie wird auf der Textebene gezogen, liegt also
@@ -441,7 +497,7 @@ export class AnnotationLayer {
     const color = ctx.highlight ?? axisColor(direction)
     const a = finite ? origin : V.addScaled(origin, direction, -ctx.infiniteSpan)
     const b = finite ? V.addScaled(origin, direction, entity.length as number) : V.addScaled(origin, direction, ctx.infiniteSpan)
-    this.pushLine(a, b, color, 1.2, true, ctx.opacity)
+    this.pushLine(a, b, color, 1.2, ctx.dashSize, ctx.opacity)
   }
 
   private addGuidePoint(entity: GuidePointEntity, ctx: BuildContext): void {
@@ -453,7 +509,7 @@ export class AnnotationLayer {
     if (entity.from) {
       const from = this.toWorld(ctx.record, entity.from)
       if (V.isFinite3(from) && V.distance(from, position) > 1e-9) {
-        this.pushLine(from, position, color, 1.2, true, ctx.opacity)
+        this.pushLine(from, position, color, 1.2, ctx.dashSize, ctx.opacity)
       }
     }
   }
@@ -524,7 +580,7 @@ export class AnnotationLayer {
     // brauchen ohnehin eine blaue Umrandung.
     const frameColor = ctx.highlight ?? '#9aa4b2'
     for (let i = 0; i < 4; i++) {
-      this.pushLine(corners[i], corners[(i + 1) % 4], frameColor, ctx.highlight ? 2.5 : 1, false, ctx.opacity)
+      this.pushLine(corners[i], corners[(i + 1) % 4], frameColor, ctx.highlight ? 2.5 : 1, 0, ctx.opacity)
     }
   }
 
@@ -549,9 +605,10 @@ export class AnnotationLayer {
   /* Linienbausteine                                                  */
   /* ---------------------------------------------------------------- */
 
-  private pushLine(a: Vec3Like, b: Vec3Like, color: string, width: number, dashed: boolean, opacity: number): void {
+  /** `dashSize` in Metern, 0 = durchgezogen. */
+  private pushLine(a: Vec3Like, b: Vec3Like, color: string, width: number, dashSize: number, opacity: number): void {
     if (!V.isFinite3(a) || !V.isFinite3(b)) return
-    const bucket = this.bucketFor(width, dashed, opacity)
+    const bucket = this.bucketFor(width, dashSize, opacity)
     const c = parseColor(color, '#333333')
     bucket.positions.push(a.x, a.y, a.z, b.x, b.y, b.z)
     bucket.colors.push(c.r, c.g, c.b, c.r, c.g, c.b)
@@ -561,7 +618,7 @@ export class AnnotationLayer {
   private pushCross(center: Vec3Like, size: number, color: string, width: number, opacity: number): void {
     const half = Math.max(size, 1e-6) / 2
     for (const axis of [V.AXIS_X, V.AXIS_Y, V.AXIS_Z]) {
-      this.pushLine(V.addScaled(center, axis, -half), V.addScaled(center, axis, half), color, width, false, opacity)
+      this.pushLine(V.addScaled(center, axis, -half), V.addScaled(center, axis, half), color, width, 0, opacity)
     }
   }
 
@@ -582,7 +639,7 @@ export class AnnotationLayer {
 
     if (style === 'slash') {
       const diagonal = V.normalizeOr(V.add(dir, side), side)
-      this.pushLine(V.addScaled(tip, diagonal, -size * 0.5), V.addScaled(tip, diagonal, size * 0.5), color, 2, false, opacity)
+      this.pushLine(V.addScaled(tip, diagonal, -size * 0.5), V.addScaled(tip, diagonal, size * 0.5), color, 2, 0, opacity)
       return
     }
 
@@ -595,7 +652,7 @@ export class AnnotationLayer {
           tip,
           V.add(V.mul(side, Math.cos(angle) * size * 0.25), V.mul(dir, Math.sin(angle) * size * 0.25)),
         )
-        this.pushLine(previous, point, color, 2, false, opacity)
+        this.pushLine(previous, point, color, 2, 0, opacity)
         previous = point
       }
       return
@@ -605,18 +662,21 @@ export class AnnotationLayer {
     const wing = size * 0.32
     const left = V.addScaled(back, side, wing)
     const right = V.addScaled(back, side, -wing)
-    this.pushLine(tip, left, color, 1.6, false, opacity)
-    this.pushLine(tip, right, color, 1.6, false, opacity)
-    if (style === 'closedArrow') this.pushLine(left, right, color, 1.6, false, opacity)
+    this.pushLine(tip, left, color, 1.6, 0, opacity)
+    this.pushLine(tip, right, color, 1.6, 0, opacity)
+    if (style === 'closedArrow') this.pushLine(left, right, color, 1.6, 0, opacity)
   }
 
-  private bucketFor(width: number, dashed: boolean, opacity: number): LineBucket {
+  private bucketFor(width: number, dashSize: number, opacity: number): LineBucket {
     const w = Math.round(Math.max(0.5, width) * 10) / 10
     const o = Math.round(clamp(opacity, 0.05, 1) * 20) / 20
-    const key = `${w}|${dashed ? 1 : 0}|${o}`
+    // Strichlaengen werden gestuft, damit zwei fast gleiche Werte nicht zwei
+    // Materialien und zwei Zeichenaufrufe erzeugen.
+    const d = dashSize > 0 ? quantizeDash(dashSize) : 0
+    const key = `${w}|${d}|${o}`
     let bucket = this.buckets.get(key)
     if (!bucket) {
-      bucket = { width: w, dashed, opacity: o, positions: [], colors: [] }
+      bucket = { width: w, dashSize: d, opacity: o, positions: [], colors: [] }
       this.buckets.set(key, bucket)
     }
     return bucket
@@ -629,7 +689,7 @@ export class AnnotationLayer {
       geometry.setPositions(bucket.positions)
       geometry.setColors(bucket.colors)
       const line = new LineSegments2(geometry, this.materialFor(bucket))
-      if (bucket.dashed) line.computeLineDistances()
+      if (bucket.dashSize > 0) line.computeLineDistances()
       line.renderOrder = 7
       line.frustumCulled = false
       line.userData.ownGeometry = true
@@ -638,21 +698,24 @@ export class AnnotationLayer {
   }
 
   private materialFor(bucket: LineBucket): SketchLineMaterial {
-    const key = `${bucket.width}|${bucket.dashed ? 1 : 0}|${bucket.opacity}`
+    const key = `${bucket.width}|${bucket.dashSize}|${bucket.opacity}`
     let material = this.materials.get(key)
     if (!material) {
       material = new SketchLineMaterial({
         // Weiss, weil die Farbe pro Segment aus dem Vertexattribut kommt.
         color: 0xffffff,
         linewidth: bucket.width,
-        dashed: bucket.dashed,
-        dashSize: 0.12,
-        gapSize: 0.08,
+        dashed: bucket.dashSize > 0,
+        dashSize: bucket.dashSize,
+        gapSize: bucket.dashSize * 0.7,
         vertexColors: true,
         transparent: bucket.opacity < 0.999,
         opacity: bucket.opacity,
         depthTest: true,
         depthWrite: false,
+        // Annotationen liegen oft GENAU auf der Geometrie, die sie bemassen -
+        // ohne den Versatz flimmert die Masslinie auf der Kante.
+        polygonOffset: true,
       })
       material.resolution.set(this.width, this.height)
       this.materials.set(key, material)
@@ -912,6 +975,8 @@ interface BuildContext {
   highlight: string | null
   infiniteSpan: number
   markerSize: number
+  /** Strichlaenge gestrichelter Annotationen in Metern */
+  dashSize: number
 }
 
 /* ------------------------------------------------------------------ */
@@ -931,6 +996,13 @@ function referenceStep(host: AnnotationHost, at: Vec3Like): number {
   const ppu = host.pixelsPerUnit(at)
   if (!Number.isFinite(ppu) || ppu <= 1e-9) return 0.1
   return 20 / ppu
+}
+
+/** Strichlaengen auf eine grobe Stufung runden - spart Materialien. */
+function quantizeDash(dashSize: number): number {
+  const exponent = Math.floor(Math.log10(Math.max(dashSize, 1e-6)))
+  const step = 10 ** exponent / 2
+  return Math.max(Math.round(dashSize / step) * step, step)
 }
 
 function pointOnArc(center: Vec3Like, u: Vec3Like, v: Vec3Like, radius: number, angle: number): Vec3Like {

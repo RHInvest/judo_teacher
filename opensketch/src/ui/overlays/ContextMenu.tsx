@@ -29,7 +29,7 @@ export function contextMenuEntries(selection: Selection, opts: { nested: boolean
 
   if (entities > 0) {
     entries.push({ label: 'Bearbeiten', run: () => cmd.cmdEnterContext() })
-    entries.push({ label: 'Aufloesen', shortcut: MENU_SHORTCUTS.explode, run: cmd.cmdExplode })
+    entries.push({ label: 'Auflösen', shortcut: MENU_SHORTCUTS.explode, run: cmd.cmdExplode })
     entries.push({ label: 'Eindeutig machen', run: () => cmd.cmdMakeUnique() })
     entries.push(menuSep())
   }
@@ -39,13 +39,13 @@ export function contextMenuEntries(selection: Selection, opts: { nested: boolean
     entries.push({ label: 'Kopieren', shortcut: MENU_SHORTCUTS.copy, run: cmd.cmdCopy })
   }
   if (opts.clipboard) {
-    entries.push({ label: 'Einfuegen', shortcut: MENU_SHORTCUTS.paste, run: () => cmd.cmdPaste(false) })
-    entries.push({ label: 'An Ort einfuegen', run: () => cmd.cmdPaste(true) })
+    entries.push({ label: 'Einfügen', shortcut: MENU_SHORTCUTS.paste, run: () => cmd.cmdPaste(false) })
+    entries.push({ label: 'An Ort einfügen', run: () => cmd.cmdPaste(true) })
   }
   if (any || opts.clipboard) entries.push(menuSep())
 
   if (any) {
-    entries.push({ label: 'Loeschen', shortcut: MENU_SHORTCUTS.delete, run: cmd.cmdDelete })
+    entries.push({ label: 'Löschen', shortcut: MENU_SHORTCUTS.delete, run: cmd.cmdDelete })
     entries.push({ label: 'Verstecken', shortcut: MENU_SHORTCUTS.hide, run: cmd.cmdHide })
   }
   if (entities > 0) {
@@ -64,9 +64,9 @@ export function contextMenuEntries(selection: Selection, opts: { nested: boolean
 
   if (faces > 0) {
     entries.push(menuSep())
-    entries.push({ label: 'Flaechen umkehren', run: cmd.cmdReverseFaces })
-    entries.push({ label: 'Flaechen ausrichten', run: cmd.cmdOrientFaces })
-    entries.push({ label: 'Schnittflaechen erzeugen', run: () => cmd.cmdIntersect('selection') })
+    entries.push({ label: 'Flächen umkehren', run: cmd.cmdReverseFaces })
+    entries.push({ label: 'Flächen ausrichten', run: cmd.cmdOrientFaces })
+    entries.push({ label: 'Schnittflächen erzeugen', run: () => cmd.cmdIntersect('selection') })
   }
 
   if (edges > 0) {
@@ -75,8 +75,8 @@ export function contextMenuEntries(selection: Selection, opts: { nested: boolean
   }
 
   entries.push(menuSep())
-  entries.push({ label: 'Alles auswaehlen', shortcut: MENU_SHORTCUTS.selectAll, run: cmd.cmdSelectAll })
-  entries.push({ label: 'Abwaehlen', shortcut: MENU_SHORTCUTS.deselect, disabled: !any, run: cmd.cmdDeselect })
+  entries.push({ label: 'Alles auswählen', shortcut: MENU_SHORTCUTS.selectAll, run: cmd.cmdSelectAll })
+  entries.push({ label: 'Abwählen', shortcut: MENU_SHORTCUTS.deselect, disabled: !any, run: cmd.cmdDeselect })
   entries.push({
     label: 'Auswahl einpassen',
     shortcut: MENU_SHORTCUTS.zoomSelection,

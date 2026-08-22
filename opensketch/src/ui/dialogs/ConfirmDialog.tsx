@@ -24,13 +24,13 @@ export function ConfirmDialog({
       actions={[
         { label: 'Abbrechen', onClick: onClose },
         {
-          label: 'Bestaetigen',
+          label: 'Bestätigen',
           variant: 'primary',
           onClick: () => {
             try {
               onConfirm()
             } catch (err) {
-              console.warn('[ui] Bestaetigte Aktion fehlgeschlagen', err)
+              console.warn('[ui] Bestätigte Aktion fehlgeschlagen', err)
             }
             onClose()
           },

@@ -73,8 +73,14 @@ export async function importFile(file: File, opts: ImportOptions = {}): Promise<
   return importFromBytes(new Uint8Array(buffer), file.name, format, opts)
 }
 
-/** Import direkt aus einem Puffer - fuer Tests und Drag & Drop. */
-export function importBytes(
+/**
+ * Import direkt aus einem Puffer - fuer Tests und Drag & Drop.
+ *
+ * `async`, damit auch eine unbekannte Endung als abgelehntes Promise
+ * ankommt und nicht synchron aus dem Aufrufer herausfliegt - sonst greift
+ * ein `.catch()` daneben.
+ */
+export async function importBytes(
   bytes: Uint8Array,
   filename: string,
   opts: ImportOptions = {},

@@ -199,7 +199,8 @@ function buildEverything(): RichDocument {
     usage: 'model',
   })
 
-  /* --- Sonne, Nebel, Szene --- */
+  /* --- Stil, Sonne, Nebel, Szene --- */
+  state().updateStyle({ faceStyle: 'hiddenLine', showGuides: false, showGrid: true, gridSpacing: 0.5 })
   state().updateSun({ enabled: true, time: 16 * 60 + 30, latitude: 48.137, locationName: 'Muenchen' })
   state().updateFog({ enabled: true, near: 12, far: 90, color: '#aabbcc' })
   const sceneId = state().addScene('Suedansicht')
@@ -262,6 +263,20 @@ describe('Round-Trip mit allem', () => {
     expect(restored.tags[tagId].dashes).toBe('dashdot')
     expect(restored.tags[tagId].visible).toBe(false)
     expect(restored.tags).toEqual(doc.tags)
+  })
+
+  it('Stile behalten jedes Schaltfeld - auch neu hinzugekommene', () => {
+    const { doc } = buildEverything()
+    const restored = deserializeDocument(serializeDocument(doc))
+
+    expect(restored.styles).toEqual(doc.styles)
+    const style = restored.styles[restored.activeStyleId]
+    expect(style.faceStyle).toBe('hiddenLine')
+    // Ein abgeschaltetes Schaltfeld darf beim Lesen nicht auf den Standard
+    // zurueckfallen - `showGuides` hat die Voreinstellung true.
+    expect(style.showGuides).toBe(false)
+    expect(style.showGrid).toBe(true)
+    expect(style.gridSpacing).toBe(0.5)
   })
 
   it('Szenen behalten Kamera, Speicherflags und Zeiten', () => {

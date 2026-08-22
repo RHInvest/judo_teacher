@@ -11,10 +11,21 @@
  *   3. the kept faces are re-assembled into a fresh geometry, with the faces
  *      taken from B reversed for `subtract`
  *
- * Known limitation: faces of A and B that are exactly coplanar and overlapping
- * are ambiguous. They are classified as 'on' and only the copy coming from A
- * survives (union) or both are dropped (intersect), which is right for stacked
- * boxes but can leave a seam in more exotic configurations.
+ * Exakt koplanare, ueberlappende Flaechen von A und B ('on') sind mehrdeutig.
+ * Sie werden so behandelt:
+ *   - VEREINIGUNG: die Flaeche bleibt nur, wenn der andere Koerper NICHT auf
+ *     ihrer Vorderseite steht (`otherFillsFront`). Zwei gestapelte Quader
+ *     verlieren dadurch ihre gemeinsame Trennwand und ergeben einen Koerper.
+ *   - SCHNITT: 'on'-Flaechen fallen weg. Zwei Koerper, die sich nur eine
+ *     Flaeche teilen, haben kein gemeinsames Volumen; das Ergebnis ist `null`.
+ *   - ABZUG: 'on'-Flaechen bleiben, ausser B fuellt ihre Rueckseite - dann wird
+ *     genau dieses Stueck Huelle abgezogen. `A minus A` ergibt so `null`
+ *     statt A.
+ *
+ * Das Ergebnis ist ENTWEDER ein geschlossener Koerper ODER `null`. Bleibt bei
+ * einer exotischeren Konfiguration eine offene Huelle uebrig, wird sie
+ * verworfen statt ausgeliefert - eine Operation, die erfolgreich aussieht und
+ * ein kaputtes Modell hinterlaesst, ist schlimmer als eine, die nichts tut.
  */
 
 import type { Geometry, Id, Vec3Like } from '@/shared/types'
@@ -59,6 +70,37 @@ export function classifyPoint(geom: Geometry, p: Vec3Like, dir: Vec3Like = PROBE
     crossings++
   }
   return crossings % 2 === 1 ? 'inside' : 'outside'
+}
+
+/**
+ * Beruehrflaeche: Fuellt der andere Koerper die VORDERSEITE dieser Flaeche?
+ *
+ * Eine Flaeche liegt mit ihrem Material auf der Rueckseite (die Normale zeigt
+ * aus dem Koerper heraus). Steht auf der Vorderseite der andere Koerper, dann
+ * ist die Flaeche nach einer Vereinigung eine INNENWAND und gehoert nicht mehr
+ * zur Huelle. Stossen beide nur Haut an Haut aneinander (Normalen zeigen
+ * gleich), bleibt sie Aussenhaut.
+ *
+ * Ohne diese Unterscheidung liefert die Vereinigung zweier gestapelter Quader
+ * eine Trennwand in der Mitte: 11 Flaechen, `isSolid` false, Volumen 0.
+ */
+function otherFillsFront(other: Geometry, probe: Vec3Like, normal: Vec3Like): boolean {
+  const eps = POINT_TOL * 10
+  return classifyPoint(other, V.addScaled(probe, normal, eps)) === 'inside'
+}
+
+/**
+ * Beruehrflaeche: Fuellt der andere Koerper die RUECKSEITE, also die Seite, auf
+ * der bei dieser Flaeche das eigene Material liegt?
+ *
+ * Beim Abzug heisst das: genau dieses Stueck Huelle wird weggenommen, die
+ * Flaeche gehoert nicht mehr zum Ergebnis. Ohne die Pruefung liefert `A minus A`
+ * wieder A - eine Operation, die den Koerper unveraendert stehen laesst,
+ * obwohl der Nutzer ihn gerade vollstaendig abgezogen hat.
+ */
+function otherFillsBack(other: Geometry, probe: Vec3Like, normal: Vec3Like): boolean {
+  const eps = POINT_TOL * 10
+  return classifyPoint(other, V.addScaled(probe, normal, -eps)) === 'inside'
 }
 
 /** A point in the interior of the face, holes excluded. */
@@ -143,6 +185,13 @@ export function booleanSolidOp(a: Geometry, b: Geometry, op: BooleanOp): Geometr
     const probe = faceProbePoint(workA, fId)
     if (!probe) continue
     const cls = classifyPoint(b, probe)
+    if (cls === 'on') {
+      const n = workA.faces[fId].normal
+      // nach der Vereinigung eine Innenwand
+      if (op === 'union' && otherFillsFront(b, probe, n)) continue
+      // vom Abzug weggenommenes Stueck Huelle
+      if (op === 'subtract' && otherFillsBack(b, probe, n)) continue
+    }
     const keep =
       op === 'union' ? cls !== 'inside' : op === 'intersect' ? cls === 'inside' : cls !== 'inside'
     if (keep) emitFace(result, workA, fId, false, acc)
@@ -164,5 +213,15 @@ export function booleanSolidOp(a: Geometry, b: Geometry, op: BooleanOp): Geometr
 
   cleanupMut(result, acc)
   if (Object.keys(result.faces).length === 0) return null
+  /*
+   * ENTWEDER EIN GESCHLOSSENER KOERPER ODER NULL - nichts dazwischen.
+   *
+   * Bleibt bei einer der oben genannten Mehrdeutigkeiten eine offene Huelle
+   * uebrig, ist das kein brauchbares Ergebnis: `isSolid` waere false, das
+   * Volumen 0, und der Nutzer haette eine Operation, die erfolgreich aussieht
+   * und ihm das Modell zerschiesst. `null` heisst dagegen "geht nicht", und die
+   * Werkzeugschicht kann es melden.
+   */
+  if (!isSolid(result)) return null
   return result
 }

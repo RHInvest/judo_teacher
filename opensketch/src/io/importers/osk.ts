@@ -21,15 +21,32 @@ import type {
 import type { ImportOptions, ImportResult } from '../api-types'
 import { baseName, utf8Text } from '../common/util'
 import { ImportScene } from './common'
+import { documentFromRaw } from '@/model'
 import { newId } from '@/shared/ids'
 import { M } from '@/core/math'
 
+/**
+ * Liest eine `.osk`-Datei.
+ *
+ * Gelesen wird ueber `@/model`s `documentFromRaw`, nicht ueber ein eigenes
+ * `JSON.parse`. Das ist wichtig: eine vom Programm gespeicherte Datei ist in
+ * einen Formatkopf (`{ format, version, document }`) verpackt, ein roher
+ * Parser sucht `definitions` vergeblich an der Wurzel. `documentFromRaw`
+ * versteht beide Schreibweisen, prueft die Formatversion und normalisiert das
+ * Dokument.
+ */
 export function readOskDocument(bytes: Uint8Array): SketchDocument {
-  const parsed: unknown = JSON.parse(utf8Text(bytes))
-  if (!parsed || typeof parsed !== 'object') throw new Error('OSK: Die Datei enthält kein Objekt.')
-  const doc = parsed as Partial<SketchDocument>
-  if (!doc.definitions || !doc.rootId) throw new Error('OSK: `definitions` oder `rootId` fehlt.')
-  return doc as SketchDocument
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(utf8Text(bytes))
+  } catch (err) {
+    throw new Error(`OSK: Die Datei ist kein gültiges JSON (${err instanceof Error ? err.message : String(err)}).`)
+  }
+  try {
+    return documentFromRaw(parsed)
+  } catch (err) {
+    throw new Error(`OSK: ${err instanceof Error ? err.message : String(err)}`)
+  }
 }
 
 export function importOsk(bytes: Uint8Array, filename: string, opts: ImportOptions = {}): ImportResult {

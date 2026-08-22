@@ -24,7 +24,7 @@ const UNIT_SCALES: { value: string; label: string }[] = [
   { value: '100', label: 'Zentimeter' },
   { value: '1000', label: 'Millimeter' },
   { value: '39.3700787', label: 'Zoll' },
-  { value: '3.2808399', label: 'Fuss' },
+  { value: '3.2808399', label: 'Fuß' },
 ]
 
 function formatList(): { format: ExportFormat; label: string; extension: string }[] {
@@ -150,14 +150,14 @@ export function ExportModelDialog({ onClose }: { onClose: () => void }) {
           <Row label="Projektion">
             <Select ariaLabel="Projektionsrichtung" value={view} options={VIEWS} onChange={setView} />
           </Row>
-          <Row label="Strichstaerke">
+          <Row label="Strichstärke">
             <NumberInput
               value={strokeWidth}
               min={0.05}
               max={5}
               step={0.05}
               suffix="mm"
-              ariaLabel="Strichstaerke in Millimetern"
+              ariaLabel="Strichstärke in Millimetern"
               onChange={setStrokeWidth}
             />
           </Row>

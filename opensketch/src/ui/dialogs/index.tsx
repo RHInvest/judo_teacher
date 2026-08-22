@@ -73,7 +73,7 @@ export function DialogHost() {
     | ((dialog: DialogState, close: () => void) => React.ReactElement)
     | undefined
   if (!render) {
-    console.warn(`[ui] Kein Dialog fuer "${dialog.kind}" hinterlegt.`)
+    console.warn(`[ui] Kein Dialog für "${dialog.kind}" hinterlegt.`)
     return null
   }
   return render(dialog, close)

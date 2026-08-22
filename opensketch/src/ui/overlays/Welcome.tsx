@@ -10,7 +10,7 @@ import { Dialog } from '@/ui/dialogs/Dialog'
 
 const TEMPLATES: { id: 'metric' | 'imperial' | 'empty'; title: string; hint: string; icon: typeof Ruler }[] = [
   { id: 'metric', title: 'Metrisch', hint: 'Millimeter, Meter als Arbeitseinheit', icon: Ruler },
-  { id: 'imperial', title: 'Architektonisch', hint: 'Fuss und Zoll, Bruchdarstellung', icon: Ruler },
+  { id: 'imperial', title: 'Architektonisch', hint: 'Fuß und Zoll, Bruchdarstellung', icon: Ruler },
   { id: 'empty', title: 'Leer', hint: 'Ohne Materialien und Vorgaben', icon: Boxes },
 ]
 
@@ -36,7 +36,7 @@ export function Welcome({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       actions={[
         {
-          label: 'Datei oeffnen ...',
+          label: 'Datei öffnen ...',
           onClick: () => {
             void cmdOpenFromDisk().then(onClose)
           },
@@ -87,11 +87,11 @@ export function Welcome({ onClose }: { onClose: () => void }) {
         <section className="min-w-0 flex-1">
           <h3 className={clsx('flex items-center gap-1.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wide', skin.dim)}>
             <Clock size={11} aria-hidden />
-            Zuletzt geoeffnet
+            Zuletzt geöffnet
           </h3>
           {list.length === 0 ? (
             <div className={clsx('rounded border border-dashed px-3 py-6 text-center text-[11px] leading-relaxed', skin.border, skin.dim)}>
-              Noch keine Modelle vorhanden. Waehle links eine Vorlage oder oeffne eine .osk-Datei.
+              Noch keine Modelle vorhanden. Wähle links eine Vorlage oder öffne eine .osk-Datei.
             </div>
           ) : (
             <div className="flex max-h-[220px] flex-col gap-0.5 overflow-y-auto">
@@ -121,7 +121,7 @@ export function Welcome({ onClose }: { onClose: () => void }) {
             className={clsx('mt-1 flex w-full items-center justify-center gap-1.5 rounded border border-dashed px-2 py-1.5 text-[11px]', skin.border, skin.muted, skin.hover, skin.ring)}
           >
             <FolderOpen size={13} />
-            Datei vom Rechner oeffnen
+            Datei vom Rechner öffnen
           </button>
         </section>
       </div>

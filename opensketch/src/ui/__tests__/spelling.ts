@@ -1,0 +1,181 @@
+/**
+ * Erkennung von Ersatzschreibungen in sichtbaren Texten.
+ *
+ * Regel des Projekts: **sichtbare Texte** tragen echte Umlaute und Eszett
+ * ("Auswählen", "Flächen", "Maß"); **Bezeichner und Kommentare** bleiben
+ * umlautfrei. Diese Datei prueft die erste Haelfte.
+ *
+ * Bewusst kein Muster wie `/ae|oe|ue|ss/`: das faengt reihenweise korrekte
+ * Woerter - "Kompass", "Grundriss", "Umriss", "Ausschnitt", "messen",
+ * "blaue", "neue", "passt". Stattdessen steht hier die abgeschlossene Liste
+ * der Ersatzschreibungen, die im Projekt tatsaechlich vorkamen. Kommt eine
+ * neue dazu, gehoert sie hier hinein - dann meldet der Test sie ueberall.
+ */
+
+/** Woerter in Ersatzschreibung -> richtige Schreibweise. */
+export const SUBSTITUTE_SPELLINGS: Record<string, string> = {
+  Abwaehlen: 'Abwählen',
+  Aendern: 'Ändern',
+  Aenderung: 'Änderung',
+  Aenderungen: 'Änderungen',
+  Ansichtswuerfel: 'Ansichtswürfel',
+  Aufloesen: 'Auflösen',
+  Aufloesung: 'Auflösung',
+  Augenhoehe: 'Augenhöhe',
+  Auswaehlen: 'Auswählen',
+  Bemassung: 'Bemaßung',
+  Beruehrte: 'Berührte',
+  Bestaetigen: 'Bestätigen',
+  Bestaetigte: 'Bestätigte',
+  Bildhoehe: 'Bildhöhe',
+  Bogenhoehe: 'Bogenhöhe',
+  Buchstabenflaechen: 'Buchstabenflächen',
+  Daenemark: 'Dänemark',
+  Druecken: 'Drücken',
+  Einfuegen: 'Einfügen',
+  Einfuegepunkt: 'Einfügepunkt',
+  Eintraege: 'Einträge',
+  Entitaetsinfo: 'Entitätsinfo',
+  Flaeche: 'Fläche',
+  Flaechen: 'Flächen',
+  Flaecheneinheit: 'Flächeneinheit',
+  Flaechenstil: 'Flächenstil',
+  Fuellfarbe: 'Füllfarbe',
+  Fuss: 'Fuß',
+  Geaendert: 'Geändert',
+  Gefuellte: 'Gefüllte',
+  Gegenueberliegende: 'Gegenüberliegende',
+  Geglaettet: 'Geglättet',
+  Glaettung: 'Glättung',
+  Glaettungswinkel: 'Glättungswinkel',
+  Groesse: 'Größe',
+  Hauptmenue: 'Hauptmenü',
+  Hoehe: 'Höhe',
+  Intensitaet: 'Intensität',
+  Kantenverlaengerung: 'Kantenverlängerung',
+  Koeln: 'Köln',
+  Koenigreich: 'Königreich',
+  Kuerzel: 'Kürzel',
+  Laenge: 'Länge',
+  Laengeneinheit: 'Längeneinheit',
+  Laengenfang: 'Längenfang',
+  Laengenschritt: 'Längenschritt',
+  Linksbuendig: 'Linksbündig',
+  Loeschen: 'Löschen',
+  Mass: 'Maß',
+  Massband: 'Maßband',
+  Masse: 'Maße',
+  Massfeld: 'Maßfeld',
+  Massfelds: 'Maßfelds',
+  Masslinie: 'Maßlinie',
+  Menue: 'Menü',
+  Menues: 'Menüs',
+  Muenchen: 'München',
+  Nachbarflaechen: 'Nachbarflächen',
+  Oberflaeche: 'Oberfläche',
+  Oeffnen: 'Öffnen',
+  Oeffnung: 'Öffnung',
+  Oeffnungen: 'Öffnungen',
+  Oeffnungswinkel: 'Öffnungswinkel',
+  Oesterreich: 'Österreich',
+  Profilflaeche: 'Profilfläche',
+  Rechtsbuendig: 'Rechtsbündig',
+  Roentgen: 'Röntgen',
+  Roentgenmodus: 'Röntgenmodus',
+  Rueckgaengig: 'Rückgängig',
+  Rueckseite: 'Rückseite',
+  Rueckseiten: 'Rückseiten',
+  Schliessen: 'Schließen',
+  Schnittflaechen: 'Schnittflächen',
+  Schnittfuellung: 'Schnittfüllung',
+  Startflaeche: 'Startfläche',
+  Strichstaerke: 'Strichstärke',
+  Tastaturkuerzel: 'Tastaturkürzel',
+  Texturhoehe: 'Texturhöhe',
+  Tueren: 'Türen',
+  Ueber: 'Über',
+  Uebergang: 'Übergang',
+  Uebergangszeit: 'Übergangszeit',
+  Uebersicht: 'Übersicht',
+  Verlaengerung: 'Verlängerung',
+  Verlaengerungen: 'Verlängerungen',
+  Versalhoehe: 'Versalhöhe',
+  Waehle: 'Wähle',
+  Waehlen: 'Wählen',
+  Waende: 'Wände',
+  Wandflaeche: 'Wandfläche',
+  Zielmass: 'Zielmaß',
+  Zuerich: 'Zürich',
+  Zurueck: 'Zurück',
+  Zuruecksetzen: 'Zurücksetzen',
+  Zusammenhaengende: 'Zusammenhängende',
+  aendern: 'ändern',
+  aendert: 'ändert',
+  ausgewaehlt: 'ausgewählt',
+  aussen: 'außen',
+  auswaehlen: 'auswählen',
+  auszuwaehlen: 'auszuwählen',
+  bestaetigen: 'bestätigen',
+  druecken: 'drücken',
+  einfaerben: 'einfärben',
+  einfuegen: 'einfügen',
+  enthaelt: 'enthält',
+  ergaenzen: 'ergänzen',
+  fuellen: 'füllen',
+  fuer: 'für',
+  gedrueckt: 'gedrückt',
+  gedrueckter: 'gedrückter',
+  gefuellt: 'gefüllt',
+  gegenueber: 'gegenüber',
+  gegenueberliegende: 'gegenüberliegende',
+  geloescht: 'gelöscht',
+  geoeffnet: 'geöffnet',
+  gewaehlten: 'gewählten',
+  gewuenschte: 'gewünschte',
+  gewuenschten: 'gewünschten',
+  glaetten: 'glätten',
+  gruene: 'grüne',
+  gruenen: 'grünen',
+  haelt: 'hält',
+  hinzufuegen: 'hinzufügen',
+  laesst: 'lässt',
+  laeuft: 'läuft',
+  liess: 'ließ',
+  loeschen: 'löschen',
+  moeglich: 'möglich',
+  oeffne: 'öffne',
+  oeffnen: 'öffnen',
+  schliessen: 'schließen',
+  ueber: 'über',
+  ueberstreichen: 'überstreichen',
+  veraendern: 'verändern',
+  verfuegbar: 'verfügbar',
+  verlaesst: 'verlässt',
+  vollstaendig: 'vollständig',
+  waehlen: 'wählen',
+  waehlt: 'wählt',
+  zuruecksetzen: 'zurücksetzen',
+}
+
+/* Laengste zuerst, damit "Mass" nicht in "Massfeld" hineinschlaegt. */
+const PATTERN = new RegExp(
+  `(?<![A-Za-zÄÖÜäöüß])(${Object.keys(SUBSTITUTE_SPELLINGS)
+    .sort((a, b) => b.length - a.length)
+    .join('|')})(?![A-Za-zÄÖÜäöüß])`,
+  'g',
+)
+
+/** Alle Ersatzschreibungen in einem sichtbaren Text, jede einmal. */
+export function findSubstituteSpellings(text: string): string[] {
+  if (!text) return []
+  const found = new Set<string>()
+  for (const match of text.matchAll(PATTERN)) found.add(match[1])
+  return [...found]
+}
+
+/** Meldung fuer die Zusicherung: was steht da, was sollte dort stehen. */
+export function spellingHint(text: string): string {
+  return findSubstituteSpellings(text)
+    .map((word) => `"${word}" -> "${SUBSTITUTE_SPELLINGS[word]}"`)
+    .join(', ')
+}

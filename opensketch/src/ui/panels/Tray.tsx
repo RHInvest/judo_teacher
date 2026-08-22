@@ -100,7 +100,7 @@ function FullTray({
         <button
           type="button"
           onClick={onAdd}
-          aria-label="Weiteres Panel oeffnen"
+          aria-label="Weiteres Panel öffnen"
           className={clsx(
             'flex h-7 w-full items-center justify-center gap-1.5 rounded border border-dashed text-[11px] transition-colors',
             skin.border,
@@ -110,7 +110,7 @@ function FullTray({
           )}
         >
           <Plus size={13} />
-          Panel hinzufuegen
+          Panel hinzufügen
         </button>
       </div>
     </>
@@ -256,7 +256,7 @@ export function Tray({ compact }: { compact: boolean }) {
         <div ref={addRef} className="relative">
           <button
             type="button"
-            aria-label="Weiteres Panel oeffnen"
+            aria-label="Weiteres Panel öffnen"
             aria-expanded={addOpen}
             onClick={() => setAddOpen(!addOpen)}
             className={clsx('flex h-5 w-5 items-center justify-center rounded', skin.iconBtn, skin.ring)}

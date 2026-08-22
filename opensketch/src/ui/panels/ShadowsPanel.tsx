@@ -162,7 +162,7 @@ export function ShadowsPanel() {
         <input
           type="date"
           value={sun.date}
-          aria-label="Datum genau waehlen"
+          aria-label="Datum genau wählen"
           onChange={(event) => event.target.value && patch({ date: event.target.value })}
           onKeyDown={(event) => event.stopPropagation()}
           className={clsx('h-7 min-w-0 flex-1 rounded border px-2 text-[12px] outline-none focus:border-accent-500', skin.input)}
@@ -185,7 +185,7 @@ export function ShadowsPanel() {
 
       <Row label="Stadt">
         <Select
-          ariaLabel="Ort waehlen"
+          ariaLabel="Ort wählen"
           value={cityValue}
           options={[
             ...CITY_PRESETS.map((city) => ({ value: city.name, label: `${city.name} (${city.country})` })),
@@ -210,14 +210,14 @@ export function ShadowsPanel() {
             />
           </div>
           <div className="flex items-center gap-1.5">
-            <span className={clsx('w-[52px] shrink-0 text-[11px]', skin.muted)}>Laenge</span>
+            <span className={clsx('w-[52px] shrink-0 text-[11px]', skin.muted)}>Länge</span>
             <NumberInput
               value={sun.longitude}
               min={-180}
               max={180}
               step={0.01}
               suffix="°"
-              ariaLabel="Geografische Laenge"
+              ariaLabel="Geografische Länge"
               onChange={(value) => patch({ longitude: value, locationName: 'Eigener Ort' })}
             />
           </div>
@@ -229,7 +229,7 @@ export function ShadowsPanel() {
               max={14}
               step={0.5}
               suffix="h"
-              ariaLabel="Zeitzone gegenueber UTC"
+              ariaLabel="Zeitzone gegenüber UTC"
               onChange={(value) => patch({ timezone: value })}
             />
           </div>
@@ -241,7 +241,7 @@ export function ShadowsPanel() {
       </div>
 
       <Divider />
-      <GroupTitle>Intensitaet</GroupTitle>
+      <GroupTitle>Intensität</GroupTitle>
 
       <Row label="Licht">
         <Slider
@@ -249,7 +249,7 @@ export function ShadowsPanel() {
           max={1}
           step={0.01}
           value={sun.light}
-          ariaLabel="Helligkeit beleuchteter Flaechen"
+          ariaLabel="Helligkeit beleuchteter Flächen"
           display={`${Math.round(sun.light * 100)} %`}
           onChange={(value) => patch({ light: value })}
         />
@@ -260,14 +260,14 @@ export function ShadowsPanel() {
           max={1}
           step={0.01}
           value={sun.dark}
-          ariaLabel="Helligkeit verschatteter Flaechen"
+          ariaLabel="Helligkeit verschatteter Flächen"
           display={`${Math.round(sun.dark * 100)} %`}
           onChange={(value) => patch({ dark: value })}
         />
       </Row>
 
       <div className="px-2 pb-1">
-        <Checkbox checked={sun.onFaces} label="Auf Flaechen" onChange={(checked) => patch({ onFaces: checked })} />
+        <Checkbox checked={sun.onFaces} label="Auf Flächen" onChange={(checked) => patch({ onFaces: checked })} />
         <Checkbox checked={sun.onGround} label="Auf dem Boden" onChange={(checked) => patch({ onGround: checked })} />
         <Checkbox checked={sun.fromEdges} label="Von Kanten" onChange={(checked) => patch({ fromEdges: checked })} />
       </div>

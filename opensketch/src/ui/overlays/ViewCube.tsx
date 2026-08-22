@@ -149,7 +149,7 @@ export function ViewCube() {
   return (
     <div className="pointer-events-auto flex select-none flex-col items-end gap-1">
       <div className={clsx('rounded border p-0.5', skin.floating, skin.shadow)}>
-        <svg width={size} height={size} role="group" aria-label="Ansichtswuerfel">
+        <svg width={size} height={size} role="group" aria-label="Ansichtswürfel">
           {face('top', top, 'OBEN', [half, half - h - 2])}
           {face('front', left, 'VORN', [half - w / 2, half + h + 4])}
           {face('right', right, 'RE', [half + w / 2, half + h + 4])}

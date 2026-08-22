@@ -94,7 +94,7 @@ export function cmdPaste(inPlace = false): void {
     toast('Die Zwischenablage ist leer.', 'warn')
     return
   }
-  edit(inPlace ? 'An Ort einfuegen' : 'Einfuegen', (state) => {
+  edit(inPlace ? 'An Ort einfügen' : 'Einfügen', (state) => {
     state.transformPrimitives(source, IDENTITY_MATRIX, true)
   })
 }
@@ -151,7 +151,7 @@ export async function cmdSave(): Promise<void> {
     toast('Modell gespeichert.', 'success')
   } catch (err) {
     console.warn('[ui] Speichern fehlgeschlagen', err)
-    toast('Speichern ist noch nicht verfuegbar.', 'warn')
+    toast('Speichern ist noch nicht verfügbar.', 'warn')
   }
 }
 
@@ -174,7 +174,7 @@ export function cmdSaveAs(name?: string): void {
       downloadBlob(blob, `${target.meta?.name || 'modell'}.osk`)
       toast('Datei wird heruntergeladen.', 'success')
     } catch {
-      toast('Speichern unter ist noch nicht verfuegbar.', 'warn')
+      toast('Speichern unter ist noch nicht verfügbar.', 'warn')
     }
   }
 }
@@ -183,7 +183,7 @@ export async function cmdListSaved(): Promise<{ id: string; name: string; modifi
   try {
     return (await listSavedDocuments()) ?? []
   } catch (err) {
-    console.warn('[ui] Dokumentliste nicht verfuegbar', err)
+    console.warn('[ui] Dokumentliste nicht verfügbar', err)
     return []
   }
 }
@@ -197,11 +197,11 @@ export async function cmdOpenSaved(id: string): Promise<boolean> {
     }
     act((state) => state.loadDocument(doc))
     pushRecent({ id, name: doc.meta?.name ?? 'Unbenannt', openedAt: Date.now() })
-    toast(`"${doc.meta?.name ?? 'Modell'}" geoeffnet.`, 'success')
+    toast(`"${doc.meta?.name ?? 'Modell'}" geöffnet.`, 'success')
     return true
   } catch (err) {
-    console.warn('[ui] Oeffnen fehlgeschlagen', err)
-    toast('Oeffnen ist noch nicht verfuegbar.', 'warn')
+    console.warn('[ui] Öffnen fehlgeschlagen', err)
+    toast('Öffnen ist noch nicht verfügbar.', 'warn')
     return false
   }
 }
@@ -209,10 +209,10 @@ export async function cmdOpenSaved(id: string): Promise<boolean> {
 export async function cmdDeleteSaved(id: string): Promise<void> {
   try {
     await deleteSavedDocument(id)
-    toast('Eintrag geloescht.', 'success')
+    toast('Eintrag gelöscht.', 'success')
   } catch (err) {
-    console.warn('[ui] Loeschen fehlgeschlagen', err)
-    toast('Loeschen ist noch nicht verfuegbar.', 'warn')
+    console.warn('[ui] Löschen fehlgeschlagen', err)
+    toast('Löschen ist noch nicht verfügbar.', 'warn')
   }
 }
 
@@ -223,7 +223,7 @@ export async function cmdOpenFromDisk(): Promise<void> {
   try {
     const doc = await readDocumentFile(file)
     act((state) => state.loadDocument(doc))
-    toast(`"${file.name}" geoeffnet.`, 'success')
+    toast(`"${file.name}" geöffnet.`, 'success')
   } catch (err) {
     console.warn('[ui] Datei konnte nicht gelesen werden', err)
     toast('Diese Datei konnte nicht gelesen werden.', 'error')
@@ -290,7 +290,7 @@ export function cmdRedo(): void {
 export function cmdDelete(): void {
   const selection = currentSelection()
   if (selectionCount(selection) === 0) return
-  edit('Loeschen', (state) => {
+  edit('Löschen', (state) => {
     state.deletePrimitives({
       edgeIds: selection.edgeIds,
       faceIds: selection.faceIds,
@@ -323,7 +323,7 @@ export function cmdGroup(): void {
 export function cmdExplode(): void {
   const ids = currentSelection().entityIds
   if (ids.length === 0) return
-  edit('Aufloesen', (state) => state.explode(ids))
+  edit('Auflösen', (state) => state.explode(ids))
 }
 
 export function cmdMakeUnique(ids?: Id[]): void {
@@ -356,17 +356,17 @@ export function cmdLock(locked: boolean): void {
 export function cmdReverseFaces(): void {
   const ids = currentSelection().faceIds
   if (ids.length === 0) return
-  edit('Flaechen umkehren', (state) => state.reverseFaces(ids))
+  edit('Flächen umkehren', (state) => state.reverseFaces(ids))
 }
 
 export function cmdOrientFaces(): void {
   const ids = currentSelection().faceIds
   if (ids.length === 0) return
-  edit('Flaechen ausrichten', (state) => state.orientFaces(ids[0]))
+  edit('Flächen ausrichten', (state) => state.orientFaces(ids[0]))
 }
 
 export function cmdIntersect(scope: 'selection' | 'model' | 'context'): void {
-  edit('Schnittflaechen erzeugen', (state) => {
+  edit('Schnittflächen erzeugen', (state) => {
     state.intersectFaces(scope)
   })
 }
@@ -374,7 +374,7 @@ export function cmdIntersect(scope: 'selection' | 'model' | 'context'): void {
 export function cmdSoftenEdges(angleDegrees: number, softenCoplanar: boolean): void {
   const ids = currentSelection().edgeIds
   if (ids.length === 0) {
-    toast('Bitte zuerst Kanten auswaehlen.', 'warn')
+    toast('Bitte zuerst Kanten auswählen.', 'warn')
     return
   }
   edit('Kanten weichzeichnen', (state) => state.softenEdges(ids, angleDegrees, { softenCoplanar }))
@@ -443,7 +443,7 @@ export function cmdTwoPointPerspective(enabled: boolean): void {
   try {
     viewport.setCamera({ twoPointPerspective: enabled }, true)
   } catch (err) {
-    console.warn('[ui] Zwei-Punkt-Perspektive nicht verfuegbar', err)
+    console.warn('[ui] Zwei-Punkt-Perspektive nicht verfügbar', err)
   }
 }
 

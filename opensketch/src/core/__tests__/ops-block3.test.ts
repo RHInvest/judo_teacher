@@ -59,9 +59,14 @@ describe('followMe in der Tiefe', () => {
     followMe(g, profile, path)
 
     expect(isSolid(g)).toBe(true)
-    // Querschnitt 1 x Mittellinienlaenge 8, die Gehrung nimmt der einen Seite
-    // genau so viel wie sie der anderen gibt
-    expect(solidVolume(g)).toBeCloseTo(8, 6)
+    /*
+     * NICHT Mittellinienlaenge x Querschnitt - das gilt nur fuer ein Profil,
+     * das auf dem Pfad zentriert ist. Hier liegt das Profil (y in [0,1]) auf
+     * der INNENSEITE der Kurve. Der Grundriss ist die Vereinigung von
+     * [0,4]x[0,1] und [3,4]x[0,4]: 4 + 4 - 1 = 7. Die Gehrung laeuft genau von
+     * der Innenecke (3,1) zur Aussenecke (4,0).
+     */
+    expect(solidVolume(g)).toBeCloseTo(7, 6)
     expectValid(g, 'followMe L Volumen')
   })
 
@@ -79,6 +84,26 @@ describe('followMe in der Tiefe', () => {
     expect(isSolid(g)).toBe(true)
     expect(solidVolume(g)).toBeCloseTo(6, 6)
     expectValid(g, 'followMe verkehrte Reihenfolge')
+  })
+
+  it('sweept einen geschlossenen Pfad unabhaengig von der Reihenfolge der Ids', () => {
+    const volumen = (mischen: boolean): number => {
+      const g = geom()
+      addPolyline(
+        g,
+        [p(3, -0.5, -0.5), p(3, 0.5, -0.5), p(3, 0.5, 0.5), p(3, -0.5, 0.5)],
+        true,
+      )
+      const profile = lastFace(g)
+      addPolyline(g, [p(0, 0, 0), p(6, 0, 0), p(6, 6, 0), p(0, 6, 0)], true, { guide: true })
+      const path = edgeIds(g).filter((id) => g.edges[id].guide === true)
+      followMe(g, profile, mischen ? [path[2], path[0], path[3], path[1]] : path)
+      expect(isSolid(g)).toBe(true)
+      expectValid(g, `followMe geschlossen mischen=${mischen}`)
+      return solidVolume(g)
+    }
+
+    expect(volumen(true)).toBeCloseTo(volumen(false), 6)
   })
 
   it('erzeugt aus einem Kreisprofil ueber geschlossenem Pfad einen Ring', () => {
@@ -170,8 +195,9 @@ describe('offsetFace in der Tiefe', () => {
     const flaechen = faceIds(g)
       .map((id) => faceArea(g, id))
       .sort((a, b) => b - a)
-    // L-Form 0,5 nach aussen: 7 x 3 + 3 x 4 = 33
-    expect(flaechen[0]).toBeCloseTo(33 - 20, 6)
+    // L-Form 0,5 nach aussen: 7 x 3 + 3 x 4 = 33, davon 20 die Originalflaeche
+    expect(flaechen[0]).toBeCloseTo(20, 6)
+    expect(flaechen[1]).toBeCloseTo(33 - 20, 6)
     expectValid(g, 'offsetFace konkav aussen')
   })
 
@@ -242,9 +268,36 @@ describe('offsetEdges in der Tiefe', () => {
     const flaechen = faceIds(g)
       .map((id) => faceArea(g, id))
       .sort((a, b) => a - b)
-    expect(flaechen[0]).toBeCloseTo(36, 6)
-    expect(flaechen[1]).toBeCloseTo(64 - 36, 6)
+    expect(flaechen[0]).toBeCloseTo(64 - 36, 6) // Ring
+    expect(flaechen[1]).toBeCloseTo(36, 6) // Innenflaeche
     expectValid(g, 'offsetEdges aussen')
+  })
+
+  it('versetzt unabhaengig von der Reihenfolge der Kanten-Ids zur selben Seite', () => {
+    /*
+     * Eine Auswahl ist eine Menge, keine Liste - die Ids koennen in beliebiger
+     * Reihenfolge ankommen. `orderEdgePath` faengt immer am selben Endpunkt an,
+     * deshalb liegt der Versatz beide Male auf derselben Seite. Ohne diese
+     * Eigenschaft haette derselbe Klick mal die eine, mal die andere Seite
+     * versetzt.
+     */
+    const punkte = (verkehrt: boolean): string => {
+      const g = geom()
+      addPolyline(g, [p(0, 0), p(4, 0), p(4, 4)], false)
+      const path = edgeIds(g)
+      offsetEdges(g, verkehrt ? [...path].reverse() : path, 1)
+      const neu = edgeIds(g).filter((id) => !path.includes(id))
+      const menge = new Set<string>()
+      for (const id of neu) {
+        for (const vId of [g.edges[id].a, g.edges[id].b]) {
+          const q = g.vertices[vId].p
+          menge.add(`${q.x.toFixed(3)},${q.y.toFixed(3)}`)
+        }
+      }
+      return [...menge].sort().join('|')
+    }
+
+    expect(punkte(true)).toBe(punkte(false))
   })
 
   it('versetzt einen L-Kantenzug mit korrekter Gehrung', () => {

@@ -46,7 +46,7 @@ export function FogPanel() {
           onChange={(value) => patch({ near: Math.min(value, fog.far - 0.5) })}
         />
       </Row>
-      <Row label="Ende" hint="Ab hier ist alles vollstaendig verdeckt">
+      <Row label="Ende" hint="Ab hier ist alles vollständig verdeckt">
         <Slider
           min={1}
           max={maxDistance}

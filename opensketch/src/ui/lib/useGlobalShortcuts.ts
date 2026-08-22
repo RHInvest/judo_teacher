@@ -76,7 +76,7 @@ export function useGlobalShortcuts(handlers: ShortcutHandlers): void {
         try {
           binding.run()
         } catch (err) {
-          console.warn(`[ui] Kuerzel "${binding.id}" fehlgeschlagen`, err)
+          console.warn(`[ui] Kürzel "${binding.id}" fehlgeschlagen`, err)
         }
         return
       }

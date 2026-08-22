@@ -218,6 +218,38 @@ export function followMeMut(
   const nodes = nodeIds.map((id) => vertexPoint(geom, id))
   if (nodes.length < 2) return
 
+  /*
+   * DER PFAD MUSS AM PROFIL BEGINNEN.
+   *
+   * `orderEdgePath` bringt lose Kanten in eine Reihenfolge, aber es kann nicht
+   * wissen, welches Ende der Anfang ist - es faengt an dem Endpunkt an, den es
+   * zuerst findet. Kommen die Kanten-Ids in anderer Reihenfolge herein (eine
+   * Auswahl ist eine Menge, keine Liste), laeuft der Pfad ploetzlich rueckwaerts:
+   * das Profil wird dann vom FERNEN Ende aus transportiert, die erste Sektion
+   * landet meterweit neben dem Profil und das Ergebnis ist eine offene Huelle
+   * statt eines Koerpers. Gemessen an einem geraden Pfad aus zwei Kanten:
+   * richtige Reihenfolge 10 Flaechen und Volumen 6, umgedrehte Reihenfolge
+   * 10 Flaechen, 8 offene Kanten und Volumen 0.
+   *
+   * Deshalb wird der Pfad an das Profil ausgerichtet: naeher am Profilschwerpunkt
+   * liegt der Anfang. Bei geschlossenen Pfaden gibt es kein Ende - da bleibt es,
+   * wie es ist.
+   */
+  if (!closed) {
+    let cx = 0
+    let cy = 0
+    let cz = 0
+    for (const q of profile) {
+      cx += q.x
+      cy += q.y
+      cz += q.z
+    }
+    const centre = { x: cx / profile.length, y: cy / profile.length, z: cz / profile.length }
+    if (V.distance(centre, nodes[nodes.length - 1]) < V.distance(centre, nodes[0])) {
+      nodes.reverse()
+    }
+  }
+
   const sections = dedupeSections(sweepSections(profile, nodes, closed))
   if (sections.length < 2) return
 

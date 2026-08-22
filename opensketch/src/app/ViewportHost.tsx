@@ -147,8 +147,13 @@ export function ViewportHost({ className }: { className?: string }) {
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (isTextTarget(e.target)) return
-      // Ziffern und Komma starten die Eingabe im Massfeld
-      if (!e.ctrlKey && !e.metaKey && /^[0-9.,'"-]$/.test(e.key)) {
+      /*
+       * Ziffern und Komma starten die Eingabe im Massfeld - so tippt man nach
+       * einem Klick einfach "2,5". Werkzeuge, die ROHEN TEXT erwarten, sind
+       * davon ausgenommen: sonst zerreisst die Umleitung die Eingabe, aus
+       * "Raum 12" wuerde "Raum " im Werkzeug und "12" im Massfeld.
+       */
+      if (!e.ctrlKey && !e.metaKey && !tm.wantsTextInput() && /^[0-9.,'"-]$/.test(e.key)) {
         bus.emit('vcb:focus', { initial: e.key })
         e.preventDefault()
         return

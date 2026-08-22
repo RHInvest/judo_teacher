@@ -79,7 +79,7 @@ export function InstructorPanel() {
       {instruction.vcb ? (
         <>
           <Divider />
-          <GroupTitle>Massfeld</GroupTitle>
+          <GroupTitle>Maßfeld</GroupTitle>
           <p className={clsx('px-2 pb-1.5 text-[11px] leading-relaxed', skin.muted)}>{instruction.vcb}</p>
         </>
       ) : null}

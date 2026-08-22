@@ -20,7 +20,7 @@ const FACE_STYLES: { value: FaceStyle; label: string }[] = [
   { value: 'hiddenLine', label: 'Verdeckte Linien' },
   { value: 'wireframe', label: 'Drahtgitter' },
   { value: 'monochrome', label: 'Monochrom' },
-  { value: 'xray', label: 'Roentgen' },
+  { value: 'xray', label: 'Röntgen' },
 ]
 
 const STANDARD_VIEWS: { value: StandardView; label: string }[] = [
@@ -90,13 +90,13 @@ export function MenuBar(props: MenuBarProps) {
       label: 'Datei',
       entries: [
         { label: 'Neu', shortcut: MENU_SHORTCUTS.newDocument, run: () => cmd.cmdNew('metric') },
-        { label: 'Oeffnen ...', shortcut: MENU_SHORTCUTS.open, run: () => act((s) => s.openDialog({ kind: 'openFile' })) },
+        { label: 'Öffnen ...', shortcut: MENU_SHORTCUTS.open, run: () => act((s) => s.openDialog({ kind: 'openFile' })) },
         {
-          label: 'Zuletzt geoeffnet',
+          label: 'Zuletzt geöffnet',
           disabled: recent.length === 0,
           items:
             recent.length === 0
-              ? [{ label: 'Keine Eintraege', disabled: true }]
+              ? [{ label: 'Keine Einträge', disabled: true }]
               : recent.map((entry) => ({
                   label: entry.name || 'Unbenannt',
                   run: () => {
@@ -104,7 +104,7 @@ export function MenuBar(props: MenuBarProps) {
                   },
                 })),
         },
-        { label: 'Aus Datei oeffnen ...', run: () => void cmd.cmdOpenFromDisk() },
+        { label: 'Aus Datei öffnen ...', run: () => void cmd.cmdOpenFromDisk() },
         menuSep(),
         { label: 'Speichern', shortcut: MENU_SHORTCUTS.save, run: () => void cmd.cmdSave() },
         { label: 'Speichern unter ...', shortcut: MENU_SHORTCUTS.saveAs, run: props.onSaveAs },
@@ -113,7 +113,7 @@ export function MenuBar(props: MenuBarProps) {
           label: 'Importieren',
           shortcut: MENU_SHORTCUTS.importFile,
           items: [
-            { label: 'Datei waehlen ...', run: () => void cmd.cmdImport() },
+            { label: 'Datei wählen ...', run: () => void cmd.cmdImport() },
             menuSep(),
             { label: 'OBJ (.obj)', run: () => void cmd.cmdImport() },
             { label: 'STL (.stl)', run: () => void cmd.cmdImport() },
@@ -139,7 +139,7 @@ export function MenuBar(props: MenuBarProps) {
       label: 'Bearbeiten',
       entries: [
         {
-          label: undoLabel ? `Rueckgaengig: ${undoLabel}` : 'Rueckgaengig',
+          label: undoLabel ? `Rückgängig: ${undoLabel}` : 'Rückgängig',
           shortcut: MENU_SHORTCUTS.undo,
           disabled: !cmd.canUndo(),
           run: cmd.cmdUndo,
@@ -153,18 +153,18 @@ export function MenuBar(props: MenuBarProps) {
         menuSep(),
         { label: 'Ausschneiden', shortcut: MENU_SHORTCUTS.cut, disabled: !anySelection, run: cmd.cmdCut },
         { label: 'Kopieren', shortcut: MENU_SHORTCUTS.copy, disabled: !anySelection, run: cmd.cmdCopy },
-        { label: 'Einfuegen', shortcut: MENU_SHORTCUTS.paste, disabled: !cmd.clipboardFilled(), run: () => cmd.cmdPaste(false) },
+        { label: 'Einfügen', shortcut: MENU_SHORTCUTS.paste, disabled: !cmd.clipboardFilled(), run: () => cmd.cmdPaste(false) },
         {
-          label: 'An Ort einfuegen',
+          label: 'An Ort einfügen',
           shortcut: MENU_SHORTCUTS.pasteInPlace,
           disabled: !cmd.clipboardFilled(),
           run: () => cmd.cmdPaste(true),
         },
         menuSep(),
-        { label: 'Loeschen', shortcut: MENU_SHORTCUTS.delete, disabled: !anySelection, run: cmd.cmdDelete },
+        { label: 'Löschen', shortcut: MENU_SHORTCUTS.delete, disabled: !anySelection, run: cmd.cmdDelete },
         menuSep(),
-        { label: 'Alles auswaehlen', shortcut: MENU_SHORTCUTS.selectAll, run: cmd.cmdSelectAll },
-        { label: 'Abwaehlen', shortcut: MENU_SHORTCUTS.deselect, disabled: !anySelection, run: cmd.cmdDeselect },
+        { label: 'Alles auswählen', shortcut: MENU_SHORTCUTS.selectAll, run: cmd.cmdSelectAll },
+        { label: 'Abwählen', shortcut: MENU_SHORTCUTS.deselect, disabled: !anySelection, run: cmd.cmdDeselect },
         { label: 'Auswahl umkehren', disabled: !anySelection, run: cmd.cmdInvertSelection },
         menuSep(),
         { label: 'Gruppe erstellen', shortcut: MENU_SHORTCUTS.group, disabled: !anySelection, run: cmd.cmdGroup },
@@ -174,7 +174,7 @@ export function MenuBar(props: MenuBarProps) {
           disabled: !anySelection,
           run: () => act((s) => s.openDialog({ kind: 'makeComponent', defaults: { name: 'Komponente' } })),
         },
-        { label: 'Aufloesen', shortcut: MENU_SHORTCUTS.explode, disabled: selectionEntities.length === 0, run: cmd.cmdExplode },
+        { label: 'Auflösen', shortcut: MENU_SHORTCUTS.explode, disabled: selectionEntities.length === 0, run: cmd.cmdExplode },
         menuSep(),
         { label: 'Verstecken', shortcut: MENU_SHORTCUTS.hide, disabled: !anySelection, run: cmd.cmdHide },
         { label: 'Alles einblenden', shortcut: MENU_SHORTCUTS.unhide, run: cmd.cmdUnhide },
@@ -188,7 +188,7 @@ export function MenuBar(props: MenuBarProps) {
       label: 'Ansicht',
       entries: [
         {
-          label: 'Flaechenstil',
+          label: 'Flächenstil',
           items: FACE_STYLES.map((entry) => ({
             label: entry.label,
             checked: style?.faceStyle === entry.value,
@@ -202,7 +202,7 @@ export function MenuBar(props: MenuBarProps) {
             { label: 'Kanten', checked: Boolean(style?.displayEdges), run: () => patchStyle({ displayEdges: !style?.displayEdges }) },
             { label: 'Profile', checked: Boolean(style?.displayProfiles), run: () => patchStyle({ displayProfiles: !style?.displayProfiles }) },
             {
-              label: 'Verlaengerungen',
+              label: 'Verlängerungen',
               checked: Boolean(style?.displayExtensions),
               run: () => patchStyle({ displayExtensions: !style?.displayExtensions }),
             },
@@ -310,7 +310,7 @@ export function MenuBar(props: MenuBarProps) {
         menuSep(),
         ...TOOLS_MENU_TOOLS.slice(10).map(toolItem),
         menuSep(),
-        { label: 'Schnittflaechen erzeugen', disabled: !anySelection, run: () => cmd.cmdIntersect('selection') },
+        { label: 'Schnittflächen erzeugen', disabled: !anySelection, run: () => cmd.cmdIntersect('selection') },
         { label: 'Mit Modell verschneiden', run: () => cmd.cmdIntersect('model') },
       ],
     },
@@ -347,11 +347,11 @@ export function MenuBar(props: MenuBarProps) {
       id: 'hilfe',
       label: 'Hilfe',
       entries: [
-        { label: 'Tastaturkuerzel ...', shortcut: MENU_SHORTCUTS.shortcutHelp, run: props.onShowShortcuts },
+        { label: 'Tastaturkürzel ...', shortcut: MENU_SHORTCUTS.shortcutHelp, run: props.onShowShortcuts },
         { label: 'Kurzanleitung ...', run: props.onShowQuickstart },
         { label: 'Instructor anzeigen', run: () => props.openPanel('instructor') },
         menuSep(),
-        { label: 'Ueber OpenSketch Studio ...', run: () => act((s) => s.openDialog({ kind: 'about' })) },
+        { label: 'Über OpenSketch Studio ...', run: () => act((s) => s.openDialog({ kind: 'about' })) },
       ],
     },
   ]
@@ -361,7 +361,7 @@ export function MenuBar(props: MenuBarProps) {
       ref={barRef}
       className={clsx('relative z-40 flex h-8 shrink-0 items-center gap-0.5 border-b px-1.5', skin.chrome, skin.border)}
       role="menubar"
-      aria-label="Hauptmenue"
+      aria-label="Hauptmenü"
     >
       <span className={clsx('mr-2 flex select-none items-center gap-1.5 pl-1 text-[12px] font-semibold', skin.text)}>
         <Boxes size={15} strokeWidth={1.8} className="text-accent-400" />

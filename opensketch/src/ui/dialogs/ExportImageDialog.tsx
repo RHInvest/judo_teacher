@@ -61,14 +61,14 @@ export function ExportImageDialog({ onClose }: { onClose: () => void }) {
       <Row label="Breite">
         <NumberInput value={width} min={64} max={8192} step={10} suffix="px" ariaLabel="Bildbreite" onChange={(value) => setWidth(Math.round(value))} />
       </Row>
-      <Row label="Hoehe">
-        <NumberInput value={height} min={64} max={8192} step={10} suffix="px" ariaLabel="Bildhoehe" onChange={(value) => setHeight(Math.round(value))} />
+      <Row label="Höhe">
+        <NumberInput value={height} min={64} max={8192} step={10} suffix="px" ariaLabel="Bildhöhe" onChange={(value) => setHeight(Math.round(value))} />
       </Row>
       <div className="px-2 pb-1">
         <Checkbox checked={transparent} label="Transparenter Hintergrund" onChange={setTransparent} />
       </div>
       <p className={clsx('px-3 pb-2 text-[11px] leading-relaxed', skin.dim)}>
-        Aufgenommen wird genau der sichtbare Bildausschnitt, in der gewaehlten Aufloesung neu gerendert.
+        Aufgenommen wird genau der sichtbare Bildausschnitt, in der gewählten Auflösung neu gerendert.
       </p>
     </Dialog>
   )

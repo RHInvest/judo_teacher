@@ -540,6 +540,17 @@ export interface Tool {
   readonly cursor: import('./types').Cursor
   /** status bar text shown when the tool starts */
   readonly hint: string
+  /**
+   * true, solange das Werkzeug ROHEN TEXT erwartet (Text- und 3D-Text-Werkzeug
+   * waehrend der Eingabe).
+   *
+   * `@/app/ViewportHost` leitet Ziffern, Komma, Punkt, Apostroph und Minus
+   * normalerweise ins Massfeld um, bevor das Werkzeug sie sieht - das ist der
+   * Weg, auf dem man nach einem Klick einfach "2,5" tippt. Beim Texteingeben
+   * zerreisst genau das die Eingabe: aus "Raum 12" wird "Raum " im Werkzeug
+   * und "12" im Massfeld. Ist dieses Flag gesetzt, unterbleibt die Umleitung.
+   */
+  readonly wantsTextInput?: boolean
   activate(ctx: ToolContext): void
   deactivate(): void
   onPointerDown(e: import('./types').PointerInfo): void
@@ -561,6 +572,8 @@ export interface ToolManagerApi {
   setTool(id: ToolId): void
   getTool(): Tool | null
   getToolId(): ToolId
+  /** true, wenn das aktive Werkzeug gerade rohen Text erwartet (siehe `Tool.wantsTextInput`) */
+  wantsTextInput(): boolean
   /** temporarily activates a tool (space bar, middle mouse) */
   pushTransient(id: ToolId): void
   popTransient(): void

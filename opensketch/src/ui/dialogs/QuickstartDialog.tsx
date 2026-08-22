@@ -7,19 +7,19 @@ import { Dialog } from './Dialog'
 const STEPS: { title: string; body: string }[] = [
   {
     title: '1 · Grundriss zeichnen',
-    body: 'Rechteck (R) waehlen, zwei Ecken klicken. Direkt danach "8;5" ins Massfeld tippen und Eingabe druecken - das Rechteck bekommt exakt diese Masse in Metern.',
+    body: 'Rechteck (R) wählen, zwei Ecken klicken. Direkt danach "8;5" ins Maßfeld tippen und Eingabe drücken - das Rechteck bekommt exakt diese Maße in Metern.',
   },
   {
-    title: '2 · Waende hochziehen',
-    body: 'Druecken/Ziehen (P) waehlen, auf die Flaeche klicken, nach oben ziehen, "2,8" tippen und bestaetigen.',
+    title: '2 · Wände hochziehen',
+    body: 'Drücken/Ziehen (P) wählen, auf die Fläche klicken, nach oben ziehen, "2,8" tippen und bestätigen.',
   },
   {
-    title: '3 · Oeffnungen setzen',
-    body: 'Auf einer Wandflaeche ein Rechteck zeichnen und mit Druecken/Ziehen nach innen schieben, bis es durchbricht.',
+    title: '3 · Öffnungen setzen',
+    body: 'Auf einer Wandfläche ein Rechteck zeichnen und mit Drücken/Ziehen nach innen schieben, bis es durchbricht.',
   },
   {
     title: '4 · Ordnung halten',
-    body: 'Alles auswaehlen und mit Strg+G gruppieren. Gruppen verschmelzen nicht mit fremder Geometrie. Doppelklick betritt eine Gruppe, Esc verlaesst sie.',
+    body: 'Alles auswählen und mit Strg+G gruppieren. Gruppen verschmelzen nicht mit fremder Geometrie. Doppelklick betritt eine Gruppe, Esc verlässt sie.',
   },
   {
     title: '5 · Ansicht steuern',
@@ -27,13 +27,13 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: '6 · Material und Schatten',
-    body: 'Im Materialbrowser eine Farbe waehlen - die Oberflaeche wechselt automatisch zum Farbeimer. Das Schatten-Panel setzt Ort, Datum und Uhrzeit.',
+    body: 'Im Materialbrowser eine Farbe wählen - die Oberfläche wechselt automatisch zum Farbeimer. Das Schatten-Panel setzt Ort, Datum und Uhrzeit.',
   },
 ]
 
 const TIPS = [
-  'Zahlen tippen springt immer ins Massfeld - erst zeichnen, dann das Mass eingeben.',
-  'Die Pfeiltasten sperren auf die rote, gruene oder blaue Achse.',
+  'Zahlen tippen springt immer ins Maßfeld - erst zeichnen, dann das Maß eingeben.',
+  'Die Pfeiltasten sperren auf die rote, grüne oder blaue Achse.',
   'Esc bricht die laufende Operation ab, ohne das Werkzeug zu wechseln.',
   'Der Instructor im Tray zeigt jederzeit die Schritte des aktiven Werkzeugs.',
 ]

@@ -353,7 +353,8 @@ describe.each([
       (e) => e.type === 'instance' && e.name === 'Achsenkorrektur',
     )
     expect(correction, 'Achsenkorrektur fehlt').toBeTruthy()
-    expect((correction as { transform: number[] }).transform).toEqual([...yUpToZUpMatrix()])
+    if (correction?.type !== 'instance') throw new Error('Achsenkorrektur ist keine Instanz')
+    expect(correction.transform).toEqual([...yUpToZUpMatrix()])
   })
 
   it('bringt den Wuerfel ueber die volle Kette wieder Z-oben heraus', async () => {

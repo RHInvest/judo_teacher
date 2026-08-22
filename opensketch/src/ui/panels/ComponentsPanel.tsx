@@ -32,13 +32,13 @@ function safeComponents(category?: string): LibraryEntry[] {
 function placeLibraryEntry(entry: LibraryEntry): void {
   try {
     const built = entry.build()
-    edit(`${entry.name} einfuegen`, (s) => {
+    edit(`${entry.name} einfügen`, (s) => {
       for (const definition of built.definitions) s.upsertDefinition(definition)
     })
     bus.emit('component:place', { definitionId: built.rootId })
   } catch (err) {
     console.warn('[ui] Komponente konnte nicht erzeugt werden', err)
-    toast('Diese Komponente ist noch nicht verfuegbar.', 'warn')
+    toast('Diese Komponente ist noch nicht verfügbar.', 'warn')
   }
 }
 
@@ -81,7 +81,7 @@ export function ComponentsPanel() {
 
       <div className="max-h-[220px] overflow-y-auto px-2 py-1.5">
         {filtered.length === 0 ? (
-          <EmptyHint>Die Komponentenbibliothek ist noch nicht gefuellt.</EmptyHint>
+          <EmptyHint>Die Komponentenbibliothek ist noch nicht gefüllt.</EmptyHint>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(78px,1fr))] gap-1.5">
             {filtered.map((entry) => (
@@ -90,7 +90,7 @@ export function ComponentsPanel() {
                 type="button"
                 onClick={() => placeLibraryEntry(entry)}
                 title={entry.description}
-                aria-label={`${entry.name} einfuegen`}
+                aria-label={`${entry.name} einfügen`}
                 className={clsx(
                   'flex flex-col items-center gap-1 rounded border p-1.5 text-center transition-colors',
                   skin.border,
@@ -126,7 +126,7 @@ export function ComponentsPanel() {
               </span>
               <IconButton
                 icon={EllipsisVertical}
-                ariaLabel={`Aktionen fuer ${definition.name}`}
+                ariaLabel={`Aktionen für ${definition.name}`}
                 onClick={() => setMenuFor(menuFor === definition.id ? null : definition.id)}
               />
               {menuFor === definition.id ? (
@@ -146,7 +146,7 @@ export function ComponentsPanel() {
                         },
                       },
                       {
-                        label: 'Instanz einfuegen',
+                        label: 'Instanz einfügen',
                         run: () => bus.emit('component:place', { definitionId: definition.id }),
                       },
                       {
@@ -161,8 +161,8 @@ export function ComponentsPanel() {
                       },
                       { kind: 'separator' },
                       {
-                        label: 'Loeschen',
-                        run: () => edit('Definition loeschen', (s) => s.removeDefinition(definition.id)),
+                        label: 'Löschen',
+                        run: () => edit('Definition löschen', (s) => s.removeDefinition(definition.id)),
                       },
                     ]}
                   />

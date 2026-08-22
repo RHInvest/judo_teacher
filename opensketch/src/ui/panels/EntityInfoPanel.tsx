@@ -24,7 +24,7 @@ export function EntityInfoPanel() {
   const faceIds = selection?.faceIds ?? []
 
   if (!info) {
-    return <EmptyHint>Keine Auswahl. Waehle Kanten, Flaechen, Gruppen oder Komponenten aus, um ihre Kennwerte zu sehen.</EmptyHint>
+    return <EmptyHint>Keine Auswahl. Wähle Kanten, Flächen, Gruppen oder Komponenten aus, um ihre Kennwerte zu sehen.</EmptyHint>
   }
 
   const setTag = (tagId: Id | null) => {
@@ -135,8 +135,8 @@ export function EntityInfoPanel() {
             />
             <Checkbox
               checked={Boolean(info.smoothEdges)}
-              label="Geglaettet (Schattierung)"
-              onChange={(checked) => edit('Kanten glaetten', (s) => s.setEdgeFlags(edgeIds, { smooth: checked }))}
+              label="Geglättet (Schattierung)"
+              onChange={(checked) => edit('Kanten glätten', (s) => s.setEdgeFlags(edgeIds, { smooth: checked }))}
             />
           </div>
           <Row label="Winkel">
@@ -145,7 +145,7 @@ export function EntityInfoPanel() {
               max={180}
               step={1}
               value={softenAngle}
-              ariaLabel="Glaettungswinkel"
+              ariaLabel="Glättungswinkel"
               display={`${softenAngle}°`}
               onChange={setSoftenAngle}
             />
@@ -165,8 +165,8 @@ export function EntityInfoPanel() {
         <>
           <Divider />
           <div className="flex flex-wrap gap-1 px-2 pb-1">
-            <Button onClick={() => edit('Flaechen umkehren', (s) => s.reverseFaces(faceIds))}>Flaechen umkehren</Button>
-            <Button onClick={() => edit('Flaechen ausrichten', (s) => s.orientFaces(faceIds[0]))}>Ausrichten</Button>
+            <Button onClick={() => edit('Flächen umkehren', (s) => s.reverseFaces(faceIds))}>Flächen umkehren</Button>
+            <Button onClick={() => edit('Flächen ausrichten', (s) => s.orientFaces(faceIds[0]))}>Ausrichten</Button>
           </div>
         </>
       ) : null}

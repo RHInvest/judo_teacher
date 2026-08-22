@@ -77,7 +77,7 @@ export function MeasurementBox() {
         inputMode="text"
         autoComplete="off"
         spellCheck={false}
-        aria-label={`Massfeld: ${vcbLabelText(label)}`}
+        aria-label={`Maßfeld: ${vcbLabelText(label)}`}
         value={shown}
         placeholder={placeholder}
         onFocus={() => setFocused(true)}

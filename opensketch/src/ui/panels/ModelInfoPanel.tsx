@@ -44,12 +44,12 @@ export function ModelInfoPanel() {
         </Button>
         <Button variant="ghost" onClick={() => act((s) => s.openDialog({ kind: 'modelInfo', tab: 'units' }))}>
           <Info size={13} />
-          Als Dialog oeffnen
+          Als Dialog öffnen
         </Button>
       </div>
 
       <div className={clsx('px-2 pb-1 text-[10px]', skin.dim)}>
-        {state.dirty ? 'Ungespeicherte Aenderungen' : 'Alle Aenderungen gespeichert'}
+        {state.dirty ? 'Ungespeicherte Änderungen' : 'Alle Änderungen gespeichert'}
       </div>
     </div>
   )

@@ -7,23 +7,23 @@ import { Dialog } from './Dialog'
 
 const COMMAND_LABELS: Record<keyof typeof MENU_SHORTCUTS, string> = {
   newDocument: 'Neues Modell',
-  open: 'Oeffnen',
+  open: 'Öffnen',
   save: 'Speichern',
   saveAs: 'Speichern unter',
   importFile: 'Importieren',
   exportModel: 'Exportieren',
-  undo: 'Rueckgaengig',
+  undo: 'Rückgängig',
   redo: 'Wiederholen',
   cut: 'Ausschneiden',
   copy: 'Kopieren',
-  paste: 'Einfuegen',
-  pasteInPlace: 'An Ort einfuegen',
-  delete: 'Loeschen',
-  selectAll: 'Alles auswaehlen',
-  deselect: 'Abwaehlen',
+  paste: 'Einfügen',
+  pasteInPlace: 'An Ort einfügen',
+  delete: 'Löschen',
+  selectAll: 'Alles auswählen',
+  deselect: 'Abwählen',
   group: 'Gruppe erstellen',
   makeComponent: 'Komponente erstellen',
-  explode: 'Aufloesen',
+  explode: 'Auflösen',
   hide: 'Verstecken',
   unhide: 'Alles einblenden',
   lock: 'Sperren',
@@ -31,7 +31,7 @@ const COMMAND_LABELS: Record<keyof typeof MENU_SHORTCUTS, string> = {
   zoomExtents: 'Alles einpassen',
   zoomSelection: 'Auswahl einpassen',
   toggleProjection: 'Projektion umschalten',
-  shortcutHelp: 'Diese Uebersicht',
+  shortcutHelp: 'Diese Übersicht',
   toggleTray: 'Tray umschalten',
 }
 
@@ -40,8 +40,8 @@ const NAVIGATION: { combo: string; label: string }[] = [
   { combo: 'Mittlere Maustaste + Umschalt', label: 'Schwenken' },
   { combo: 'Mausrad', label: 'Zoomen auf den Zeiger' },
   { combo: 'Esc', label: 'Laufende Operation abbrechen' },
-  { combo: 'Pfeiltasten', label: 'Auf rote, gruene oder blaue Achse sperren' },
-  { combo: 'Ziffern tippen', label: 'Springt direkt ins Massfeld' },
+  { combo: 'Pfeiltasten', label: 'Auf rote, grüne oder blaue Achse sperren' },
+  { combo: 'Ziffern tippen', label: 'Springt direkt ins Maßfeld' },
 ]
 
 function Table({ title, rows }: { title: string; rows: { combo: string; label: string }[] }) {
@@ -70,10 +70,10 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog
-      title="Tastaturkuerzel"
+      title="Tastaturkürzel"
       width={720}
       onClose={onClose}
-      actions={[{ label: 'Schliessen', variant: 'primary', onClick: onClose }]}
+      actions={[{ label: 'Schließen', variant: 'primary', onClick: onClose }]}
     >
       <div className="flex flex-wrap gap-2">
         <Table title="Werkzeuge" rows={tools} />

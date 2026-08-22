@@ -71,12 +71,25 @@ export class CircleTool extends BaseTool {
       this.updateVcb()
       return true
     }
-    if (!this.center) return false
-    const radius = parseLengthInput(text, this.units())
-    if (radius === null || radius <= POINT_TOL) return false
-    this.radius = radius
-    this.commit()
-    return true
+    const radius = this.center ? parseLengthInput(text, this.units()) : null
+    if (radius !== null && radius > POINT_TOL) {
+      this.radius = radius
+      this.commit()
+      return true
+    }
+    /*
+     * KEIN STILLES SCHEITERN: eine nicht lesbare Eingabe wurde bisher nur mit
+     * `false` quittiert - im Massfeld passierte dann gar nichts, und der
+     * Nutzer stand vor einer Anwendung, die seine Eingabe zu ignorieren
+     * schien. Haeufigster Fall ist eine Segmentzahl unter 3 ("2s").
+     */
+    if (text.trim() !== '') {
+      this.notify(
+        `${this.name}: „${text.trim()}" ist keine gültige Eingabe - Radius (z. B. „2 m") oder Segmentzahl ab 3 (z. B. „24s")`,
+        'warn',
+      )
+    }
+    return false
   }
 
   cancel(): void {

@@ -60,7 +60,7 @@ export function MaterialsPanel() {
       setTool('paint')
       return
     }
-    edit('Material hinzufuegen', (s) => {
+    edit('Material hinzufügen', (s) => {
       const { id: _ignored, ...rest } = material
       const newId = s.addMaterial(rest)
       s.setActiveMaterial(newId || material.id)
@@ -70,7 +70,7 @@ export function MaterialsPanel() {
 
   const patchActive = (patch: Partial<Material>) => {
     if (!activeId) return
-    edit('Material aendern', (s) => s.updateMaterial(activeId, patch))
+    edit('Material ändern', (s) => s.updateMaterial(activeId, patch))
   }
 
   const createMaterial = () => {
@@ -153,8 +153,8 @@ export function MaterialsPanel() {
         {visible.length === 0 ? (
           <EmptyHint>
             {view === 'model'
-              ? 'Das Modell enthaelt noch keine Materialien.'
-              : 'Die Materialbibliothek ist noch nicht gefuellt.'}
+              ? 'Das Modell enthält noch keine Materialien.'
+              : 'Die Materialbibliothek ist noch nicht gefüllt.'}
           </EmptyHint>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(34px,1fr))] gap-1">
@@ -176,7 +176,7 @@ export function MaterialsPanel() {
       <GroupTitle>Editor</GroupTitle>
 
       {!active ? (
-        <EmptyHint>Waehle ein Material aus, um es zu bearbeiten.</EmptyHint>
+        <EmptyHint>Wähle ein Material aus, um es zu bearbeiten.</EmptyHint>
       ) : (
         <>
           <Row label="Name">
@@ -260,12 +260,12 @@ export function MaterialsPanel() {
               onChange={(value) => patchActive({ textureWidth: value })}
             />
           </Row>
-          <Row label="Hoehe (m)">
+          <Row label="Höhe (m)">
             <NumberInput
               value={active.textureHeight}
               min={0.001}
               step={0.05}
-              ariaLabel="Texturhoehe in Metern"
+              ariaLabel="Texturhöhe in Metern"
               onChange={(value) => patchActive({ textureHeight: value })}
             />
           </Row>
@@ -276,14 +276,14 @@ export function MaterialsPanel() {
               variant="danger"
               onClick={() => {
                 if (!activeId) return
-                edit('Material loeschen', (s) => {
+                edit('Material löschen', (s) => {
                   s.removeMaterial(activeId)
                   s.setActiveMaterial(null)
                 })
               }}
             >
               <Trash2 size={13} />
-              Loeschen
+              Löschen
             </Button>
             <Button variant="ghost" onClick={() => act((s) => s.setActiveMaterial(null))}>
               Standardmaterial

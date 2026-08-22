@@ -85,7 +85,7 @@ export function Toasts() {
             <span className={clsx('min-w-0 flex-1 text-[11px] leading-relaxed', skin.text)}>{toast.text}</span>
             <button
               type="button"
-              aria-label="Meldung schliessen"
+              aria-label="Meldung schließen"
               onClick={() => act((s) => s.dismissToast(toast.id))}
               className={clsx('flex h-4 w-4 shrink-0 items-center justify-center rounded', skin.iconBtn, skin.ring)}
             >

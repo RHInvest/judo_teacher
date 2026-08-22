@@ -451,6 +451,42 @@ describe('Objekte im Gruppenkontext', () => {
     expect(V.dot(worldNormal, onPlane)).toBeCloseTo(4, 9)
   })
 
+  it('placeInstance nimmt ebenfalls eine Weltmatrix', () => {
+    const groupId = rotatedGroup()
+
+    // Eine Komponente in der Wurzel anlegen, ohne die Gruppe mitzunehmen
+    installGeometry(buildQuad({ x: 0, y: 0, z: 0 }, 1, 1))
+    state().setSelection({
+      edgeIds: [],
+      faceIds: Object.keys(state().getActiveGeometry().faces),
+      vertexIds: [],
+      entityIds: [],
+    })
+    const componentId = state().makeComponent({ name: 'Stuhl' }) as string
+    const definitionId = instance(componentId).definitionId
+
+    // Dieselbe Weltposition einmal aus der Wurzel, einmal aus der gedrehten Gruppe
+    const world = M.translation({ x: 9, y: 3, z: 0 })
+    const atRoot = state().placeInstance(definitionId, world)
+
+    state().enterContext(groupId)
+    const inGroup = state().placeInstance(definitionId, world)
+    const contextWorld = state().context.worldTransform
+    state().exitContext()
+
+    const rootOrigin = M.transformPoint(instance(atRoot).transform, { x: 0, y: 0, z: 0 })
+    const groupOrigin = M.transformPoint(
+      M.multiply(contextWorld, instance(inGroup).transform),
+      { x: 0, y: 0, z: 0 },
+    )
+    expect(V.equals(rootOrigin, { x: 9, y: 3, z: 0 }, 1e-9)).toBe(true)
+    expect(V.equals(groupOrigin, { x: 9, y: 3, z: 0 }, 1e-9)).toBe(true)
+
+    // In der Gruppe steht eine andere Matrix - dieselbe Weltlage
+    expect(M.equals(instance(inGroup).transform, world)).toBe(false)
+    expect(instanceCount(state().doc, definitionId)).toBe(3)
+  })
+
   it('an der Modellwurzel bleibt alles unveraendert', () => {
     const id = state().addEntity({
       id: '',

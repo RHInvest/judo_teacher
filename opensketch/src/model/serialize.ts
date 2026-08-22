@@ -640,6 +640,7 @@ function normalizeStyles(raw: unknown): Record<Id, StyleSettings> {
       showAxes: bool(r.showAxes, base.showAxes),
       showGrid: bool(r.showGrid, base.showGrid),
       gridSpacing: num(r.gridSpacing, base.gridSpacing),
+      showGuides: bool(r.showGuides, base.showGuides),
       showHiddenGeometry: bool(r.showHiddenGeometry, base.showHiddenGeometry),
       showSectionPlanes: bool(r.showSectionPlanes, base.showSectionPlanes),
       showSectionCuts: bool(r.showSectionCuts, base.showSectionCuts),

@@ -17,10 +17,10 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
   const skin = useSkin()
   return (
     <Dialog
-      title="Ueber OpenSketch Studio"
+      title="Über OpenSketch Studio"
       width={430}
       onClose={onClose}
-      actions={[{ label: 'Schliessen', variant: 'primary', onClick: onClose }]}
+      actions={[{ label: 'Schließen', variant: 'primary', onClick: onClose }]}
     >
       <div className="flex items-center gap-3 px-3 py-2">
         <span className={clsx('flex h-12 w-12 shrink-0 items-center justify-center rounded-lg', skin.well)}>

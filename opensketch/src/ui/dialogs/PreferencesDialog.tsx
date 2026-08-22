@@ -14,7 +14,7 @@ type Tab = 'general' | 'units' | 'shortcuts'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'general', label: 'Allgemein' },
   { id: 'units', label: 'Einheiten' },
-  { id: 'shortcuts', label: 'Kuerzel' },
+  { id: 'shortcuts', label: 'Kürzel' },
 ]
 
 export function PreferencesDialog({ tab, onClose }: { tab: string; onClose: () => void }) {
@@ -29,7 +29,7 @@ export function PreferencesDialog({ tab, onClose }: { tab: string; onClose: () =
       title="Einstellungen"
       width={580}
       onClose={onClose}
-      actions={[{ label: 'Schliessen', variant: 'primary', onClick: onClose }]}
+      actions={[{ label: 'Schließen', variant: 'primary', onClick: onClose }]}
     >
       <DialogTabs tabs={TABS} active={active} onChange={setActive}>
         {active === 'general' ? (

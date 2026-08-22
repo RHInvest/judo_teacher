@@ -13,11 +13,14 @@
  *   ├── lights        Sonne oder neutrale Beleuchtung
  *   ├── modelRoot     Flaechen und Kanten aus `sceneSync`
  *   ├── sections      Schnittflaechen-Fuellung (Stencil)
+ *   ├── annotations   Bemassungen, Texte, Hilfslinien, Bilder (Dokumentinhalt)
  *   ├── selection     Auswahl, Hover, Kontextrahmen
  *   └── overlay       Werkzeug-Feedback im Immediate-Mode
  *
  * Ueber dem WebGL-Canvas liegt eine zweite Canvas-2D-Ebene fuer Text, Marker und
- * Bildschirmformen - dadurch bleibt Text pixelgenau scharf.
+ * Bildschirmformen - dadurch bleibt Text pixelgenau scharf. Sie traegt zwei
+ * Dinge: den Annotationstext (Dokumentinhalt) und das Werkzeug-Overlay. Nur der
+ * Annotationstext gehoert auch in `captureImage`.
  *
  * OWNERSHIP: Render-Entwickler.
  */
@@ -39,7 +42,7 @@ import type {
   Vec2Like,
   Vec3Like,
 } from '@/shared/types'
-import { AnnotationLayer } from './annotations'
+import { AnnotationLayer, type AnnotationHost } from './annotations'
 import { CameraController } from './camera'
 import { LIMITS } from './defaults'
 import { EdgeMaterials } from './edges'
@@ -76,6 +79,7 @@ export class Viewport implements ViewportApi {
   private readonly environment = new Environment()
   private readonly lights = new LightRig()
   private readonly sections = new SectionManager()
+  private readonly annotations: AnnotationLayer
   private readonly selectionView: SelectionView
   private readonly picker: Picker
 
@@ -130,6 +134,7 @@ export class Viewport implements ViewportApi {
 
     this.materials = new MaterialCache(this.snapshot.style, () => this.requestRender())
     this.sync = new SceneSync(this.materials, this.edgeMaterials)
+    this.annotations = new AnnotationLayer(() => this.requestRender())
     this.selectionView = new SelectionView(this.sync)
     this.picker = new Picker(this.sync, this.cameraController)
 
@@ -144,6 +149,7 @@ export class Viewport implements ViewportApi {
       this.lights.group,
       this.sync.root,
       this.sections.group,
+      this.annotations.group,
       this.selectionView.group,
       this.overlay.group,
     )
@@ -195,33 +201,40 @@ export class Viewport implements ViewportApi {
         if (full || !definitionId) this.sync.markAllDirty()
         else this.sync.markDefinitionDirty(definitionId)
         this.selectionView.invalidate()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('scene:changed', () => {
         this.sync.markTreeDirty()
         this.selectionView.invalidate()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('material:changed', () => {
         this.sync.markTreeDirty()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('style:changed', () => {
         this.sync.markTreeDirty()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('selection:changed', () => {
         this.selectionView.invalidate()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('context:changed', () => {
         this.sync.markTreeDirty()
         this.selectionView.invalidate()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('document:loaded', () => {
         this.sync.markAllDirty()
         this.selectionView.invalidate()
+        this.annotations.invalidate()
         this.requestRender()
       }),
       bus.on('scene:activate', (scene) => this.animateToScene(scene)),
@@ -287,6 +300,7 @@ export class Viewport implements ViewportApi {
     if (changed) {
       this.cameraController.setSceneBounds(this.sync.modelBounds)
       this.selectionView.invalidate()
+      this.annotations.invalidate()
     }
 
     const lights = attempt(
@@ -306,6 +320,7 @@ export class Viewport implements ViewportApi {
     attempt('edgeMaterials.apply', () => this.edgeMaterials.apply(snapshot.style, worldScale, depth.near, depth.far), undefined)
 
     attempt('sections.update', () => this.sections.update(snapshot, this.sync, this.renderer), undefined)
+    attempt('annotations.update', () => this.annotations.update(snapshot, this.sync), undefined)
     attempt('selection.update', () => this.selectionView.update(snapshot), undefined)
 
     this.lastRevisions = { ...snapshot.revisions }
@@ -412,16 +427,38 @@ export class Viewport implements ViewportApi {
     attempt('store.setStats', () => this.store.getState().setStats(patch), undefined)
   }
 
+  /**
+   * Textebene neu zeichnen. Reihenfolge zaehlt: erst der Annotationstext
+   * (Dokumentinhalt), darueber das Werkzeug-Overlay.
+   */
   private draw2dLayer(): void {
     const ctx = this.layerContext
     if (!ctx) return
     ctx.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0)
     ctx.clearRect(0, 0, this.width, this.height)
+
+    if (this.annotations.hasScreenContent) {
+      try {
+        this.annotations.draw2d(ctx, this.annotationHost())
+      } catch (err) {
+        warnOnce('annotations.draw2d', err)
+      }
+    }
+
     if (!this.overlay.hasScreenContent) return
     try {
       this.overlay.draw2d(ctx)
     } catch (err) {
       warnOnce('overlay.draw2d', err)
+    }
+  }
+
+  /** Projektion fuer die Textebene - folgt immer der aktuellen Kameragroesse. */
+  private annotationHost(): AnnotationHost {
+    return {
+      worldToScreen: (p) => this.cameraController.worldToScreen(p),
+      pixelsPerUnit: (p) => this.cameraController.pixelsPerUnit(p),
+      getSize: () => this.getSize(),
     }
   }
 
@@ -448,6 +485,7 @@ export class Viewport implements ViewportApi {
     this.environment.setResolution(width * ratio, height * ratio)
     this.selectionView.setResolution(width * ratio, height * ratio)
     this.sections.setResolution(width * ratio, height * ratio)
+    this.annotations.setResolution(width * ratio, height * ratio)
     this.overlay.setSize(width * ratio, height * ratio)
 
     if (this.layer) {
@@ -616,7 +654,18 @@ export class Viewport implements ViewportApi {
 
       const buffer = new Uint8Array(width * height * 4)
       this.renderer.readRenderTargetPixels(target, 0, 0, width, height, buffer)
-      return encodePng(buffer, width, height)
+
+      const canvas = pixelsToCanvas(buffer, width, height)
+      if (!canvas) return ''
+
+      // Annotationstext lebt auf der 2D-Ebene und waere im WebGL-Puffer nicht
+      // enthalten. Die Kamera steht hier bereits auf Bildgroesse, `draw2d`
+      // rechnet also direkt in Bildkoordinaten - ohne Pixelverhaeltnis.
+      const ctx = canvas.getContext('2d')
+      if (ctx && this.annotations.hasScreenContent) {
+        attempt('annotations.capture', () => this.annotations.draw2d(ctx, this.annotationHost()), undefined)
+      }
+      return canvas.toDataURL('image/png')
     } catch (err) {
       warnOnce('captureImage', err)
       return ''
@@ -711,6 +760,7 @@ export class Viewport implements ViewportApi {
 
     this.overlay.dispose()
     this.selectionView.dispose()
+    this.annotations.dispose()
     this.sections.dispose()
     this.sync.dispose()
     this.environment.dispose()
@@ -780,17 +830,20 @@ function createResizeObserver(callback: () => void): ResizeObserver | null {
 }
 
 /**
- * PNG aus rohen RGBA-Pixeln.
+ * Rohe RGBA-Pixel in eine Leinwand uebertragen.
  * `readRenderTargetPixels` liefert die Zeilen von unten nach oben - beim
  * Uebertragen in den 2D-Kontext wird deshalb gespiegelt.
+ *
+ * Gibt die Leinwand zurueck statt direkt die Daten-URL, damit `captureImage`
+ * den Annotationstext darueber zeichnen kann, bevor codiert wird.
  */
-function encodePng(buffer: Uint8Array, width: number, height: number): string {
-  if (typeof document === 'undefined') return ''
+function pixelsToCanvas(buffer: Uint8Array, width: number, height: number): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
+  if (!ctx) return null
   const image = ctx.createImageData(width, height)
   const row = width * 4
   for (let y = 0; y < height; y++) {
@@ -798,5 +851,5 @@ function encodePng(buffer: Uint8Array, width: number, height: number): string {
     image.data.set(buffer.subarray(src, src + row), y * row)
   }
   ctx.putImageData(image, 0, 0)
-  return canvas.toDataURL('image/png')
+  return canvas
 }

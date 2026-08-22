@@ -43,7 +43,7 @@ export function SoftenEdgesPanel() {
       appState().beginOperation(OPERATION_NAME)
     } catch (err) {
       bracketOpen.current = false
-      console.warn('[ui] Operation konnte nicht geoeffnet werden', err)
+      console.warn('[ui] Operation konnte nicht geöffnet werden', err)
     }
   }
 
@@ -61,8 +61,8 @@ export function SoftenEdgesPanel() {
     <div className="flex flex-col">
       {!hasEdges ? (
         <EmptyHint>
-          Waehle Kanten aus (oder eine ganze Gruppe), um die Glaettung einzustellen. Weiche Kanten werden nicht
-          gezeichnet, geglaettete Kanten mitteln die Schattierung der Nachbarflaechen.
+          Wähle Kanten aus (oder eine ganze Gruppe), um die Glättung einzustellen. Weiche Kanten werden nicht
+          gezeichnet, geglaettete Kanten mitteln die Schattierung der Nachbarflächen.
         </EmptyHint>
       ) : null}
 
@@ -75,7 +75,7 @@ export function SoftenEdgesPanel() {
             step={1}
             value={angle}
             disabled={!hasEdges}
-            ariaLabel="Grenzwinkel fuer das Weichzeichnen"
+            ariaLabel="Grenzwinkel für das Weichzeichnen"
             display={`${angle}°`}
             onChange={(value) => {
               setAngle(value)
@@ -106,15 +106,15 @@ export function SoftenEdgesPanel() {
           disabled={!hasEdges}
           onClick={() => {
             const ids = [...edgeIds]
-            edit('Glaettung zuruecksetzen', (s) => s.setEdgeFlags(ids, { soft: false, smooth: false }))
+            edit('Glättung zurücksetzen', (s) => s.setEdgeFlags(ids, { soft: false, smooth: false }))
           }}
         >
-          Zuruecksetzen
+          Zurücksetzen
         </Button>
       </div>
 
       <div className={clsx('px-2 pb-1 text-[10px]', skin.dim)}>
-        {hasEdges ? `${edgeIds.length} Kante${edgeIds.length === 1 ? '' : 'n'} ausgewaehlt` : 'Keine Kanten ausgewaehlt'}
+        {hasEdges ? `${edgeIds.length} Kante${edgeIds.length === 1 ? '' : 'n'} ausgewählt` : 'Keine Kanten ausgewählt'}
       </div>
     </div>
   )

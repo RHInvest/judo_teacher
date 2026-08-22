@@ -47,7 +47,7 @@ export function ImportModelDialog({ onClose }: { onClose: () => void }) {
       footerNote={accepted.join(' ')}
       actions={[
         { label: 'Abbrechen', onClick: onClose },
-        { label: 'Datei waehlen ...', onClick: () => void choose() },
+        { label: 'Datei wählen ...', onClick: () => void choose() },
         { label: 'Importieren', variant: 'primary', disabled: files.length === 0, onClick: start },
       ]}
     >
@@ -71,7 +71,7 @@ export function ImportModelDialog({ onClose }: { onClose: () => void }) {
         >
           <Upload size={22} strokeWidth={1.5} className={skin.dim} aria-hidden />
           <span className={clsx('text-[12px]', skin.text)}>Dateien hierher ziehen</span>
-          <span className={clsx('text-[10px]', skin.dim)}>oder unten eine Datei auswaehlen</span>
+          <span className={clsx('text-[10px]', skin.dim)}>oder unten eine Datei auswählen</span>
         </div>
 
         {files.length > 0 ? (

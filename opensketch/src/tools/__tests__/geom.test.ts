@@ -120,16 +120,15 @@ describe('Kreiswerkzeug ohne Rueckfall', () => {
     expect(rig.store.lastStatus()).toBe(warnings[warnings.length - 1])
   })
 
-  it('erzeugt eine Segmentzahl unter 3 nicht still als Dreieck', () => {
+  it('nimmt eine Segmentzahl unter 3 nicht an und sagt es', () => {
     const rig = setup('circle')
-    // "2s" wird auf das Minimum 3 geklemmt - genau deshalb kommt hier ein
-    // gueltiger Kreis heraus. Die Klemmung ist die richtige Stelle dafuer:
-    // sie passiert VOR dem Kern und ist dem Nutzer im Massfeld sichtbar.
-    rig.manager.handleValueEntry('2s')
+    expect(rig.manager.handleValueEntry('2s')).toBe(false)
+    expect(rig.store.warnings().some((w) => w.includes('Segmentzahl ab 3'))).toBe(true)
+
+    // Der Kreis behaelt die Voreinstellung, statt zu einem Dreieck zu werden.
     rig.click(400, 300)
     rig.click(500, 300)
-    expect(rig.store.calls.some((c) => c.name === 'addFace')).toBe(true)
     const face = rig.store.calls.find((c) => c.name === 'addFace')
-    expect((face?.args[0] as unknown[]).length).toBe(3)
+    expect((face?.args[0] as unknown[]).length).toBe(24)
   })
 })

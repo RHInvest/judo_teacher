@@ -176,3 +176,43 @@ export async function blobBytes(blob: Blob): Promise<Uint8Array> {
 export function utf8(text: string): Uint8Array {
   return new TextEncoder().encode(text)
 }
+
+/* ------------------------------------------------------------------ */
+/* XML                                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Minimaler Wohlgeformtheitspruefer fuer die XML-Ausgaben (DAE, SVG).
+ * In Node gibt es keinen DOMParser, und ein Fremdpaket ist nicht erlaubt -
+ * fuer Dateien, die aus Strings zusammengesetzt werden, reicht das hier: Tags
+ * muessen in der richtigen Reihenfolge schliessen, Attribute in
+ * Anfuehrungszeichen stehen, und im Text darf kein unmaskiertes `<` oder `&`
+ * vorkommen.
+ */
+export function checkXml(xml: string): { ok: true } | { ok: false; error: string } {
+  const body = xml.replace(/^<\?xml[^?]*\?>\s*/, '')
+  const stack: string[] = []
+  const tag = /<(\/?)([A-Za-z_][\w.:-]*)((?:\s+[\w.:-]+\s*=\s*"[^"<]*")*)\s*(\/?)>/g
+  let cursor = 0
+  let match: RegExpExecArray | null
+  while ((match = tag.exec(body)) !== null) {
+    const text = body.slice(cursor, match.index)
+    if (text.includes('<')) return { ok: false, error: `Unmaskiertes < in "${text.slice(0, 60)}"` }
+    if (/&(?!(amp|lt|gt|quot|apos|#\d+);)/.test(text)) {
+      return { ok: false, error: `Unmaskiertes & in "${text.slice(0, 60)}"` }
+    }
+    cursor = match.index + match[0].length
+    const [, closing, name, , selfClosing] = match
+    if (selfClosing) continue
+    if (closing) {
+      const open = stack.pop()
+      if (open !== name) return { ok: false, error: `</${name}> schliesst <${open ?? 'nichts'}>` }
+    } else {
+      stack.push(name)
+    }
+  }
+  const rest = body.slice(cursor)
+  if (rest.includes('<')) return { ok: false, error: `Unvollstaendiges Tag: "${rest.slice(0, 60)}"` }
+  if (stack.length > 0) return { ok: false, error: `Nicht geschlossen: ${stack.join(', ')}` }
+  return { ok: true }
+}

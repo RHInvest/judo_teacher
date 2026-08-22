@@ -25,7 +25,7 @@ export function ModelInfoDialog({ tab, onClose }: { tab: string; onClose: () => 
       title="Modellinfo"
       width={560}
       onClose={onClose}
-      actions={[{ label: 'Schliessen', variant: 'primary', onClick: onClose }]}
+      actions={[{ label: 'Schließen', variant: 'primary', onClick: onClose }]}
     >
       <DialogTabs tabs={TABS} active={active} onChange={setActive}>
         {active === 'units' ? (

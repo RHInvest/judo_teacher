@@ -24,60 +24,60 @@ const EMPTY: ToolInstruction = { steps: [], modifiers: [] }
 export const TOOL_INSTRUCTIONS: Record<ToolId, ToolInstruction> = {
   select: {
     steps: [
-      'Auf ein Element klicken, um es auszuwaehlen.',
-      'Rechteck von links nach rechts aufziehen: nur vollstaendig umschlossene Elemente.',
-      'Von rechts nach links aufziehen: alles Beruehrte.',
-      'Doppelklick waehlt Flaeche samt Begrenzungskanten, Dreifachklick alles Zusammenhaengende.',
+      'Auf ein Element klicken, um es auszuwählen.',
+      'Rechteck von links nach rechts aufziehen: nur vollständig umschlossene Elemente.',
+      'Von rechts nach links aufziehen: alles Berührte.',
+      'Doppelklick wählt Fläche samt Begrenzungskanten, Dreifachklick alles Zusammenhängende.',
     ],
     modifiers: [
-      { key: 'Umschalt', effect: 'Auswahl umschalten (ergaenzen oder entfernen)' },
-      { key: 'Strg', effect: 'zur Auswahl hinzufuegen' },
+      { key: 'Umschalt', effect: 'Auswahl umschalten (ergänzen oder entfernen)' },
+      { key: 'Strg', effect: 'zur Auswahl hinzufügen' },
       { key: 'Umschalt+Strg', effect: 'aus der Auswahl entfernen' },
     ],
   },
   lasso: {
-    steps: ['Mit gedrueckter Maustaste eine freie Flaeche umfahren.', 'Beim Loslassen wird alles darin ausgewaehlt.'],
+    steps: ['Mit gedrückter Maustaste eine freie Fläche umfahren.', 'Beim Loslassen wird alles darin ausgewählt.'],
     modifiers: [{ key: 'Umschalt', effect: 'Auswahl umschalten' }],
   },
   eraser: {
-    steps: ['Mit gedrueckter Maustaste ueber Kanten streichen.', 'Beim Loslassen werden sie geloescht.'],
+    steps: ['Mit gedrückter Maustaste über Kanten streichen.', 'Beim Loslassen werden sie gelöscht.'],
     modifiers: [
-      { key: 'Strg', effect: 'Kanten weichzeichnen statt loeschen' },
-      { key: 'Umschalt', effect: 'Kanten verstecken statt loeschen' },
+      { key: 'Strg', effect: 'Kanten weichzeichnen statt löschen' },
+      { key: 'Umschalt', effect: 'Kanten verstecken statt löschen' },
     ],
   },
   paint: {
     steps: [
-      'Material im Materialbrowser waehlen.',
-      'Auf eine Flaeche, eine Kante oder eine ganze Gruppe klicken.',
+      'Material im Materialbrowser wählen.',
+      'Auf eine Fläche, eine Kante oder eine ganze Gruppe klicken.',
     ],
     modifiers: [
       { key: 'Alt', effect: 'Material unter dem Zeiger aufnehmen (Pipette)' },
       { key: 'Strg', effect: 'alle gleichen Materialien im Modell ersetzen' },
-      { key: 'Umschalt', effect: 'alle Flaechen des Objekts einfaerben' },
+      { key: 'Umschalt', effect: 'alle Flächen des Objekts einfärben' },
     ],
   },
   line: {
     steps: ['Startpunkt klicken.', 'Endpunkt klicken - die Linie setzt sich fort.', 'Mit Esc oder Doppelklick beenden.'],
     modifiers: [
-      { key: 'Pfeiltasten', effect: 'auf rote, gruene oder blaue Achse sperren' },
+      { key: 'Pfeiltasten', effect: 'auf rote, grüne oder blaue Achse sperren' },
       { key: 'Umschalt', effect: 'aktuelle Inferenzrichtung festhalten' },
     ],
-    vcb: 'Laenge, z. B. "3,5" oder "250cm"',
+    vcb: 'Länge, z. B. "3,5" oder "250cm"',
   },
   freehand: {
-    steps: ['Maustaste gedrueckt halten und zeichnen.', 'Beim Loslassen entsteht ein Streckenzug.'],
+    steps: ['Maustaste gedrückt halten und zeichnen.', 'Beim Loslassen entsteht ein Streckenzug.'],
     modifiers: [],
   },
   rectangle: {
-    steps: ['Erste Ecke klicken.', 'Gegenueberliegende Ecke klicken.'],
+    steps: ['Erste Ecke klicken.', 'Gegenüberliegende Ecke klicken.'],
     modifiers: [{ key: 'Umschalt', effect: 'auf die aktuelle Ebene sperren' }],
-    vcb: 'Masse als "Breite;Hoehe", z. B. "3;2"',
+    vcb: 'Maße als "Breite;Höhe", z. B. "3;2"',
   },
   rotatedRectangle: {
     steps: ['Startpunkt der Grundkante klicken.', 'Endpunkt der Grundkante klicken.', 'Breite aufziehen und klicken.'],
     modifiers: [],
-    vcb: 'Masse als "Breite;Hoehe" oder Winkel',
+    vcb: 'Maße als "Breite;Höhe" oder Winkel',
   },
   circle: {
     steps: ['Mittelpunkt klicken.', 'Radius aufziehen und klicken.'],
@@ -90,21 +90,21 @@ export const TOOL_INSTRUCTIONS: Record<ToolId, ToolInstruction> = {
     vcb: 'Vorab Seitenzahl (z. B. "6s"), danach Radius',
   },
   arc2: {
-    steps: ['Startpunkt der Sehne klicken.', 'Endpunkt der Sehne klicken.', 'Bogenhoehe aufziehen.'],
+    steps: ['Startpunkt der Sehne klicken.', 'Endpunkt der Sehne klicken.', 'Bogenhöhe aufziehen.'],
     modifiers: [],
-    vcb: 'Bogenhoehe, danach Segmentzahl',
+    vcb: 'Bogenhöhe, danach Segmentzahl',
   },
   arc3: {
     steps: ['Drei Punkte auf dem Bogen nacheinander klicken.'],
     modifiers: [],
   },
   arc: {
-    steps: ['Mittelpunkt klicken.', 'Startpunkt klicken.', 'Oeffnungswinkel aufziehen.'],
+    steps: ['Mittelpunkt klicken.', 'Startpunkt klicken.', 'Öffnungswinkel aufziehen.'],
     modifiers: [],
     vcb: 'Radius, danach Winkel',
   },
   pie: {
-    steps: ['Mittelpunkt klicken.', 'Startpunkt klicken.', 'Winkel aufziehen - es entsteht eine geschlossene Flaeche.'],
+    steps: ['Mittelpunkt klicken.', 'Startpunkt klicken.', 'Winkel aufziehen - es entsteht eine geschlossene Fläche.'],
     modifiers: [],
     vcb: 'Radius, danach Winkel',
   },
@@ -119,7 +119,7 @@ export const TOOL_INSTRUCTIONS: Record<ToolId, ToolInstruction> = {
       { key: 'Pfeiltasten', effect: 'auf eine Achse sperren' },
       { key: 'Alt', effect: 'Autofalten erlauben' },
     ],
-    vcb: 'Distanz, oder "3x" fuer eine Reihe von Kopien',
+    vcb: 'Distanz, oder "3x" für eine Reihe von Kopien',
   },
   rotate: {
     steps: ['Drehmittelpunkt klicken.', 'Startpunkt des Winkels klicken.', 'Zielwinkel klicken.'],
@@ -127,38 +127,38 @@ export const TOOL_INSTRUCTIONS: Record<ToolId, ToolInstruction> = {
       { key: 'Strg', effect: 'Kopie drehen' },
       { key: 'Umschalt', effect: 'Drehebene festhalten' },
     ],
-    vcb: 'Winkel in Grad, oder "6x" fuer ein Rundum-Array',
+    vcb: 'Winkel in Grad, oder "6x" für ein Rundum-Array',
   },
   scale: {
-    steps: ['Objekt auswaehlen - die Griffe erscheinen.', 'Griff ziehen und klicken.'],
+    steps: ['Objekt auswählen - die Griffe erscheinen.', 'Griff ziehen und klicken.'],
     modifiers: [
       { key: 'Umschalt', effect: 'Proportionen beibehalten' },
       { key: 'Strg', effect: 'um den Mittelpunkt skalieren' },
     ],
-    vcb: 'Faktor (z. B. "1,5") oder Zielmass',
+    vcb: 'Faktor (z. B. "1,5") oder Zielmaß',
   },
   pushpull: {
-    steps: ['Flaeche anfassen.', 'In Normalenrichtung ziehen und klicken.'],
+    steps: ['Fläche anfassen.', 'In Normalenrichtung ziehen und klicken.'],
     modifiers: [
-      { key: 'Strg', effect: 'neue Startflaeche erzeugen (stapeln)' },
-      { key: 'Alt', effect: 'ohne die Nachbarflaechen zu verformen' },
+      { key: 'Strg', effect: 'neue Startfläche erzeugen (stapeln)' },
+      { key: 'Alt', effect: 'ohne die Nachbarflächen zu verformen' },
       { key: 'Doppelklick', effect: 'letzte Distanz wiederholen' },
     ],
     vcb: 'Distanz',
   },
   followme: {
-    steps: ['Pfad vorher auswaehlen.', 'Werkzeug waehlen.', 'Profilflaeche anklicken.'],
-    modifiers: [{ key: 'Alt', effect: 'Umriss der Flaeche als Pfad verwenden' }],
+    steps: ['Pfad vorher auswählen.', 'Werkzeug wählen.', 'Profilfläche anklicken.'],
+    modifiers: [{ key: 'Alt', effect: 'Umriss der Fläche als Pfad verwenden' }],
   },
   offset: {
-    steps: ['Flaeche oder Kantenzug anfassen.', 'Nach innen oder aussen ziehen und klicken.'],
+    steps: ['Fläche oder Kantenzug anfassen.', 'Nach innen oder außen ziehen und klicken.'],
     modifiers: [{ key: 'Doppelklick', effect: 'letzten Versatz wiederholen' }],
     vcb: 'Versatzweite (negativ = nach innen)',
   },
   tape: {
-    steps: ['Startpunkt klicken.', 'Endpunkt klicken - die Strecke steht im Massfeld.'],
+    steps: ['Startpunkt klicken.', 'Endpunkt klicken - die Strecke steht im Maßfeld.'],
     modifiers: [{ key: 'Strg', effect: 'nur messen, keine Hilfslinie erzeugen' }],
-    vcb: 'Zielmass - skaliert das Modell auf diese Laenge',
+    vcb: 'Zielmaß - skaliert das Modell auf diese Länge',
   },
   protractor: {
     steps: ['Scheitelpunkt klicken.', 'Basisrichtung klicken.', 'Winkel aufziehen.'],
@@ -166,52 +166,52 @@ export const TOOL_INSTRUCTIONS: Record<ToolId, ToolInstruction> = {
     vcb: 'Winkel in Grad',
   },
   axes: {
-    steps: ['Neuen Ursprung klicken.', 'Richtung der roten Achse klicken.', 'Richtung der gruenen Achse klicken.'],
+    steps: ['Neuen Ursprung klicken.', 'Richtung der roten Achse klicken.', 'Richtung der grünen Achse klicken.'],
     modifiers: [],
   },
   dimension: {
-    steps: ['Kante anklicken oder zwei Punkte waehlen.', 'Masslinie nach aussen ziehen und absetzen.'],
+    steps: ['Kante anklicken oder zwei Punkte wählen.', 'Maßlinie nach außen ziehen und absetzen.'],
     modifiers: [],
   },
   text: {
-    steps: ['Punkt anklicken.', 'Position der Beschriftung waehlen.', 'Text eingeben und mit Eingabe bestaetigen.'],
+    steps: ['Punkt anklicken.', 'Position der Beschriftung wählen.', 'Text eingeben und mit Eingabe bestätigen.'],
     modifiers: [],
   },
   text3d: {
-    steps: ['Text im Dialog eingeben.', 'Hoehe und Extrusion waehlen.', 'Im Modell platzieren.'],
+    steps: ['Text im Dialog eingeben.', 'Höhe und Extrusion wählen.', 'Im Modell platzieren.'],
     modifiers: [],
   },
   sectionPlane: {
-    steps: ['Flaeche anklicken, auf der die Schnittebene liegen soll.', 'Ebene bei Bedarf verschieben.'],
+    steps: ['Fläche anklicken, auf der die Schnittebene liegen soll.', 'Ebene bei Bedarf verschieben.'],
     modifiers: [],
   },
   orbit: {
-    steps: ['Mit gedrueckter Maustaste ziehen.'],
+    steps: ['Mit gedrückter Maustaste ziehen.'],
     modifiers: [
       { key: 'Mittlere Maustaste', effect: 'Orbit aus jedem Werkzeug heraus' },
       { key: 'Umschalt', effect: 'auf Schwenken umschalten' },
     ],
   },
-  pan: { steps: ['Mit gedrueckter Maustaste ziehen.'], modifiers: [] },
+  pan: { steps: ['Mit gedrückter Maustaste ziehen.'], modifiers: [] },
   zoom: {
     steps: ['Nach oben ziehen zum Heranzoomen, nach unten zum Herauszoomen.'],
-    modifiers: [{ key: 'Umschalt', effect: 'Bildwinkel statt Abstand aendern' }],
+    modifiers: [{ key: 'Umschalt', effect: 'Bildwinkel statt Abstand ändern' }],
     vcb: 'Bildwinkel in Grad, z. B. "45deg"',
   },
-  zoomWindow: { steps: ['Rechteck ueber dem gewuenschten Ausschnitt aufziehen.'], modifiers: [] },
+  zoomWindow: { steps: ['Rechteck über dem gewünschten Ausschnitt aufziehen.'], modifiers: [] },
   position: {
-    steps: ['Standpunkt klicken.', 'In die gewuenschte Blickrichtung ziehen.'],
+    steps: ['Standpunkt klicken.', 'In die gewünschte Blickrichtung ziehen.'],
     modifiers: [],
-    vcb: 'Augenhoehe',
+    vcb: 'Augenhöhe',
   },
   walk: {
-    steps: ['Maustaste gedrueckt halten und in Laufrichtung ziehen.'],
+    steps: ['Maustaste gedrückt halten und in Laufrichtung ziehen.'],
     modifiers: [
       { key: 'Umschalt', effect: 'schneller laufen' },
       { key: 'Alt', effect: 'Kollision ignorieren' },
     ],
   },
-  lookaround: { steps: ['Mit gedrueckter Maustaste den Kopf drehen.'], modifiers: [] },
+  lookaround: { steps: ['Mit gedrückter Maustaste den Kopf drehen.'], modifiers: [] },
 }
 
 export function instructionFor(tool: ToolId): ToolInstruction {

@@ -123,11 +123,11 @@ function TagRow({
       <IconButton
         icon={Trash2}
         size={13}
-        ariaLabel={`${tag.name} loeschen`}
+        ariaLabel={`${tag.name} löschen`}
         className="opacity-0 group-hover:opacity-100"
         onClick={(event) => {
           event.stopPropagation()
-          edit('Tag loeschen', (s) => s.removeTag(tag.id))
+          edit('Tag löschen', (s) => s.removeTag(tag.id))
         }}
       />
     </div>
@@ -210,8 +210,8 @@ export function TagsPanel() {
                     <IconButton
                       icon={Trash2}
                       size={12}
-                      ariaLabel={`Ordner ${folder.name} loeschen`}
-                      onClick={() => edit('Ordner loeschen', (s) => s.removeTagFolder(folder.id))}
+                      ariaLabel={`Ordner ${folder.name} löschen`}
+                      onClick={() => edit('Ordner löschen', (s) => s.removeTagFolder(folder.id))}
                     />
                   </div>
                 ) : null}

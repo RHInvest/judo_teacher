@@ -7,6 +7,7 @@
  */
 
 import type { SketchDocument } from '@/shared/types'
+import { serializeDocument } from '@/model'
 import type { ExportFormat, ExportOptions, ExportResult } from '../api-types'
 import { sanitizeFilename, textBlob } from '../common/util'
 import { exportObj } from './obj'
@@ -23,10 +24,18 @@ export { exportDae } from './dae'
 export { exportSvg, projectionFor } from './svg'
 export { exportPng, pngFromDataUrl } from './png'
 
-/** Natives Format: das Dokument als JSON. */
+/**
+ * Natives Format.
+ *
+ * Geschrieben wird ueber `@/model`s `serializeDocument` und NICHT ueber ein
+ * eigenes `JSON.stringify`: nur so bekommt die Datei den Formatkopf
+ * (`format`, `version`, `savedAt`), den `deserializeDocument` zum Migrieren
+ * braucht. Ein roh geschriebenes Dokument liesse sich zwar noch lesen, wuerde
+ * aber bei der naechsten Formatversion still falsch interpretiert.
+ */
 export function exportOsk(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
   return {
-    blob: textBlob(JSON.stringify(doc), 'application/json'),
+    blob: textBlob(serializeDocument(doc, { pretty: true }), 'application/json'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.osk`,
   }
 }

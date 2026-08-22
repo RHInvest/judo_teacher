@@ -220,9 +220,17 @@ export interface DimensionEntity extends EntityBase {
   end: Vec3Like
   /** offset of the dimension line from the measured segment */
   offset: Vec3Like
-  /** optional third point for angular dimensions */
+  /**
+   * Dritter Bezugspunkt.
+   *
+   * Bei `kind: 'angular'` der Scheitel des gemessenen Winkels, bei
+   * `kind: 'radius'` und `'diameter'` der KREISMITTELPUNKT - ohne ihn kann
+   * der Renderer den bemassten Kreis nicht rekonstruieren und weiss nicht,
+   * wohin die Masslinie zeigt. Bei `'linear'` ungenutzt.
+   */
   center?: Vec3Like
   text: string | null
+  /** Schriftgroesse - Pixel bei `screenSpace: true`, Meter bei `false`. */
   fontSize: number
   color: string
   /** true = 2d screen space text, false = text lives on a 3d plane */
@@ -237,10 +245,26 @@ export interface TextEntity extends EntityBase {
   /** text position */
   position: Vec3Like
   text: string
+  /**
+   * Schriftgroesse. Die EINHEIT haengt an `screenSpace`:
+   * `true` -> Pixel (der Text behaelt seine Groesse beim Zoomen),
+   * `false` -> Meter (der Text gehoert zum Modell und skaliert mit).
+   * Ohne diese Unterscheidung ergaebe einer der beiden Faelle immer Unsinn -
+   * 12 Meter hoher Bildschirmtext oder 12 Pixel grosser Modelltext.
+   */
   fontSize: number
   color: string
   /** 3d text is extruded geometry, screen text always faces the camera */
   screenSpace: boolean
+  /**
+   * Ebene, in der Text mit `screenSpace: false` liegt.
+   *
+   * Fehlt sie, liegt der Text in der XY-Ebene seines Kontexts. Gesetzt wird
+   * sie, wenn der Text an einer geneigten Flaeche kleben soll - eine
+   * Beschriftung auf einer Wand oder Dachflaeche. Bei `screenSpace: true`
+   * ohne Bedeutung, weil der Text dann immer zur Kamera zeigt.
+   */
+  plane?: PlaneLike
   leader: 'none' | 'viewBased' | 'pushPin'
 }
 

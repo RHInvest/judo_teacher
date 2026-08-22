@@ -8,7 +8,7 @@ import { Dialog } from './Dialog'
 
 const GLUE_OPTIONS: { value: ComponentBehavior['glueTo']; label: string }[] = [
   { value: 'none', label: 'Nicht kleben' },
-  { value: 'any', label: 'An jeder Flaeche' },
+  { value: 'any', label: 'An jeder Fläche' },
   { value: 'horizontal', label: 'Waagerecht (Boden)' },
   { value: 'vertical', label: 'Senkrecht (Wand)' },
   { value: 'sloped', label: 'Geneigt (Dach)' },
@@ -30,7 +30,7 @@ export function MakeComponentDialog({ defaultName, onClose }: { defaultName: str
         description: description.trim(),
         behavior: { glueTo, cutsOpening, alwaysFaceCamera, shadowsFaceSun },
       })
-      if (!id) toast('Die Auswahl liess sich nicht in eine Komponente umwandeln.', 'warn')
+      if (!id) toast('Die Auswahl ließ sich nicht in eine Komponente umwandeln.', 'warn')
       else toast(`Komponente "${trimmed}" erstellt.`, 'success')
     })
     onClose()
@@ -60,7 +60,7 @@ export function MakeComponentDialog({ defaultName, onClose }: { defaultName: str
       <div className="px-2 pb-1">
         <Checkbox
           checked={cutsOpening}
-          label="Oeffnung schneiden (Tueren, Fenster)"
+          label="Öffnung schneiden (Türen, Fenster)"
           disabled={glueTo === 'none'}
           onChange={setCutsOpening}
         />

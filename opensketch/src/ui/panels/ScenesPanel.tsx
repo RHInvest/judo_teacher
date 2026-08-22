@@ -29,7 +29,7 @@ export function ScenesPanel() {
   const scenes: Scene[] = state.doc?.scenes ?? []
   const current = scenes.find((scene) => scene.id === selected) ?? scenes[0] ?? null
 
-  const patch = (id: Id, next: Partial<Scene>) => edit('Szene aendern', (s) => s.updateScene(id, next))
+  const patch = (id: Id, next: Partial<Scene>) => edit('Szene ändern', (s) => s.updateScene(id, next))
 
   const move = (id: Id, delta: number) => {
     const index = scenes.findIndex((scene) => scene.id === id)
@@ -43,9 +43,9 @@ export function ScenesPanel() {
       <div className="flex items-center gap-1 px-2 pb-1 pt-1.5">
         <IconButton
           icon={Plus}
-          ariaLabel="Szene hinzufuegen"
+          ariaLabel="Szene hinzufügen"
           onClick={() =>
-            edit('Szene hinzufuegen', (s) => {
+            edit('Szene hinzufügen', (s) => {
               const id = s.addScene(`Szene ${scenes.length + 1}`)
               if (id) setSelected(id)
             })
@@ -59,9 +59,9 @@ export function ScenesPanel() {
         />
         <IconButton
           icon={Trash2}
-          ariaLabel="Szene loeschen"
+          ariaLabel="Szene löschen"
           disabled={!current}
-          onClick={() => current && edit('Szene loeschen', (s) => s.removeScene(current.id))}
+          onClick={() => current && edit('Szene löschen', (s) => s.removeScene(current.id))}
         />
         <div className={clsx('mx-1 h-4 w-px', skin.divider)} />
         <IconButton
@@ -144,14 +144,14 @@ export function ScenesPanel() {
               onCommit={(next) => patch(current.id, { description: next })}
             />
           </Row>
-          <Row label="Uebergang">
+          <Row label="Übergang">
             <NumberInput
               value={current.transitionTime}
               min={0}
               max={30}
               step={0.5}
               suffix="s"
-              ariaLabel="Uebergangszeit in Sekunden"
+              ariaLabel="Übergangszeit in Sekunden"
               onChange={(value) => patch(current.id, { transitionTime: value })}
             />
           </Row>

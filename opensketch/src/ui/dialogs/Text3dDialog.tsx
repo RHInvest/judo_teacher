@@ -22,9 +22,9 @@ import { Dialog } from './Dialog'
 type Align = 'left' | 'center' | 'right'
 
 const ALIGN_OPTIONS: { value: Align; label: string; icon: typeof AlignLeft }[] = [
-  { value: 'left', label: 'Linksbuendig', icon: AlignLeft },
+  { value: 'left', label: 'Linksbündig', icon: AlignLeft },
   { value: 'center', label: 'Zentriert', icon: AlignCenter },
-  { value: 'right', label: 'Rechtsbuendig', icon: AlignRight },
+  { value: 'right', label: 'Rechtsbündig', icon: AlignRight },
 ]
 
 export function Text3dDialog({ onClose }: { onClose: () => void }) {
@@ -60,23 +60,23 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
       title="3D-Text"
       width={440}
       onClose={onClose}
-      footerNote={extrude > 0 ? 'Extrudierte Buchstaben' : 'Flache Buchstabenflaechen'}
+      footerNote={extrude > 0 ? 'Extrudierte Buchstaben' : 'Flache Buchstabenflächen'}
       actions={[
         { label: 'Abbrechen', onClick: onClose },
-        { label: 'Einfuegen', variant: 'primary', onClick: insert, disabled: preview.trim() === '' },
+        { label: 'Einfügen', variant: 'primary', onClick: insert, disabled: preview.trim() === '' },
       ]}
     >
       <Row label="Text">
         <TextInput value={text} onChange={setText} ariaLabel="Textinhalt" autoFocus />
       </Row>
-      <Row label="Hoehe">
+      <Row label="Höhe">
         <NumberInput
           value={height}
           min={0.01}
           max={100}
           step={0.05}
           suffix="m"
-          ariaLabel="Versalhoehe in Metern"
+          ariaLabel="Versalhöhe in Metern"
           onChange={setHeight}
         />
       </Row>
@@ -98,7 +98,7 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
       <div className="px-2 pb-1 pt-1">
         <Checkbox checked={bold} label="Fett" onChange={setBold} />
         <Checkbox checked={italic} label="Kursiv" onChange={setItalic} />
-        <Checkbox checked={filled} label="Gefuellte Flaechen (sonst nur Umrisse)" onChange={setFilled} />
+        <Checkbox checked={filled} label="Gefüllte Flächen (sonst nur Umrisse)" onChange={setFilled} />
       </div>
 
       <div className="px-3 pb-2 pt-1">
@@ -120,11 +120,11 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
         ) : null}
         {content !== '' && preview.trim() === '' ? (
           <p className="mt-1.5 text-[11px] leading-relaxed text-red-500" role="alert">
-            Kein einziges Zeichen laesst sich darstellen - bitte den Text aendern.
+            Kein einziges Zeichen lässt sich darstellen - bitte den Text ändern.
           </p>
         ) : null}
         <p className={clsx('mt-1.5 text-[11px] leading-relaxed', skin.dim)}>
-          Nach dem Bestaetigen den Einfuegepunkt im Modell anklicken.
+          Nach dem Bestätigen den Einfügepunkt im Modell anklicken.
         </p>
       </div>
     </Dialog>

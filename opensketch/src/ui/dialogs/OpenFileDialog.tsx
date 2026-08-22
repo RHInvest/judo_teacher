@@ -43,7 +43,7 @@ export function OpenFileDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog
-      title="Modell oeffnen"
+      title="Modell öffnen"
       width={520}
       onClose={onClose}
       footerNote={`${entries.length} gespeicherte${entries.length === 1 ? 's Modell' : ' Modelle'}`}
@@ -55,7 +55,7 @@ export function OpenFileDialog({ onClose }: { onClose: () => void }) {
             void cmdOpenFromDisk().then(onClose)
           },
         },
-        { label: 'Oeffnen', variant: 'primary', disabled: !selected, onClick: () => selected && open(selected) },
+        { label: 'Öffnen', variant: 'primary', disabled: !selected, onClick: () => selected && open(selected) },
       ]}
     >
       <div className="flex items-center gap-1 px-2 pb-1">
@@ -71,7 +71,7 @@ export function OpenFileDialog({ onClose }: { onClose: () => void }) {
         ) : visible.length === 0 ? (
           <EmptyHint>
             {entries.length === 0
-              ? 'Im Browserspeicher liegt noch kein Modell. Speichere zuerst eines oder oeffne eine .osk-Datei.'
+              ? 'Im Browserspeicher liegt noch kein Modell. Speichere zuerst eines oder öffne eine .osk-Datei.'
               : 'Kein Modell passt zur Suche.'}
           </EmptyHint>
         ) : (
@@ -91,7 +91,7 @@ export function OpenFileDialog({ onClose }: { onClose: () => void }) {
               <IconButton
                 icon={Trash2}
                 size={13}
-                ariaLabel={`${entry.name} loeschen`}
+                ariaLabel={`${entry.name} löschen`}
                 className="opacity-0 group-hover:opacity-100"
                 onClick={(event) => {
                   event.stopPropagation()

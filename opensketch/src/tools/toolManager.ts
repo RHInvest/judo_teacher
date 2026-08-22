@@ -340,6 +340,27 @@ export class ToolManager implements ToolManagerApi {
     return this.currentId
   }
 
+  /**
+   * true, wenn das aktive Werkzeug gerade rohen Text erwartet.
+   *
+   * `ViewportHost` leitet Ziffern, Komma und Anfuehrungszeichen sonst ans
+   * Massfeld um, sobald sie gedrueckt werden - mitten in einer Beschriftung
+   * zerreisst das die Eingabe ("Raum 12"). Das Flag gilt nur waehrend der
+   * Texteingabe, nicht fuer das ganze Werkzeug: vor dem ersten Klick soll man
+   * im Textwerkzeug weiterhin Masse eintippen koennen.
+   *
+   * Bei einem transienten Kamerawerkzeug (mittlere Maustaste, Leertaste)
+   * zaehlt das Werkzeug DARUNTER - der Orbit erwartet nie Text, die
+   * angefangene Beschriftung darf aber nicht verloren gehen.
+   */
+  wantsTextInput(): boolean {
+    if (this.disposed) return false
+    if (this.current?.wantsTextInput === true) return true
+    if (this.transientStack.length === 0) return false
+    const beneath = this.tools.get(this.transientStack[0])
+    return beneath?.wantsTextInput === true
+  }
+
   pushTransient(id: ToolId): void {
     if (this.disposed) return
     if (this.currentId === id) return
@@ -472,13 +493,19 @@ export class ToolManager implements ToolManagerApi {
       if (this.handleCommandKey(e, key)) return true
     }
 
+    /*
+     * Das aktive Werkzeug hat Vorrang (Pfeiltasten, eigene Modifikatoren) -
+     * und zwar VOR dem Loeschen. Sonst kann ein Werkzeug, das gerade Text
+     * entgegennimmt, die Ruecktaste nie sehen: sie wuerde stattdessen die
+     * Auswahl loeschen, waehrend der Nutzer einen Tippfehler ausbessern will.
+     * Werkzeuge, die nichts mit der Taste anfangen, geben false zurueck.
+     */
+    if (this.guard('onKeyDown', (tool) => tool.onKeyDown(e)) === true) return true
+
     if ((key === 'DELETE' || key === 'BACKSPACE') && !e.ctrl && !e.meta) {
       this.deleteSelection()
       return true
     }
-
-    // Das aktive Werkzeug hat Vorrang (Pfeiltasten, eigene Modifikatoren).
-    if (this.guard('onKeyDown', (tool) => tool.onKeyDown(e)) === true) return true
 
     if (!e.ctrl && !e.meta) {
       if (key === 'G') {

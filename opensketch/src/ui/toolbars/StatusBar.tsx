@@ -68,7 +68,7 @@ export function StatusBar() {
         letzten Frame - niemals unter "Flaechen" fuehren.
       */}
       <div className={clsx('flex shrink-0 items-center gap-2.5 border-l pl-3', skin.border)}>
-        <Stat icon={Square} value={fmtCount(stats.faces)} title="Flaechen" />
+        <Stat icon={Square} value={fmtCount(stats.faces)} title="Flächen" />
         <Stat icon={Minus} value={fmtCount(stats.edges)} title="Kanten" />
         <Stat icon={Box} value={fmtCount(stats.instances)} title="Instanzen" />
         <Stat icon={Triangle} value={fmtCount(stats.triangles)} title="Dreiecke" />

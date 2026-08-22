@@ -13,9 +13,8 @@
  * 4. **Punkte von Werkzeugen sind WELTKOORDINATEN.** Vor jedem Kernel-Aufruf
  *    werden sie mit der Inversen von `context.worldTransform` in den Raum des
  *    aktiven Kontexts geholt (`toLocalPoint` / `toLocalDir` / `toLocalMatrix`).
- *    Das gilt genauso fuer Entities, die ein Werkzeug anlegt - dafuer gibt es
- *    `toLocalEntityMut`. Ausnahme ist `placeInstance`: dessen Matrix ist laut
- *    Contract bereits eine Kontextmatrix.
+ *    Das gilt ausnahmefrei, auch fuer Entities, die ein Werkzeug anlegt
+ *    (`toLocalEntityMut`), und fuer die Matrix von `placeInstance`.
  *
  * OWNERSHIP: Model.
  */
@@ -1734,6 +1733,10 @@ export const useStore = create<AppState>()((set, get) => {
             isGroup: def.kind === 'group',
             materialId: null,
           }
+          // Regel 4: `transform` ist eine Weltmatrix. Derselbe Weg wie bei
+          // `addEntity` - nicht `toLocalMatrix`: das konjugiert eine OPERATION,
+          // hier geht es um die PLATZIERUNG eines Objekts.
+          toLocalEntityMut(instance)
           addEntityTo(doc, contextId, instance)
           markScene()
           return instance.id
@@ -1781,6 +1784,14 @@ export const useStore = create<AppState>()((set, get) => {
       )
     },
 
+    /**
+     * Fuer ATTRIBUTE gedacht: Name, Farbe, Schriftgroesse, Pfeilart, aktiv,
+     * Sichtbarkeit. Punktfelder werden bewusst NICHT umgerechnet - ein Patch
+     * ist teilweise, und ob ein uebergebenes `start` als Welt- oder als
+     * Kontextpunkt gemeint war, laesst sich nicht erraten. Mal so, mal anders
+     * zu raten waere schlimmer als eine klare Regel:
+     * **Positionsaenderungen laufen ueber `transformEntities`.**
+     */
     updateEntity(id, patch) {
       get().operation('Objekt aendern', () =>
         editDoc((doc) => {

@@ -45,6 +45,15 @@ export class TextTool extends BaseTool {
   readonly cursor: Cursor = 'crosshair'
   readonly hint: string = 'Text: Punkt anklicken'
 
+  /**
+   * Waehrend der Eingabe erwartet das Werkzeug ROHEN Text. `ViewportHost`
+   * fragt das ab und leitet Ziffern, Komma und Anfuehrungszeichen dann NICHT
+   * mehr ans Massfeld um - sonst zerfaellt "Raum 12" in "Raum " (Werkzeug) und
+   * "12" (Massfeld). Bewusst ein Feld und keine Konstante: vor dem ersten
+   * Klick soll man hier weiterhin Masse eintippen koennen.
+   */
+  wantsTextInput = false
+
   private phase: Phase = 'anchor'
   private anchor: Vec3Like | null = null
   private position: Vec3Like | null = null
@@ -131,11 +140,12 @@ export class TextTool extends BaseTool {
   /**
    * Text aus dem Massfeld.
    *
-   * Sonderfall aus der Verdrahtung: der Viewport leitet Ziffern und Komma an
-   * das Massfeld um, sobald sie gedrueckt werden. Mitten in einem Text ("Raum
-   * 12") landet die Ziffernfolge deshalb dort statt im Puffer. Ist der Puffer
-   * schon gefuellt, wird der Feldinhalt darum ANGEHAENGT statt zu ersetzen -
-   * so kommt genau das heraus, was der Nutzer getippt hat.
+   * Der Nutzer darf die Beschriftung auch direkt ins Massfeld tippen.
+   *
+   * Ist der Puffer schon gefuellt, wird der Feldinhalt ANGEHAENGT statt zu
+   * ersetzen. Das ist das Sicherheitsnetz fuer den Fall, dass eine Ziffer
+   * doch einmal im Massfeld landet (siehe `wantsTextInput`): "Raum " im
+   * Puffer und "12" im Feld ergeben dann wieder "Raum 12".
    */
   onValueEntry(text: string): boolean {
     if (this.phase !== 'typing') return false
@@ -183,6 +193,7 @@ export class TextTool extends BaseTool {
 
   private beginTyping(): void {
     this.phase = 'typing'
+    this.wantsTextInput = true
     this.showBuffer()
     this.status('Text: eingeben und mit Eingabe bestätigen', 'Esc = abbrechen')
   }
@@ -253,6 +264,7 @@ export class TextTool extends BaseTool {
 
   private reset(): void {
     this.phase = 'anchor'
+    this.wantsTextInput = false
     this.anchor = null
     this.position = null
     this.buffer = ''

@@ -25,7 +25,7 @@ const FACE_STYLE_OPTIONS: { value: FaceStyle; label: string; icon: typeof Box }[
   { value: 'hiddenLine', label: 'Verdeckte Linien', icon: PencilLine },
   { value: 'wireframe', label: 'Drahtgitter', icon: Boxes },
   { value: 'monochrome', label: 'Monochrom', icon: Contrast },
-  { value: 'xray', label: 'Roentgen', icon: ScanLine },
+  { value: 'xray', label: 'Röntgen', icon: ScanLine },
 ]
 
 const EDGE_COLOR_MODES: { value: StyleSettings['edgeColorMode']; label: string }[] = [
@@ -46,10 +46,10 @@ export function StylesPanel() {
 
   return (
     <div className="flex flex-col">
-      <GroupTitle>Flaechen</GroupTitle>
+      <GroupTitle>Flächen</GroupTitle>
       <div className="px-2 pb-1">
         <IconRow
-          ariaLabel="Flaechenstil"
+          ariaLabel="Flächenstil"
           value={style.faceStyle}
           options={FACE_STYLE_OPTIONS}
           onChange={(value) => patch({ faceStyle: value })}
@@ -62,16 +62,16 @@ export function StylesPanel() {
       <Row label="Vorderseite">
         <ColorField value={style.frontColor} ariaLabel="Farbe der Vorderseiten" onChange={(hex) => patch({ frontColor: hex })} />
       </Row>
-      <Row label="Rueckseite">
-        <ColorField value={style.backColor} ariaLabel="Farbe der Rueckseiten" onChange={(hex) => patch({ backColor: hex })} />
+      <Row label="Rückseite">
+        <ColorField value={style.backColor} ariaLabel="Farbe der Rückseiten" onChange={(hex) => patch({ backColor: hex })} />
       </Row>
-      <Row label="Roentgen">
+      <Row label="Röntgen">
         <Slider
           min={0.05}
           max={1}
           step={0.05}
           value={style.xrayOpacity}
-          ariaLabel="Deckkraft im Roentgenmodus"
+          ariaLabel="Deckkraft im Röntgenmodus"
           display={`${Math.round(style.xrayOpacity * 100)} %`}
           onChange={(value) => patch({ xrayOpacity: value })}
         />
@@ -84,7 +84,7 @@ export function StylesPanel() {
         <Checkbox checked={style.displayProfiles} label="Profile" onChange={(checked) => patch({ displayProfiles: checked })} />
         <Checkbox
           checked={style.displayExtensions}
-          label="Verlaengerungen"
+          label="Verlängerungen"
           onChange={(checked) => patch({ displayExtensions: checked })}
         />
         <Checkbox checked={style.displayEndpoints} label="Endpunkte" onChange={(checked) => patch({ displayEndpoints: checked })} />
@@ -103,14 +103,14 @@ export function StylesPanel() {
           onChange={(value) => patch({ profileWidth: value })}
         />
       </Row>
-      <Row label="Verlaengerung">
+      <Row label="Verlängerung">
         <NumberInput
           value={style.extensionLength}
           min={0}
           max={40}
           step={1}
           suffix="px"
-          ariaLabel="Laenge der Kantenverlaengerung"
+          ariaLabel="Länge der Kantenverlängerung"
           onChange={(value) => patch({ extensionLength: value })}
         />
       </Row>
@@ -121,7 +121,7 @@ export function StylesPanel() {
           max={20}
           step={1}
           suffix="px"
-          ariaLabel="Groesse der Endpunkte"
+          ariaLabel="Größe der Endpunkte"
           onChange={(value) => patch({ endpointSize: value })}
         />
       </Row>
@@ -216,8 +216,8 @@ export function StylesPanel() {
           />
         </div>
       </Row>
-      <Row label="Schnittfuellung">
-        <ColorField value={style.sectionCutFill} ariaLabel="Fuellfarbe der Schnittflaechen" onChange={(hex) => patch({ sectionCutFill: hex })} />
+      <Row label="Schnittfüllung">
+        <ColorField value={style.sectionCutFill} ariaLabel="Füllfarbe der Schnittflächen" onChange={(hex) => patch({ sectionCutFill: hex })} />
       </Row>
       <Row label="Schnittlinie">
         <NumberInput
