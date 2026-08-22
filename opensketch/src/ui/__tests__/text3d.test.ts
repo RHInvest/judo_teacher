@@ -17,7 +17,7 @@ import {
 } from '@/ui/lib/text3d'
 
 describe('mapText3dChar', () => {
-  it('lässt jedes Zeichen des Vorrats unveraendert', () => {
+  it('laesst jedes Zeichen des Vorrats unveraendert', () => {
     for (const char of TEXT3D_GLYPHS) {
       expect(mapText3dChar(char), `Zeichen "${char}"`).toBe(char)
     }
@@ -35,7 +35,7 @@ describe('mapText3dChar', () => {
     expect(mapText3dChar('ß')).toBe('SS')
   })
 
-  it('hält das Leerzeichen', () => {
+  it('haelt das Leerzeichen', () => {
     expect(mapText3dChar(' ')).toBe(' ')
     expect(mapText3dChar('\t')).toBe(' ')
   })
@@ -53,7 +53,7 @@ describe('mapText3dChar', () => {
     expect(mapText3dChar('…')).toBe('...')
   })
 
-  it('lässt Zeichen ohne Entsprechung weg', () => {
+  it('laesst Zeichen ohne Entsprechung weg', () => {
     expect(mapText3dChar('日')).toBe('')
     expect(mapText3dChar('😀')).toBe('')
     expect(mapText3dChar('\n')).toBe('')
@@ -61,7 +61,7 @@ describe('mapText3dChar', () => {
 })
 
 describe('mapText3d', () => {
-  it('lässt reine Grossbuchstaben unveraendert', () => {
+  it('laesst reine Grossbuchstaben unveraendert', () => {
     expect(mapText3d('OPENSKETCH')).toBe('OPENSKETCH')
   })
 
@@ -76,12 +76,12 @@ describe('mapText3d', () => {
     expect(mapText3d('Grösse')).toBe('GROESSE')
   })
 
-  it('hält Ziffern und Satzzeichen', () => {
+  it('haelt Ziffern und Satzzeichen', () => {
     expect(mapText3d('Raum 1.2 (OG)')).toBe('RAUM 1.2 (OG)')
     expect(mapText3d('A-Z, 0-9!')).toBe('A-Z, 0-9!')
   })
 
-  it('lässt Unbekanntes ersatzlos weg', () => {
+  it('laesst Unbekanntes ersatzlos weg', () => {
     expect(mapText3d('Haus 日 12')).toBe('HAUS  12')
   })
 
@@ -97,7 +97,7 @@ describe('mapText3d', () => {
 })
 
 describe('unsupportedText3dChars', () => {
-  it('meldet nichts für darstellbaren Text', () => {
+  it('meldet nichts fuer darstellbaren Text', () => {
     expect(unsupportedText3dChars('Haus 12 (OG)')).toEqual([])
     expect(unsupportedText3dChars('Grösse')).toEqual([])
   })
@@ -116,7 +116,7 @@ describe('unsupportedText3dChars', () => {
 })
 
 describe('text3dChanges', () => {
-  it('meldet keine Aenderung für Text, der schon passt', () => {
+  it('meldet keine Aenderung fuer Text, der schon passt', () => {
     expect(text3dChanges('HAUS 12')).toBe(false)
     expect(text3dChanges('')).toBe(false)
   })
@@ -132,13 +132,13 @@ describe('text3dChanges', () => {
 })
 
 describe('Zeichenvorrat', () => {
-  it('enthält alle Grossbuchstaben und Ziffern', () => {
+  it('enthaelt alle Grossbuchstaben und Ziffern', () => {
     for (const char of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') {
       expect(TEXT3D_GLYPHS, `Zeichen "${char}" fehlt`).toContain(char)
     }
   })
 
-  it('enthält die gaengigen Satzzeichen', () => {
+  it('enthaelt die gaengigen Satzzeichen', () => {
     for (const char of '.,:;!?()-+/') {
       expect(TEXT3D_GLYPHS, `Zeichen "${char}" fehlt`).toContain(char)
     }
@@ -148,7 +148,7 @@ describe('Zeichenvorrat', () => {
     expect(new Set(TEXT3D_GLYPHS.split('')).size).toBe(TEXT3D_GLYPHS.length)
   })
 
-  it('enthält das Leerzeichen nicht als Glyphe', () => {
+  it('enthaelt das Leerzeichen nicht als Glyphe', () => {
     // Das Leerzeichen ist ein Vorschub, kein Zeichen des Vorrats.
     expect(TEXT3D_GLYPHS).not.toContain(' ')
   })

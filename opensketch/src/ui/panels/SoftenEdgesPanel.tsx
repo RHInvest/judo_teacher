@@ -62,7 +62,7 @@ export function SoftenEdgesPanel() {
       {!hasEdges ? (
         <EmptyHint>
           Wähle Kanten aus (oder eine ganze Gruppe), um die Glättung einzustellen. Weiche Kanten werden nicht
-          gezeichnet, geglaettete Kanten mitteln die Schattierung der Nachbarflächen.
+          gezeichnet, geglättete Kanten mitteln die Schattierung der Nachbarflächen.
         </EmptyHint>
       ) : null}
 

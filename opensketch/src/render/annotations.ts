@@ -465,10 +465,10 @@ export class AnnotationLayer {
 
     if (content.length === 0) return
 
-    // Ohne eigene Ebene im Contract liegt Modelltext in der XY-Ebene seines
-    // Kontexts - dieselbe Ebene, in der der Nutzer ihn abgesetzt hat.
-    const u = V.normalizeOr(this.toWorldDirection(ctx.record, V.AXIS_X), V.AXIS_X)
-    const v = V.normalizeOr(this.toWorldDirection(ctx.record, V.AXIS_Y), V.AXIS_Y)
+    // Bevorzugt die Ebene der Entitaet (fuer Beschriftungen an geneigten
+    // Flaechen). Fehlt sie, liegt der Text in der XY-Ebene seines Kontexts -
+    // der Ebene, in der der Nutzer ihn abgesetzt hat.
+    const { u, v } = this.textAxes(entity, ctx)
 
     this.labels.push({
       text: content,
@@ -482,6 +482,30 @@ export class AnnotationLayer {
       opacity: ctx.opacity,
       background: null,
     })
+  }
+
+  /**
+   * Achsen der Textebene im Weltraum.
+   *
+   * `TextEntity.plane` ist optional: gesetzt wird sie nur, wenn der Text an
+   * einer geneigten Flaeche kleben soll. Fehlt sie, gilt die XY-Ebene des
+   * Kontexts - so, wie der Nutzer den Text abgesetzt hat.
+   */
+  private textAxes(entity: TextEntity, ctx: BuildContext): { u: Vec3Like; v: Vec3Like } {
+    const plane = entity.plane
+    if (plane && plane.n && V.isFinite3(plane.n) && !V.isZero(plane.n)) {
+      const local = P.basis(plane)
+      const u = V.normalizeOr(this.toWorldDirection(ctx.record, local.u), V.AXIS_X)
+      const v = V.normalizeOr(this.toWorldDirection(ctx.record, local.v), V.AXIS_Y)
+      // Nach der Transformation koennen die Achsen schiefwinklig sein (Scherung
+      // durch nicht-uniforme Skalierung) - `v` wieder senkrecht ziehen.
+      const orthogonal = V.sub(v, V.projectOnVector(v, u))
+      return { u, v: V.normalizeOr(orthogonal, v) }
+    }
+    return {
+      u: V.normalizeOr(this.toWorldDirection(ctx.record, V.AXIS_X), V.AXIS_X),
+      v: V.normalizeOr(this.toWorldDirection(ctx.record, V.AXIS_Y), V.AXIS_Y),
+    }
   }
 
   /* ---------------------------------------------------------------- */

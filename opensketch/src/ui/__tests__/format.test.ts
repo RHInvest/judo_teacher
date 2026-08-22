@@ -78,13 +78,13 @@ describe('fmtCount', () => {
 /* ------------------------------------------------------------------ */
 
 describe('Einheiten-Wrapper', () => {
-  it('formatiert Laengen über die Einheitenbibliothek', () => {
+  it('formatiert Laengen ueber die Einheitenbibliothek', () => {
     const text = fmtLength(2, METRIC)
     expect(text.length).toBeGreaterThan(0)
     expect(text).not.toMatch(/NaN|undefined/)
   })
 
-  it('formatiert Flächen und Volumen', () => {
+  it('formatiert Flaechen und Volumen', () => {
     expect(fmtArea(12, METRIC)).not.toMatch(/NaN|undefined/)
     expect(fmtVolume(24, METRIC)).not.toMatch(/NaN|undefined/)
   })
@@ -98,7 +98,7 @@ describe('Einheiten-Wrapper', () => {
     expect(fmtLength(2, THROWS)).toBe('2.000 m')
   })
 
-  it('zeigt niemals "NaN", egal was die Einheiteneinstellung enthält', () => {
+  it('zeigt niemals "NaN", egal was die Einheiteneinstellung enthaelt', () => {
     // Unbekannte Einheitennamen werfen nicht. Seit der Rueckfall in
     // `shared/units.ts` sitzt, faengt die Bibliothek sie selbst ab; die
     // Pruefung hier bleibt als zweite Verteidigungslinie stehen, weil die
@@ -121,8 +121,8 @@ describe('Einheiten-Wrapper', () => {
 
   it('macht aus einer unbrauchbaren Zahl einen Strich', () => {
     for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
-      expect(fmtLength(value, METRIC), `Länge ${value}`).toBe('- m')
-      expect(fmtArea(value, METRIC), `Fläche ${value}`).toBe('- m²')
+      expect(fmtLength(value, METRIC), `Laenge ${value}`).toBe('- m')
+      expect(fmtArea(value, METRIC), `Flaeche ${value}`).toBe('- m²')
       expect(fmtVolume(value, METRIC), `Volumen ${value}`).toBe('- m³')
       expect(fmtAngle(value, METRIC), `Winkel ${value}`).toBe('-°')
     }
@@ -147,7 +147,7 @@ describe('fmtClock', () => {
     expect(fmtClock(23 * 60 + 59)).toBe('23:59')
   })
 
-  it('rechnet über den Tagesrand hinweg', () => {
+  it('rechnet ueber den Tagesrand hinweg', () => {
     expect(fmtClock(1440)).toBe('00:00')
     expect(fmtClock(1500)).toBe('01:00')
   })
@@ -195,13 +195,13 @@ describe('fmtTimestamp', () => {
 /* ------------------------------------------------------------------ */
 
 describe('fmtBytes', () => {
-  it('wählt die passende Einheit', () => {
+  it('waehlt die passende Einheit', () => {
     expect(fmtBytes(512)).toBe('512 B')
     expect(fmtBytes(2048)).toBe('2.0 kB')
     expect(fmtBytes(5 * 1024 * 1024)).toBe('5.0 MB')
   })
 
-  it('lässt grosse Werte ohne Nachkommastelle', () => {
+  it('laesst grosse Werte ohne Nachkommastelle', () => {
     expect(fmtBytes(64 * 1024)).toBe('64 kB')
   })
 
@@ -213,7 +213,7 @@ describe('fmtBytes', () => {
 })
 
 describe('normalizeHex', () => {
-  it('lässt gueltige Farben stehen', () => {
+  it('laesst gueltige Farben stehen', () => {
     expect(normalizeHex('#a1b2c3')).toBe('#a1b2c3')
   })
 

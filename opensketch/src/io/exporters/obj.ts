@@ -103,6 +103,25 @@ export function exportObj(doc: SketchDocument, opts: ExportOptions = {}): Export
     if (record.corners.length > 0) list.push(record)
   }
 
+  /* ---- Kanten ---- */
+  // Muss VOR der Ausgabe der `v`-Zeilen laufen: eine Kante, die an keiner
+  // Flaeche haengt (gezeichneter, noch nicht geschlossener Grundriss), bringt
+  // ihre Endpunkte sonst in keinen Vertexpuffer - die Datei bliebe leer.
+  const edgeLines: string[] = []
+  if (opts.includeEdges) {
+    const seen = new Set<string>()
+    for (const edge of flat.edges) {
+      if (edge.soft) continue
+      const a = vIdx(edge.a)
+      const b = vIdx(edge.b)
+      if (a === b) continue
+      const key = a < b ? `${a}|${b}` : `${b}|${a}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      edgeLines.push(`l ${a} ${b}`)
+    }
+  }
+
   /* ---- Ausgabe ---- */
   for (const p of positions) lines.push(`v ${num(p.x)} ${num(p.y)} ${num(p.z)}`)
   lines.push('')
@@ -126,25 +145,10 @@ export function exportObj(doc: SketchDocument, opts: ExportOptions = {}): Export
     lines.push('')
   }
 
-  /* ---- Kanten ---- */
-  if (opts.includeEdges) {
-    const seen = new Set<string>()
-    const edgeLines: string[] = []
-    for (const edge of flat.edges) {
-      if (edge.soft) continue
-      const a = vIdxExisting(positionIndex, quant, edge.a)
-      const b = vIdxExisting(positionIndex, quant, edge.b)
-      if (a === null || b === null || a === b) continue
-      const key = a < b ? `${a}|${b}` : `${b}|${a}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      edgeLines.push(`l ${a} ${b}`)
-    }
-    if (edgeLines.length > 0) {
-      lines.push('g OpenSketch_Kanten')
-      lines.push(...edgeLines)
-      lines.push('')
-    }
+  if (edgeLines.length > 0) {
+    lines.push('g OpenSketch_Kanten')
+    lines.push(...edgeLines)
+    lines.push('')
   }
 
   const objText = lines.join('\n')
@@ -202,14 +206,6 @@ function encodeFace(
     if (a && b && c) out.push([corner(a), corner(b), corner(c)])
   }
   return { corners: out }
-}
-
-function vIdxExisting(
-  index: Map<string, number>,
-  quant: (v: number) => number,
-  p: Vec3Like,
-): number | null {
-  return index.get(`${quant(p.x)},${quant(p.y)},${quant(p.z)}`) ?? null
 }
 
 /* ------------------------------------------------------------------ */

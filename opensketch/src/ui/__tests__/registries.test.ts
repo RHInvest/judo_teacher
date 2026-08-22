@@ -120,12 +120,12 @@ function toolbarTools(): ToolId[] {
 describe('Werkzeug-Registry', () => {
   it('kennt zu jeder ToolId Metadaten', () => {
     for (const id of ALL_TOOLS) {
-      expect(TOOL_META[id], `TOOL_META fehlt für "${id}"`).toBeDefined()
+      expect(TOOL_META[id], `TOOL_META fehlt fuer "${id}"`).toBeDefined()
     }
     expect(Object.keys(TOOL_META).sort()).toEqual([...ALL_TOOLS].sort())
   })
 
-  it('hält id und Schluessel in TOOL_META deckungsgleich', () => {
+  it('haelt id und Schluessel in TOOL_META deckungsgleich', () => {
     for (const [key, meta] of Object.entries(TOOL_META)) {
       expect(meta.id, `TOOL_META["${key}"].id`).toBe(key)
     }
@@ -134,9 +134,9 @@ describe('Werkzeug-Registry', () => {
   it('gibt jedem Werkzeug Name, Symbol und Hinweis auf Deutsch', () => {
     for (const id of ALL_TOOLS) {
       const meta = TOOL_META[id]
-      expect(meta.name.trim().length, `Name für "${id}"`).toBeGreaterThan(0)
-      expect(meta.hint.trim().length, `Hinweis für "${id}"`).toBeGreaterThan(0)
-      expect(meta.icon, `Symbol für "${id}"`).toBeTruthy()
+      expect(meta.name.trim().length, `Name fuer "${id}"`).toBeGreaterThan(0)
+      expect(meta.hint.trim().length, `Hinweis fuer "${id}"`).toBeGreaterThan(0)
+      expect(meta.icon, `Symbol fuer "${id}"`).toBeTruthy()
     }
   })
 
@@ -146,15 +146,15 @@ describe('Werkzeug-Registry', () => {
     // geschriebenen Bibliothekstexten aus @/io im selben Fenster.
     for (const id of ALL_TOOLS) {
       const meta = TOOL_META[id]
-      expect(findSubstituteSpellings(meta.name), `Name für "${id}": ${spellingHint(meta.name)}`).toEqual([])
-      expect(findSubstituteSpellings(meta.hint), `Hinweis für "${id}": ${spellingHint(meta.hint)}`).toEqual([])
+      expect(findSubstituteSpellings(meta.name), `Name fuer "${id}": ${spellingHint(meta.name)}`).toEqual([])
+      expect(findSubstituteSpellings(meta.hint), `Hinweis fuer "${id}": ${spellingHint(meta.hint)}`).toEqual([])
     }
   })
 
   it('macht jedes Werkzeug in der Werkzeugleiste erreichbar', () => {
     const inToolbar = toolbarTools()
     for (const id of ALL_TOOLS) {
-      expect(inToolbar, `Kein Knopf in der Werkzeugleiste für "${id}"`).toContain(id)
+      expect(inToolbar, `Kein Knopf in der Werkzeugleiste fuer "${id}"`).toContain(id)
     }
   })
 
@@ -169,7 +169,7 @@ describe('Werkzeug-Registry', () => {
     }
   })
 
-  it('hält ALL_TOOL_IDS deckungsgleich mit TOOL_META', () => {
+  it('haelt ALL_TOOL_IDS deckungsgleich mit TOOL_META', () => {
     expect([...ALL_TOOL_IDS].sort()).toEqual([...ALL_TOOLS].sort())
   })
 
@@ -208,7 +208,7 @@ describe('Werkzeug-Registry', () => {
 describe('Panel-Registry', () => {
   it('hat zu jeder PanelId eine Komponente', () => {
     for (const id of ALL_PANELS) {
-      expect(PANEL_COMPONENTS[id], `Kein Panel für "${id}"`).toBeTypeOf('function')
+      expect(PANEL_COMPONENTS[id], `Kein Panel fuer "${id}"`).toBeTypeOf('function')
     }
     expect(Object.keys(PANEL_COMPONENTS).sort()).toEqual([...ALL_PANELS].sort())
   })
@@ -218,13 +218,13 @@ describe('Panel-Registry', () => {
     for (const id of ALL_PANELS) {
       const meta = PANEL_META[id]
       expect(meta.id, `PANEL_META["${id}"].id`).toBe(id)
-      expect(meta.title.trim().length, `Titel für "${id}"`).toBeGreaterThan(0)
-      expect(meta.description.trim().length, `Beschreibung für "${id}"`).toBeGreaterThan(0)
-      expect(meta.icon, `Symbol für "${id}"`).toBeTruthy()
-      expect(findSubstituteSpellings(meta.title), `Titel für "${id}": ${spellingHint(meta.title)}`).toEqual([])
+      expect(meta.title.trim().length, `Titel fuer "${id}"`).toBeGreaterThan(0)
+      expect(meta.description.trim().length, `Beschreibung fuer "${id}"`).toBeGreaterThan(0)
+      expect(meta.icon, `Symbol fuer "${id}"`).toBeTruthy()
+      expect(findSubstituteSpellings(meta.title), `Titel fuer "${id}": ${spellingHint(meta.title)}`).toEqual([])
       expect(
         findSubstituteSpellings(meta.description),
-        `Beschreibung für "${id}": ${spellingHint(meta.description)}`,
+        `Beschreibung fuer "${id}": ${spellingHint(meta.description)}`,
       ).toEqual([])
     }
   })
@@ -247,7 +247,7 @@ describe('Panel-Registry', () => {
 describe('Dialog-Registry', () => {
   it('hat zu jeder DialogState-Variante einen Dialog', () => {
     for (const kind of ALL_DIALOGS) {
-      expect(DIALOG_RENDERERS[kind], `Kein Dialog für "${kind}"`).toBeTypeOf('function')
+      expect(DIALOG_RENDERERS[kind], `Kein Dialog fuer "${kind}"`).toBeTypeOf('function')
     }
     expect([...DIALOG_KINDS].sort()).toEqual([...ALL_DIALOGS].sort())
   })
@@ -261,7 +261,7 @@ describe('Dialog-Registry', () => {
   it('hat zu jedem oberflaechlichen Dialog eine Komponente', () => {
     expect([...LOCAL_DIALOG_KINDS].sort()).toEqual(['quickstart', 'saveAs', 'shortcuts'])
     for (const kind of LOCAL_DIALOG_KINDS) {
-      expect(LOCAL_DIALOG_RENDERERS[kind], `Kein Dialog für "${kind}"`).toBeTypeOf('function')
+      expect(LOCAL_DIALOG_RENDERERS[kind], `Kein Dialog fuer "${kind}"`).toBeTypeOf('function')
     }
   })
 })
@@ -273,14 +273,14 @@ describe('Dialog-Registry', () => {
 describe('Abgleich mit der Werkzeugschicht', () => {
   it('belegt jedes Werkzeug in TOOL_SHORTCUTS mit einer echten ToolId', () => {
     for (const [combo, id] of Object.entries(TOOL_SHORTCUTS)) {
-      expect(ALL_TOOLS, `Kürzel "${combo}" zeigt auf "${id}" - keine ToolId`).toContain(id)
+      expect(ALL_TOOLS, `Kuerzel "${combo}" zeigt auf "${id}" - keine ToolId`).toContain(id)
     }
   })
 
-  it('vergibt für jedes Werkzeug genau ein Kürzel', () => {
+  it('vergibt fuer jedes Werkzeug genau ein Kuerzel', () => {
     const covered = Object.values(TOOL_SHORTCUTS)
     for (const id of ALL_TOOLS) {
-      expect(covered.filter((entry) => entry === id).length, `Kürzel für "${id}"`).toBe(1)
+      expect(covered.filter((entry) => entry === id).length, `Kuerzel fuer "${id}"`).toBe(1)
     }
   })
 })
@@ -292,7 +292,7 @@ describe('Abgleich mit der Werkzeugschicht', () => {
 describe('Instructor', () => {
   it('hat zu jedem Werkzeug eine Anleitung', () => {
     for (const id of ALL_TOOLS) {
-      expect(TOOL_INSTRUCTIONS[id], `Keine Anleitung für "${id}"`).toBeDefined()
+      expect(TOOL_INSTRUCTIONS[id], `Keine Anleitung fuer "${id}"`).toBeDefined()
     }
     expect(Object.keys(TOOL_INSTRUCTIONS).sort()).toEqual([...ALL_TOOLS].sort())
   })

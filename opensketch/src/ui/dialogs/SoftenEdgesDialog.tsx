@@ -46,8 +46,8 @@ export function SoftenEdgesDialog({ onClose }: { onClose: () => void }) {
         <Checkbox checked={softenCoplanar} label="Koplanare Kanten mit weichzeichnen" onChange={setSoftenCoplanar} />
       </div>
       <p className={clsx('px-3 pb-2 text-[11px] leading-relaxed', skin.dim)}>
-        Kanten, deren Nachbarflächen einen kleineren Winkel als den Grenzwinkel einschliessen, werden weich und
-        geglaettet.
+        Kanten, deren Nachbarflächen einen kleineren Winkel als den Grenzwinkel einschließen, werden weich und
+        geglättet.
       </p>
     </Dialog>
   )

@@ -14,7 +14,9 @@ import type { AppState, StoreHandle, ViewportApi } from '@/shared/store-api'
 import { emptyChange } from '@/shared/store-api'
 import type {
   BBox3Like,
+  Definition,
   Edge,
+  Entity,
   Face,
   Geometry,
   Id,
@@ -162,6 +164,10 @@ const GEOMETRY_CALLS: ReadonlySet<string> = new Set([
   'followMe',
   'offsetFace',
   'offsetEdges',
+  // Annotationswerkzeuge veraendern das Modell ueber Entities und Definitionen.
+  'addEntity',
+  'upsertDefinition',
+  'placeInstance',
 ])
 
 /**
@@ -187,8 +193,21 @@ export function createFakeStore(
       return emptyChange()
     }
 
+  const entities: Record<Id, Entity> = {}
+  const definitions: Record<Id, Definition> = {
+    root: { id: 'root', name: 'Modell', kind: 'model', geometry, children: [] },
+  }
+  let entityCounter = 0
+
   const partial = {
-    doc: { units: { ...DEFAULT_UNITS } },
+    doc: {
+      units: { ...DEFAULT_UNITS },
+      rootId: 'root',
+      activeTagId: 'tag0',
+      activeMaterialId: null,
+      entities,
+      definitions,
+    },
     geometryRevision: 0,
     selectionRevision: 0,
     context: {
@@ -243,7 +262,39 @@ export function createFakeStore(
     sampleMaterial: () => null,
     setEdgeFlags: track('setEdgeFlags'),
     softenEdges: track('softenEdges'),
-    addEntity: track('addEntity'),
+    /*
+     * Entities werden wirklich abgelegt: die Annotationswerkzeuge lesen sie
+     * hinterher wieder (die Schnittebene legt zum Beispiel die zuvor aktive
+     * still). Ein reiner Protokollaufruf wuerde das nicht abbilden.
+     */
+    addEntity: (entity: Entity) => {
+      calls.push({ name: 'addEntity', args: [entity] })
+      const id = entity.id && entity.id !== '' ? entity.id : `n${++entityCounter}`
+      const copy = { ...entity, id } as Entity
+      entities[id] = copy
+      definitions.root.children.push(id)
+      return id
+    },
+    updateEntity: (id: Id, patch: Record<string, unknown>) => {
+      calls.push({ name: 'updateEntity', args: [id, patch] })
+      const entity = entities[id]
+      if (entity) entities[id] = { ...entity, ...patch } as Entity
+    },
+    removeEntities: (ids: Id[]) => {
+      calls.push({ name: 'removeEntities', args: [ids] })
+      for (const id of ids) delete entities[id]
+    },
+    upsertDefinition: (def: Definition) => {
+      calls.push({ name: 'upsertDefinition', args: [def] })
+      definitions[def.id] = def
+    },
+    placeInstance: (definitionId: Id, transform: unknown, opts?: { name?: string }) => {
+      calls.push({ name: 'placeInstance', args: [definitionId, transform, opts] })
+      const id = `i${++entityCounter}`
+      definitions.root.children.push(id)
+      return id
+    },
+    getModelBounds: () => ({ min: { x: 0, y: 0, z: 0 }, max: { x: 4, y: 3, z: 2 } }),
     makeGroup: () => {
       calls.push({ name: 'makeGroup', args: [] })
       return 'group1'

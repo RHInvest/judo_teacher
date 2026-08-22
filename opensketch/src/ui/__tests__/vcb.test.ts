@@ -30,7 +30,7 @@ describe('vcbAction', () => {
     expect(vcbAction('Escape')).toBe('cancel')
   })
 
-  it('lässt normale Zeichen durch', () => {
+  it('laesst normale Zeichen durch', () => {
     expect(vcbAction('3')).toBe('edit')
     expect(vcbAction(',')).toBe('edit')
     expect(vcbAction('Backspace')).toBe('edit')
@@ -57,7 +57,7 @@ describe('vcbShownValue', () => {
     expect(vcbShownValue('12', '4,20')).toBe('12')
   })
 
-  it('hält einen bewusst geleerten Entwurf leer', () => {
+  it('haelt einen bewusst geleerten Entwurf leer', () => {
     // Wichtig: '' ist ein Entwurf, kein "kein Entwurf". Sonst springt der
     // alte Store-Wert zurueck, sobald der Nutzer das Feld leert.
     expect(vcbShownValue('', '4,20')).toBe('')
@@ -79,7 +79,7 @@ describe('vcbSubmitText', () => {
     expect(vcbSubmitText(null, '')).toBeNull()
   })
 
-  it('hält Zeichen im Inneren fest', () => {
+  it('haelt Zeichen im Inneren fest', () => {
     expect(vcbSubmitText('3 ; 2', '')).toBe('3 ; 2')
   })
 })
@@ -109,7 +109,7 @@ describe('vcbLabelText', () => {
     expect(vcbLabelText('Maße')).toBe('Maße')
   })
 
-  it('faellt auf "Maß" zurueck', () => {
+  it('faellt auf "Mass" zurueck', () => {
     expect(vcbLabelText('')).toBe('Maß')
     expect(vcbLabelText('   ')).toBe('Maß')
     expect(vcbLabelText(undefined)).toBe('Maß')
@@ -144,14 +144,14 @@ describe('Uebergabe an die Werkzeugschicht', () => {
     expect(parseSegmentsInput(vcbSubmitText('24s', '')!)).toBe(24)
   })
 
-  it('hält das Komma als Dezimaltrennzeichen fest', () => {
+  it('haelt das Komma als Dezimaltrennzeichen fest', () => {
     // Das Feld darf "2,5" nicht in "2.5" umschreiben - das Parsen der
     // Landeseinstellung ist Sache der Werkzeugschicht.
     expect(vcbSubmitText('2,5', '')).toBe('2,5')
     expect(parseLengthInput('2,5', METRIC)).toBeCloseTo(2.5, 6)
   })
 
-  it('erzeugt für eine leere Eingabe gar keinen Parseraufruf', () => {
+  it('erzeugt fuer eine leere Eingabe gar keinen Parseraufruf', () => {
     // Ein blankes Enter darf kein `vcb:submit` ausloesen: das Werkzeug
     // quittierte es sonst mit einem Parserfehler, den der Nutzer nicht
     // verursacht hat.

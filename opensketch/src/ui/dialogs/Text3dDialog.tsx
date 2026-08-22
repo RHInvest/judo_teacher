@@ -103,9 +103,9 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
 
       <div className="px-3 pb-2 pt-1">
         <p className={clsx('text-[11px] leading-relaxed', skin.dim)}>
-          Der 3D-Text nutzt einen eingebauten Strichzeichensatz mit begrenztem Zeichenvorrat: Grossbuchstaben A-Z,
-          Ziffern 0-9 und gaengige Satzzeichen. Kleinbuchstaben werden zu Grossbuchstaben, Umlaute zu AE/OE/UE,
-          das Eszett zu SS. Fett und Kursiv sind Naeherungen dieses Zeichensatzes, keine echten Schriftschnitte.
+          Der 3D-Text nutzt einen eingebauten Strichzeichensatz mit begrenztem Zeichenvorrat: Großbuchstaben A-Z,
+          Ziffern 0-9 und gängige Satzzeichen. Kleinbuchstaben werden zu Großbuchstaben, Umlaute zu AE/OE/UE,
+          das Eszett zu SS. Fett und Kursiv sind Näherungen dieses Zeichensatzes, keine echten Schriftschnitte.
         </p>
         {changed && preview.trim() !== '' ? (
           <p className={clsx('mt-1.5 text-[11px] leading-relaxed', skin.muted)}>

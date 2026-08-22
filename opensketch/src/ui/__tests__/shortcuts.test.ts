@@ -77,7 +77,7 @@ describe('parseCombo', () => {
     expect(parseCombo('Pos1')?.key).toBe('HOME')
   })
 
-  it('hält Funktionstasten unveraendert', () => {
+  it('haelt Funktionstasten unveraendert', () => {
     expect(parseCombo('F1')?.key).toBe('F1')
     expect(parseCombo('F2')?.key).toBe('F2')
   })
@@ -118,7 +118,7 @@ describe('matchesCombo', () => {
     expect(matchesCombo(keyEvent({ key: 's', ctrl: true }), combo)).toBe(true)
   })
 
-  it('trifft die Leertaste über den Code', () => {
+  it('trifft die Leertaste ueber den Code', () => {
     const combo = parseCombo('Leertaste')!
     expect(matchesCombo(keyEvent({ key: ' ', code: 'Space' }), combo)).toBe(true)
   })
@@ -142,7 +142,7 @@ describe('findToolForEvent', () => {
     expect(findToolForEvent(keyEvent({ key: 'm' }))).toBe('move')
   })
 
-  it('unterscheidet Kürzel mit und ohne Umschalt', () => {
+  it('unterscheidet Kuerzel mit und ohne Umschalt', () => {
     expect(findToolForEvent(keyEvent({ key: 'R', shift: true }))).toBe('rotatedRectangle')
     expect(findToolForEvent(keyEvent({ key: 'C', shift: true }))).toBe('polygon')
     expect(findToolForEvent(keyEvent({ key: 'c' }))).toBe('circle')
@@ -167,12 +167,12 @@ describe('findToolForEvent', () => {
     expect(findToolForEvent(keyEvent({ key: 'a', ctrl: true }))).toBeNull()
   })
 
-  it('liefert null für unbelegte Tasten', () => {
+  it('liefert null fuer unbelegte Tasten', () => {
     expect(findToolForEvent(keyEvent({ key: 'F9', code: 'F9' }))).toBeNull()
     expect(findToolForEvent(keyEvent({ key: 'ArrowUp', code: 'ArrowUp' }))).toBeNull()
   })
 
-  it('findet zu jedem Kürzel aus TOOL_SHORTCUTS das richtige Werkzeug', () => {
+  it('findet zu jedem Kuerzel aus TOOL_SHORTCUTS das richtige Werkzeug', () => {
     for (const [display, expected] of Object.entries(TOOL_SHORTCUTS)) {
       const combo = parseCombo(display)
       expect(combo, `"${display}" ist nicht lesbar`).not.toBeNull()
@@ -183,7 +183,7 @@ describe('findToolForEvent', () => {
         shift: combo!.shift,
         alt: combo!.alt,
       })
-      expect(findToolForEvent(event), `Kürzel "${display}"`).toBe(expected)
+      expect(findToolForEvent(event), `Kuerzel "${display}"`).toBe(expected)
     }
   })
 })
@@ -195,7 +195,7 @@ describe('findToolForEvent', () => {
 describe('Kuerzeltabellen', () => {
   it('deckt jede ToolId mit einer Rueckfallbelegung ab', () => {
     for (const id of Object.keys(TOOL_META) as ToolId[]) {
-      expect(DEFAULT_TOOL_SHORTCUTS[id], `Rueckfallkuerzel für "${id}"`).toBeTruthy()
+      expect(DEFAULT_TOOL_SHORTCUTS[id], `Rueckfallkuerzel fuer "${id}"`).toBeTruthy()
     }
     expect(Object.keys(DEFAULT_TOOL_SHORTCUTS).sort()).toEqual(Object.keys(TOOL_META).sort())
   })
@@ -205,8 +205,8 @@ describe('Kuerzeltabellen', () => {
     for (const [display, id] of Object.entries(TOOL_SHORTCUTS)) fromTools.set(id, display)
     for (const [id, display] of Object.entries(DEFAULT_TOOL_SHORTCUTS) as [ToolId, string][]) {
       const authoritative = fromTools.get(id)
-      expect(authoritative, `Werkzeugschicht kennt kein Kürzel für "${id}"`).toBeDefined()
-      expect(authoritative, `Kürzel für "${id}" läuft auseinander`).toBe(display)
+      expect(authoritative, `Werkzeugschicht kennt kein Kuerzel fuer "${id}"`).toBeDefined()
+      expect(authoritative, `Kuerzel fuer "${id}" laeuft auseinander`).toBe(display)
     }
   })
 
@@ -215,23 +215,23 @@ describe('Kuerzeltabellen', () => {
     expect(new Set(combos).size, `Doppelte Belegung in ${combos.join(', ')}`).toBe(combos.length)
   })
 
-  it('liefert toolShortcut das Kürzel der Werkzeugschicht', () => {
+  it('liefert toolShortcut das Kuerzel der Werkzeugschicht', () => {
     for (const [display, id] of Object.entries(TOOL_SHORTCUTS)) {
       expect(toolShortcut(id), `toolShortcut("${id}")`).toBe(display)
     }
   })
 
-  it('listet in der Übersicht jedes Werkzeug mit Name und Kürzel', () => {
+  it('listet in der Uebersicht jedes Werkzeug mit Name und Kuerzel', () => {
     const list = allToolShortcuts()
     expect(list).toHaveLength(Object.keys(TOOL_META).length)
     for (const entry of list) {
-      expect(entry.name, `Name für "${entry.id}"`).toBe(TOOL_META[entry.id].name)
-      expect(entry.combo.length, `Kürzel für "${entry.id}"`).toBeGreaterThan(0)
-      expect(parseCombo(entry.combo), `Kürzel "${entry.combo}" ist nicht lesbar`).not.toBeNull()
+      expect(entry.name, `Name fuer "${entry.id}"`).toBe(TOOL_META[entry.id].name)
+      expect(entry.combo.length, `Kuerzel fuer "${entry.id}"`).toBeGreaterThan(0)
+      expect(parseCombo(entry.combo), `Kuerzel "${entry.combo}" ist nicht lesbar`).not.toBeNull()
     }
   })
 
-  it('hält jedes Menuekuerzel lesbar', () => {
+  it('haelt jedes Menuekuerzel lesbar', () => {
     for (const [id, display] of Object.entries(MENU_SHORTCUTS)) {
       expect(parseCombo(display), `Menuekuerzel "${id}" = "${display}"`).not.toBeNull()
     }
