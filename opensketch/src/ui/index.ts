@@ -18,6 +18,7 @@ export { FALLBACK_STATE, DEFAULT_STYLE, DEFAULT_SUN, DEFAULT_FOG, fallbackDocume
 /* ---------------- Befehle und Hilfsmittel ---------------- */
 
 export * as commands from './lib/commands'
+export { exportWarnings, reportExportWarnings, importAccept } from './lib/commands'
 export { TOOL_META, TOOLBAR_GROUPS, ALL_TOOL_IDS, DRAW_MENU_TOOLS, TOOLS_MENU_TOOLS } from './lib/tools'
 export type { ToolMeta, ToolbarEntry, ToolbarGroup } from './lib/tools'
 export {

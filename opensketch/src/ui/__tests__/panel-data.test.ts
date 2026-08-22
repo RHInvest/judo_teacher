@@ -11,7 +11,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { detectFormat, getLibraryCategories, getLibraryComponents, getLibraryMaterials, importableExtensions } from '@/io'
-import { importAccept } from '@/ui/lib/commands'
+import { exportWarnings, importAccept } from '@/ui/lib/commands'
 import { store } from '@/model'
 import { FALLBACK_STATE } from '@/ui/state/fallback'
 import { appState, storeReady } from '@/ui/state/store'
@@ -208,5 +208,48 @@ describe('Importformate', () => {
     for (const extension of ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp']) {
       expect(importAccept(), `Endung "${extension}" fehlt im Dateidialog`).toContain(extension)
     }
+  })
+})
+
+/* ------------------------------------------------------------------ */
+/* Exportwarnungen                                                     */
+/* ------------------------------------------------------------------ */
+
+describe('exportWarnings', () => {
+  it('liest die Warnungen eines Exportergebnisses', () => {
+    const result = { blob: null, filename: 'modell.stl', warnings: ['Das Modell enthält keine Flächen.'] }
+    expect(exportWarnings(result)).toEqual(['Das Modell enthält keine Flächen.'])
+  })
+
+  it('meldet nichts, wenn der Export sauber lief', () => {
+    // Das Feld ist optional - ein Ergebnis ohne warnings ist der Normalfall.
+    expect(exportWarnings({ blob: null, filename: 'modell.obj' })).toEqual([])
+    expect(exportWarnings({ warnings: [] })).toEqual([])
+  })
+
+  it('vertraegt ein Ergebnis, das gar keines ist', () => {
+    // Die Anzeigeschicht darf sich auf keine fremde Zusicherung verlassen.
+    for (const value of [null, undefined, 'kaputt', 42, []]) {
+      expect(exportWarnings(value), `Eingabe ${JSON.stringify(value)}`).toEqual([])
+    }
+  })
+
+  it('wirft alles weg, was kein brauchbarer Text ist', () => {
+    // Ein Toast mit "undefined" waere schlimmer als gar keiner.
+    expect(exportWarnings({ warnings: [null, 42, '', '   ', undefined, { text: 'x' }] })).toEqual([])
+  })
+
+  it('meldet jede Warnung nur einmal', () => {
+    const doubled = { warnings: ['Keine Flächen.', 'Keine Flächen.', 'Keine Texturen.'] }
+    expect(exportWarnings(doubled)).toEqual(['Keine Flächen.', 'Keine Texturen.'])
+  })
+
+  it('behaelt die Reihenfolge der IO-Schicht', () => {
+    const result = { warnings: ['erste', 'zweite', 'dritte'] }
+    expect(exportWarnings(result)).toEqual(['erste', 'zweite', 'dritte'])
+  })
+
+  it('schneidet Leerraum an den Raendern ab', () => {
+    expect(exportWarnings({ warnings: ['  Keine Flächen.  '] })).toEqual(['Keine Flächen.'])
   })
 })

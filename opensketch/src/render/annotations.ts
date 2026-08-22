@@ -299,158 +299,89 @@ export class AnnotationLayer {
   /* ---------------------------------------------------------------- */
 
   private addDimension(entity: DimensionEntity, ctx: BuildContext): void {
+    const layout = dimensionLayout(entity, ctx.record.worldTransform)
+    if (!layout) return
+
     const color = ctx.highlight ?? entity.color ?? '#333333'
-    const start = this.toWorld(ctx.record, entity.start)
-    const end = this.toWorld(ctx.record, entity.end)
-    if (!V.isFinite3(start) || !V.isFinite3(end)) return
+    const reference = layout.arc ? layout.arc.radius : layout.value
+    const textHeight = this.worldTextHeight(entity, reference)
+    const tick = Math.max(textHeight * 0.6, reference * 0.04)
 
-    if (entity.kind === 'angular') {
-      this.addAngularDimension(entity, ctx, start, end, color)
+    if (layout.arc) {
+      this.addAngularDimension(entity, ctx, layout, color, tick)
       return
     }
-    if (entity.kind === 'radius' || entity.kind === 'diameter') {
-      this.addRadialDimension(entity, ctx, start, end, color)
-      return
-    }
-
-    const offset = this.toWorldDirection(ctx.record, entity.offset ?? V.ORIGIN)
-    const span = V.sub(end, start)
-    const spanLength = V.length(span)
-    if (spanLength < 1e-9) return
-
-    const dir = V.mul(span, 1 / spanLength)
-    // Versatzrichtung senkrecht zur Messstrecke - der Anteil laengs der Strecke
-    // wuerde die Masslinie nur verschieben, nicht versetzen.
-    const perpendicular = V.sub(offset, V.projectOnVector(offset, dir))
-    const offsetLength = V.length(perpendicular)
-    const away = offsetLength > 1e-9 ? V.mul(perpendicular, 1 / offsetLength) : V.normalizeOr(V.anyPerpendicular(dir), V.AXIS_Z)
-
-    const lineStart = V.addScaled(start, away, offsetLength)
-    const lineEnd = V.addScaled(end, away, offsetLength)
-
-    const textHeight = this.worldTextHeight(entity, spanLength)
-    const tick = Math.max(textHeight * 0.6, spanLength * 0.02)
 
     /* --- Masslinie --- */
-    this.pushLine(lineStart, lineEnd, color, 2, 0, ctx.opacity)
+    this.pushLine(layout.from, layout.to, color, 2, 0, ctx.opacity)
 
-    /* --- Hilfslinien an den Messpunkten --- */
-    if (offsetLength > 1e-9) {
-      const gap = Math.min(tick * 0.4, offsetLength * 0.5)
-      const overshoot = tick * 0.5
-      this.pushLine(V.addScaled(start, away, gap), V.addScaled(lineStart, away, overshoot), color, 1.2, 0, ctx.opacity)
-      this.pushLine(V.addScaled(end, away, gap), V.addScaled(lineEnd, away, overshoot), color, 1.2, 0, ctx.opacity)
+    if (layout.kind === 'linear') {
+      /* --- Hilfslinien an den Messpunkten --- */
+      if (layout.offsetLength > 1e-9) {
+        const gap = Math.min(tick * 0.4, layout.offsetLength * 0.5)
+        const overshoot = tick * 0.5
+        const away = layout.side
+        this.pushLine(V.addScaled(layout.measured.a, away, gap), V.addScaled(layout.from, away, overshoot), color, 1.2, 0, ctx.opacity)
+        this.pushLine(V.addScaled(layout.measured.b, away, gap), V.addScaled(layout.to, away, overshoot), color, 1.2, 0, ctx.opacity)
+      }
+      this.pushArrow(layout.from, V.negate(layout.dir), layout.side, tick, entity.arrowStyle, color, ctx.opacity)
+      this.pushArrow(layout.to, layout.dir, layout.side, tick, entity.arrowStyle, color, ctx.opacity)
+      this.pushLabel(entity, ctx, V.midpoint(layout.from, layout.to), layout.side, layout.dir, this.dimensionText(entity, ctx.units, layout.value))
+      return
     }
 
-    /* --- Pfeile / Schraegstriche --- */
-    this.pushArrow(lineStart, V.negate(dir), away, tick, entity.arrowStyle, color, ctx.opacity)
-    this.pushArrow(lineEnd, dir, away, tick, entity.arrowStyle, color, ctx.opacity)
-
-    /* --- Masstext --- */
-    this.pushLabel(entity, ctx, V.midpoint(lineStart, lineEnd), away, dir, this.dimensionText(entity, ctx.units, spanLength))
-  }
-
-  /**
-   * Radius- und Durchmesserbemassung.
-   *
-   * `center` ist der KREISMITTELPUNKT (vom Lead praezisiert). Ohne ihn waere
-   * nicht bestimmt, wohin die Masslinie zeigt; fehlt er trotzdem, gilt `start`
-   * als Mittelpunkt. Der Kreispunkt ist der von beiden Messpunkten, der weiter
-   * vom Mittelpunkt entfernt liegt - so ist es gleichgueltig, ob das Werkzeug
-   * `start` oder `end` auf den Kreis gesetzt hat.
-   */
-  private addRadialDimension(
-    entity: DimensionEntity,
-    ctx: BuildContext,
-    start: Vec3Like,
-    end: Vec3Like,
-    color: string,
-  ): void {
-    const center = entity.center ? this.toWorld(ctx.record, entity.center) : start
-    if (!V.isFinite3(center)) return
-
-    const toStart = V.distance(start, center)
-    const toEnd = V.distance(end, center)
-    const point = toEnd >= toStart ? end : start
-    const radius = Math.max(toStart, toEnd)
-    if (radius < 1e-9) return
-
-    const dir = V.mul(V.sub(point, center), 1 / radius)
-    const offset = this.toWorldDirection(ctx.record, entity.offset ?? V.ORIGIN)
-    const side = V.normalizeOr(V.sub(offset, V.projectOnVector(offset, dir)), V.normalizeOr(V.anyPerpendicular(dir), V.AXIS_Z))
-
-    // Der Durchmesser laeuft durch den Mittelpunkt hindurch, der Radius nur
-    // vom Mittelpunkt nach aussen.
-    const from = V.add(entity.kind === 'diameter' ? V.addScaled(center, dir, -radius) : center, offset)
-    const to = V.add(V.addScaled(center, dir, radius), offset)
-
-    const textHeight = this.worldTextHeight(entity, radius)
-    const tick = Math.max(textHeight * 0.6, radius * 0.04)
-
-    this.pushLine(from, to, color, 2, 0, ctx.opacity)
-    this.pushArrow(to, dir, side, tick, entity.arrowStyle, color, ctx.opacity)
-    if (entity.kind === 'diameter') this.pushArrow(from, V.negate(dir), side, tick, entity.arrowStyle, color, ctx.opacity)
-    // Mittelpunktkreuz: macht sichtbar, worauf sich das Mass bezieht
-    else this.pushCross(V.add(center, offset), tick, color, 1.2, ctx.opacity)
-
-    const value = entity.kind === 'diameter' ? radius * 2 : radius
-    this.pushLabel(entity, ctx, V.midpoint(from, to), side, dir, this.radialText(entity, ctx.units, value))
+    /* --- Radius und Durchmesser --- */
+    this.pushArrow(layout.to, layout.dir, layout.side, tick, entity.arrowStyle, color, ctx.opacity)
+    if (layout.kind === 'diameter') {
+      this.pushArrow(layout.from, V.negate(layout.dir), layout.side, tick, entity.arrowStyle, color, ctx.opacity)
+    } else if (layout.center) {
+      // Mittelpunktkreuz: macht sichtbar, worauf sich das Mass bezieht
+      this.pushCross(layout.center, tick, color, 1.2, ctx.opacity)
+    }
+    this.pushLabel(entity, ctx, V.midpoint(layout.from, layout.to), layout.side, layout.dir, this.radialText(entity, ctx.units, layout.value))
   }
 
   private addAngularDimension(
     entity: DimensionEntity,
     ctx: BuildContext,
-    start: Vec3Like,
-    end: Vec3Like,
+    layout: DimensionLayout,
     color: string,
+    tick: number,
   ): void {
-    const center = entity.center ? this.toWorld(ctx.record, entity.center) : null
-    if (!center || !V.isFinite3(center)) return
-
-    const armA = V.sub(start, center)
-    const armB = V.sub(end, center)
-    const lengthA = V.length(armA)
-    const lengthB = V.length(armB)
-    if (lengthA < 1e-9 || lengthB < 1e-9) return
-
-    const u = V.mul(armA, 1 / lengthA)
-    const other = V.mul(armB, 1 / lengthB)
-    const normal = V.normalizeOr(V.cross(u, other), V.AXIS_Z)
-    const v = V.normalizeOr(V.cross(normal, u), V.anyPerpendicular(u))
-    const angle = V.angleBetween(armA, armB)
-    if (!Number.isFinite(angle) || angle < 1e-9) return
-
-    const radius = Math.min(lengthA, lengthB) * 0.75
-    const textHeight = this.worldTextHeight(entity, radius)
-    const tick = Math.max(textHeight * 0.6, radius * 0.05)
+    const arc = layout.arc
+    const center = layout.center
+    if (!arc || !center) return
 
     /* --- Schenkel --- */
-    this.pushLine(center, V.addScaled(center, u, lengthA), color, 1.2, 0, ctx.opacity)
-    this.pushLine(center, V.addScaled(center, other, lengthB), color, 1.2, 0, ctx.opacity)
+    this.pushLine(center, layout.measured.a, color, 1.2, 0, ctx.opacity)
+    this.pushLine(center, layout.measured.b, color, 1.2, 0, ctx.opacity)
 
     /* --- Bogen --- */
-    const segments = Math.max(8, Math.min(64, Math.round((angle / Math.PI) * 48)))
-    let previous = pointOnArc(center, u, v, radius, 0)
-    for (let i = 1; i <= segments; i++) {
-      const point = pointOnArc(center, u, v, radius, (angle * i) / segments)
+    let previous = layout.from
+    for (const point of arcPoints(center, arc.u, arc.v, arc.radius, arc.angle)) {
       this.pushLine(previous, point, color, 2, 0, ctx.opacity)
       previous = point
     }
 
     /* --- Pfeile tangential an den Bogenenden --- */
-    const startPoint = pointOnArc(center, u, v, radius, 0)
-    const endPoint = previous
-    const tangentStart = V.normalizeOr(V.cross(normal, V.sub(startPoint, center)), u)
-    const tangentEnd = V.normalizeOr(V.cross(normal, V.sub(endPoint, center)), u)
-    const radialStart = V.normalizeOr(V.sub(startPoint, center), v)
-    const radialEnd = V.normalizeOr(V.sub(endPoint, center), v)
-    this.pushArrow(startPoint, V.negate(tangentStart), radialStart, tick, entity.arrowStyle, color, ctx.opacity)
-    this.pushArrow(endPoint, tangentEnd, radialEnd, tick, entity.arrowStyle, color, ctx.opacity)
+    const tangentStart = V.normalizeOr(V.cross(arc.normal, V.sub(layout.from, center)), arc.u)
+    const tangentEnd = V.normalizeOr(V.cross(arc.normal, V.sub(layout.to, center)), arc.u)
+    const radialStart = V.normalizeOr(V.sub(layout.from, center), arc.v)
+    const radialEnd = V.normalizeOr(V.sub(layout.to, center), arc.v)
+    this.pushArrow(layout.from, V.negate(tangentStart), radialStart, tick, entity.arrowStyle, color, ctx.opacity)
+    this.pushArrow(layout.to, tangentEnd, radialEnd, tick, entity.arrowStyle, color, ctx.opacity)
 
     /* --- Text auf der Winkelhalbierenden --- */
-    const middle = pointOnArc(center, u, v, radius, angle / 2)
-    const outward = V.normalizeOr(V.sub(middle, center), v)
-    this.pushLabel(entity, ctx, middle, outward, V.normalizeOr(V.cross(normal, outward), u), this.angleText(entity, ctx.units, angle))
+    const middle = pointOnArc(center, arc.u, arc.v, arc.radius, arc.angle / 2)
+    const outward = V.normalizeOr(V.sub(middle, center), arc.v)
+    this.pushLabel(
+      entity,
+      ctx,
+      middle,
+      outward,
+      V.normalizeOr(V.cross(arc.normal, outward), arc.u),
+      this.angleText(entity, ctx.units, layout.value),
+    )
   }
 
   /**

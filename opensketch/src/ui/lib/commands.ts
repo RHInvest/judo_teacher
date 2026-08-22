@@ -253,6 +253,37 @@ export function importAccept(): string {
   return '.osk,.json,.obj,.stl,.gltf,.glb,.svg,.png,.jpg,.jpeg'
 }
 
+/**
+ * Warnungen eines Exports, defensiv aus dem Ergebnis gelesen.
+ *
+ * Ein Export kann gelingen und trotzdem etwas Wichtiges verschweigen: Ein
+ * Modell ohne Flächen ergibt eine gültige, aber leere STL-Datei. Ohne Hinweis
+ * ist das dasselbe stille Scheitern wie ein Werkzeug, das sich wortlos
+ * zurücksetzt - nur auf der Ausgabeseite.
+ *
+ * `unknown` statt `ExportResult`, weil die Anzeigeschicht sich nicht darauf
+ * verlassen darf, dass das Feld gefüllt, vom richtigen Typ oder überhaupt
+ * vorhanden ist. Alles, was keine nicht leere Zeichenkette ist, fliegt raus -
+ * ein Toast mit "undefined" wäre schlimmer als gar keiner.
+ */
+export function exportWarnings(result: unknown): string[] {
+  if (typeof result !== 'object' || result === null) return []
+  const value = (result as { warnings?: unknown }).warnings
+  if (!Array.isArray(value)) return []
+  const out: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue
+    const text = entry.trim()
+    if (text !== '' && !out.includes(text)) out.push(text)
+  }
+  return out
+}
+
+/** Meldet jede Exportwarnung einzeln - gesammelt in einem Toast liest sie niemand. */
+export function reportExportWarnings(result: unknown): void {
+  for (const warning of exportWarnings(result)) toast(warning, 'warn')
+}
+
 export async function cmdImport(): Promise<void> {
   const files = await pickFiles(importAccept(), true)
   if (files.length === 0) return

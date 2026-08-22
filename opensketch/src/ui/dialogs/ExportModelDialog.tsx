@@ -7,7 +7,7 @@ import type { ExportFormat, ExportOptions, ExportView } from '@/io'
 import { useSkin } from '@/ui/lib/theme'
 import { Checkbox, GroupTitle, NumberInput, Row, Select, TextInput } from '@/ui/components/controls'
 import { downloadBlob } from '@/ui/lib/hooks'
-import { getViewportSafe, hasSelection, currentSelection } from '@/ui/lib/commands'
+import { getViewportSafe, hasSelection, currentSelection, reportExportWarnings } from '@/ui/lib/commands'
 import { act, read, toast } from '@/ui/state/store'
 import { Dialog } from './Dialog'
 
@@ -85,7 +85,13 @@ export function ExportModelDialog({ onClose }: { onClose: () => void }) {
       const result = await exportDocument(doc, format, options)
       downloadBlob(result.blob, result.filename)
       for (const extra of result.files ?? []) downloadBlob(extra.blob, extra.filename)
+      /*
+       * Erfolgsmeldung bleibt stehen - die Datei ist ja entstanden. Die
+       * Warnungen kommen zusätzlich, sonst exportiert jemand ein Modell ohne
+       * Flächen und bekommt eine gültige, leere STL ohne jeden Hinweis.
+       */
       toast(`${result.filename} exportiert.`, 'success')
+      reportExportWarnings(result)
       onClose()
     } catch (err) {
       console.warn('[ui] Export fehlgeschlagen', err)
