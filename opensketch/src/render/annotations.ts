@@ -39,11 +39,13 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import { B, M, P, V } from '@/core/math'
 import type {
   DimensionEntity,
+  DimensionKind,
   Entity,
   GuideLineEntity,
   GuidePointEntity,
   Id,
   ImageEntity,
+  Mat4Like,
   PlaneLike,
   SketchDocument,
   TextEntity,
@@ -61,7 +63,29 @@ import { clamp, clearGroup, parseColor, warnOnce } from './util'
 export interface AnnotationHost {
   worldToScreen(p: Vec3Like): { x: number; y: number; depth: number; visible: boolean }
   pixelsPerUnit(p: Vec3Like): number
-  getSize(): { width: number; height: number }
+}
+
+/**
+ * Ein Annotationstext als Bildschirmrechteck.
+ *
+ * Die Zahl einer Bemassung ist meist das groesste sichtbare Element - der
+ * Nutzer zielt darauf, nicht auf den duennen Strich. Das Picking braucht die
+ * Rechtecke deshalb genauso wie die Linien.
+ */
+export interface LabelBox {
+  entityId: Id
+  /** Mittelpunkt auf dem Bildschirm */
+  x: number
+  y: number
+  halfWidth: number
+  halfHeight: number
+  /** Weltpunkt des Textankers - fuer Entfernung und Schnittebenen */
+  anchor: Vec3Like
+}
+
+/** Wer Textrechtecke liefern kann (implementiert von `AnnotationLayer`). */
+export interface LabelSource {
+  labelBoxes(host: AnnotationHost): LabelBox[]
 }
 
 /** Deckkraft von Annotationen ausserhalb des aktiven Kontexts. */
@@ -91,6 +115,7 @@ const FALLBACK_PLANE_FONT_M = 0.2
 /* ------------------------------------------------------------------ */
 
 interface LabelCommand {
+  entityId: Id
   text: string
   /** Textmitte im Weltraum */
   anchor: Vec3Like
@@ -440,6 +465,7 @@ export class AnnotationLayer {
     const { u, v } = this.textAxes(entity, ctx)
 
     this.labels.push({
+      entityId: entity.id,
       text: content,
       anchor: position,
       away: null,
@@ -730,6 +756,7 @@ export class AnnotationLayer {
   ): void {
     if (text.length === 0) return
     this.labels.push({
+      entityId: entity.id,
       text,
       anchor,
       away,
@@ -842,26 +869,9 @@ export class AnnotationLayer {
     label: LabelCommand,
     screen: { x: number; y: number },
   ): void {
-    let x = screen.x
-    let y = screen.y
-
-    // Vom Bezugspunkt wegschieben, damit der Text nicht auf der Masslinie liegt.
-    if (label.away) {
-      const shifted = host.worldToScreen(V.addScaled(label.anchor, label.away, referenceStep(host, label.anchor)))
-      const dx = shifted.x - screen.x
-      const dy = shifted.y - screen.y
-      const length = Math.hypot(dx, dy)
-      if (length > 1e-6) {
-        const push = label.size * 0.85
-        x += (dx / length) * push
-        y += (dy / length) * push
-      } else {
-        y -= label.size * 0.85
-      }
-    }
-
+    const at = screenLabelCenter(host, label, screen)
     ctx.font = `${label.size}px ${FONT_STACK}`
-    this.paintText(ctx, label, x, y)
+    this.paintText(ctx, label, at.x, at.y)
   }
 
   private drawPlaneLabel(
@@ -870,34 +880,58 @@ export class AnnotationLayer {
     label: LabelCommand,
     screen: { x: number; y: number },
   ): void {
-    // Beide Ebenenachsen projizieren: daraus entsteht die affine Abbildung, die
-    // den Text in die Ebene legt.
-    const step = Math.max(label.size, 1e-6)
-    const alongU = host.worldToScreen(V.addScaled(label.anchor, label.u, step))
-    const alongV = host.worldToScreen(V.addScaled(label.anchor, label.v, step))
-    if (!Number.isFinite(alongU.x) || !Number.isFinite(alongV.x)) return
-
-    let ax = (alongU.x - screen.x) / PLANE_FONT_PX
-    let ay = (alongU.y - screen.y) / PLANE_FONT_PX
-    // Die Ebenenachse `v` zeigt nach oben, die Leinwandachse nach unten.
-    const cx = -(alongV.x - screen.x) / PLANE_FONT_PX
-    const cy = -(alongV.y - screen.y) / PLANE_FONT_PX
-
-    const scale = Math.hypot(ax, ay) * PLANE_FONT_PX
-    if (!Number.isFinite(scale) || scale < MIN_PLANE_TEXT_PX || scale > MAX_PLANE_TEXT_PX) return
-
-    // Von hinten betrachtet stuende der Text spiegelverkehrt - dann die
-    // Leserichtung umdrehen, wie bei einer beidseitig lesbaren Bemassung.
-    if (ax * cy - ay * cx < 0) {
-      ax = -ax
-      ay = -ay
-    }
+    const axes = planeLabelAxes(host, label, screen)
+    if (!axes) return
 
     ctx.save()
-    ctx.transform(ax, ay, cx, cy, screen.x, screen.y)
+    ctx.transform(axes.ax, axes.ay, axes.cx, axes.cy, screen.x, screen.y)
     ctx.font = `${PLANE_FONT_PX}px ${FONT_STACK}`
     this.paintText(ctx, label, 0, 0, PLANE_FONT_PX)
     ctx.restore()
+  }
+
+  /**
+   * Die Textrechtecke auf dem Bildschirm - fuer den Einzelklick.
+   *
+   * Bewusst dieselben Platzierungsfunktionen wie beim Zeichnen: eine getrennte
+   * Rechnung wuerde frueher oder spaeter abweichen, und dann klickt der Nutzer
+   * neben den Text, den er sieht.
+   */
+  labelBoxes(host: AnnotationHost): LabelBox[] {
+    const out: LabelBox[] = []
+    for (const label of this.labels) {
+      if (label.text.length === 0) continue
+      if (this.isClipped(label.anchor)) continue
+      const screen = host.worldToScreen(label.anchor)
+      if (!onScreen(screen)) continue
+
+      if (label.screenSpace) {
+        const at = screenLabelCenter(host, label, screen)
+        out.push({
+          entityId: label.entityId,
+          x: at.x,
+          y: at.y,
+          halfWidth: textHalfWidth(label.text, label.size),
+          halfHeight: label.size * 0.65,
+          anchor: label.anchor,
+        })
+        continue
+      }
+
+      const axes = planeLabelAxes(host, label, screen)
+      if (!axes) continue
+      // Der Ebenentext ist gedreht; als Trefferzone genuegt das umschliessende
+      // achsenparallele Rechteck - lieber etwas grosszuegig als danebengreifen.
+      out.push({
+        entityId: label.entityId,
+        x: screen.x,
+        y: screen.y,
+        halfWidth: textHalfWidth(label.text, axes.scale),
+        halfHeight: axes.scale * 0.65,
+        anchor: label.anchor,
+      })
+    }
+    return out
   }
 
   private paintText(
@@ -1009,6 +1043,157 @@ function referenceStep(host: AnnotationHost, at: Vec3Like): number {
   const ppu = host.pixelsPerUnit(at)
   if (!Number.isFinite(ppu) || ppu <= 1e-9) return 0.1
   return 20 / ppu
+}
+
+/* ------------------------------------------------------------------ */
+/* Lage einer Bemassung                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Wo die Masslinie einer Bemassung im WELTRAUM liegt.
+ *
+ * Bewusst eine reine Funktion und die EINZIGE Quelle dieser Geometrie: das
+ * Zeichnen und das Picking muessen dieselbe Linie meinen, sonst klickt der
+ * Nutzer neben das, was er sieht.
+ */
+export interface DimensionLayout {
+  kind: DimensionKind
+  /** die beiden gemessenen Punkte */
+  measured: { a: Vec3Like; b: Vec3Like }
+  /** Anfang und Ende der Masslinie, bei 'angular' die Bogenenden */
+  from: Vec3Like
+  to: Vec3Like
+  /** Richtung der Masslinie */
+  dir: Vec3Like
+  /** quer dazu, in der Massebene - dorthin weicht der Text aus */
+  side: Vec3Like
+  /** Versatz der Masslinie gegen die Messstrecke, in Metern */
+  offsetLength: number
+  /** Mittelpunkt bei Radius, Durchmesser und Winkel; sonst null */
+  center: Vec3Like | null
+  /** gemessener Wert: Meter, bei 'angular' Radiant */
+  value: number
+  arc: { u: Vec3Like; v: Vec3Like; normal: Vec3Like; radius: number; angle: number } | null
+}
+
+export function dimensionLayout(entity: DimensionEntity, transform: Mat4Like): DimensionLayout | null {
+  const point = (p: Vec3Like | undefined): Vec3Like | null => {
+    if (!p || typeof p.x !== 'number') return null
+    const world = M.transformPoint(transform, p)
+    return V.isFinite3(world) ? world : null
+  }
+
+  const start = point(entity.start)
+  const end = point(entity.end)
+  if (!start || !end) return null
+
+  const offsetVector = entity.offset && typeof entity.offset.x === 'number'
+    ? M.transformDirection(transform, entity.offset)
+    : V.ORIGIN
+
+  if (entity.kind === 'angular') {
+    const center = point(entity.center)
+    if (!center) return null
+    const armA = V.sub(start, center)
+    const armB = V.sub(end, center)
+    const lengthA = V.length(armA)
+    const lengthB = V.length(armB)
+    if (lengthA < 1e-9 || lengthB < 1e-9) return null
+    const angle = V.angleBetween(armA, armB)
+    if (!Number.isFinite(angle) || angle < 1e-9) return null
+
+    const u = V.mul(armA, 1 / lengthA)
+    const normal = V.normalizeOr(V.cross(u, V.mul(armB, 1 / lengthB)), V.AXIS_Z)
+    const v = V.normalizeOr(V.cross(normal, u), V.anyPerpendicular(u))
+    const radius = Math.min(lengthA, lengthB) * 0.75
+    const from = pointOnArc(center, u, v, radius, 0)
+    const to = pointOnArc(center, u, v, radius, angle)
+    return {
+      kind: 'angular',
+      measured: { a: start, b: end },
+      from,
+      to,
+      dir: V.normalizeOr(V.sub(to, from), u),
+      side: V.normalizeOr(V.sub(V.midpoint(from, to), center), v),
+      offsetLength: 0,
+      center,
+      value: angle,
+      arc: { u, v, normal, radius, angle },
+    }
+  }
+
+  if (entity.kind === 'radius' || entity.kind === 'diameter') {
+    // `center` ist der KREISMITTELPUNKT. Fehlt er, gilt `start` als
+    // Mittelpunkt - lieber eine leicht falsche Bemassung als gar keine.
+    const center = point(entity.center) ?? start
+    const toStart = V.distance(start, center)
+    const toEnd = V.distance(end, center)
+    const radius = Math.max(toStart, toEnd)
+    if (radius < 1e-9) return null
+    // Der Kreispunkt ist der weiter entfernte der beiden Messpunkte - so ist
+    // gleichgueltig, welchen das Werkzeug auf den Kreis gesetzt hat.
+    const circlePoint = toEnd >= toStart ? end : start
+
+    const dir = V.mul(V.sub(circlePoint, center), 1 / radius)
+    const side = V.normalizeOr(
+      V.sub(offsetVector, V.projectOnVector(offsetVector, dir)),
+      V.normalizeOr(V.anyPerpendicular(dir), V.AXIS_Z),
+    )
+    // Der Durchmesser laeuft durch den Mittelpunkt hindurch, der Radius nur
+    // vom Mittelpunkt nach aussen.
+    const from = V.add(entity.kind === 'diameter' ? V.addScaled(center, dir, -radius) : center, offsetVector)
+    const to = V.add(V.addScaled(center, dir, radius), offsetVector)
+    return {
+      kind: entity.kind,
+      measured: { a: center, b: circlePoint },
+      from,
+      to,
+      dir,
+      side,
+      offsetLength: V.length(offsetVector),
+      center: V.add(center, offsetVector),
+      value: entity.kind === 'diameter' ? radius * 2 : radius,
+      arc: null,
+    }
+  }
+
+  const span = V.sub(end, start)
+  const spanLength = V.length(span)
+  if (spanLength < 1e-9) return null
+  const dir = V.mul(span, 1 / spanLength)
+  // Versatzrichtung senkrecht zur Messstrecke - der Anteil laengs der Strecke
+  // wuerde die Masslinie nur verschieben, nicht versetzen.
+  const perpendicular = V.sub(offsetVector, V.projectOnVector(offsetVector, dir))
+  const offsetLength = V.length(perpendicular)
+  const side =
+    offsetLength > 1e-9 ? V.mul(perpendicular, 1 / offsetLength) : V.normalizeOr(V.anyPerpendicular(dir), V.AXIS_Z)
+
+  return {
+    kind: 'linear',
+    measured: { a: start, b: end },
+    from: V.addScaled(start, side, offsetLength),
+    to: V.addScaled(end, side, offsetLength),
+    dir,
+    side,
+    offsetLength,
+    center: null,
+    value: spanLength,
+    arc: null,
+  }
+}
+
+/** Stuetzpunkte eines Bogens, OHNE den Anfangspunkt. */
+export function arcPoints(
+  center: Vec3Like,
+  u: Vec3Like,
+  v: Vec3Like,
+  radius: number,
+  angle: number,
+): Vec3Like[] {
+  const segments = Math.max(8, Math.min(64, Math.round((Math.abs(angle) / Math.PI) * 48)))
+  const out: Vec3Like[] = []
+  for (let i = 1; i <= segments; i++) out.push(pointOnArc(center, u, v, radius, (angle * i) / segments))
+  return out
 }
 
 /** Strichlaengen auf eine grobe Stufung runden - spart Materialien. */

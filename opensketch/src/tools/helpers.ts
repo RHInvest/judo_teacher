@@ -66,7 +66,7 @@ export function unitsOf(store: StoreHandle): UnitSettings {
 export function runOperation<T>(store: StoreHandle, name: string, fn: () => T): T | null {
   const state = stateOf(store)
   if (!state) {
-    console.warn(`[tools] Operation "${name}" nicht moeglich: Store nicht verfuegbar`)
+    console.warn(`[tools] Operation "${name}" nicht möglich: Store nicht verfügbar`)
     return null
   }
   try {

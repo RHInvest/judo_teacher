@@ -59,7 +59,8 @@ describe('Satz', () => {
       const layout = layoutText3d('HAUS', { height: 1, align })
       return Math.min(...layout.rects.flat().map((p) => p.x))
     }
-    expect(leftEdge('left')).toBeGreaterThan(-0.01)
+    // Linksbuendig beginnt bei x = 0, minus der halben Strichstaerke.
+    expect(leftEdge('left')).toBeCloseTo(-0.0575, 3)
     expect(leftEdge('center')).toBeLessThan(leftEdge('left'))
     expect(leftEdge('right')).toBeLessThan(leftEdge('center'))
   })

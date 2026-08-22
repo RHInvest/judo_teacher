@@ -234,7 +234,14 @@ export class DimensionTool extends BaseTool {
     }
     const start = this.start
     const end = this.end
-    const inf = this.infer(e, { from: null, allowDirections: false })
+    /*
+     * `from: start` gibt der Inferenz die Arbeitsebene DURCH die Messstrecke
+     * statt der Bodenebene - sonst liesse sich die Masslinie an einer
+     * senkrechten Wand nicht herausziehen. Richtungsinferenzen bleiben
+     * gesperrt: sie laufen alle durch die Messstrecke und wuerden den Versatz
+     * auf null ziehen.
+     */
+    const inf = this.infer(e, { from: start, allowDirections: false })
     const dir = V.sub(end, start)
     const rel = V.sub(inf.point, V.midpoint(start, end))
     this.offset = V.isZero(dir) ? rel : V.projectOnPlaneNormal(rel, V.normalize(dir))

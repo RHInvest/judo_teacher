@@ -168,7 +168,9 @@ export function layoutText3d(text: string, opts: Text3dOptions): Text3dLayout {
   const shear = opts.italic ? ITALIC_SHEAR : 0
   const align = opts.align ?? 'left'
 
-  const lines = mapText3d(text).split('\n')
+  // Erst trennen, dann abbilden: die Abbildung kennt den Zeilenumbruch nicht
+  // und wuerde ihn wegwerfen - aus zwei Zeilen wuerde eine.
+  const lines = text.split('\n').map(mapText3d)
   const widths = lines.map((line) => lineWidth(line) * scale)
   const blockWidth = widths.reduce((max, w) => Math.max(max, w), 0)
 

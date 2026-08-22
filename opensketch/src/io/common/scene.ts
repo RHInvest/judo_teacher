@@ -36,6 +36,13 @@ export interface TraverseOptions {
    * Instanzen abgestiegen. Leere oder fehlende Liste = alles.
    */
   onlyEntityIds?: Id[]
+  /**
+   * Wird fuer jede Instanz gerufen, die die Traversierung auslaesst (Ring
+   * oder Rekursionsgrenze). `flattenDocument` zaehlt das zusaetzlich in
+   * `FlatDocument.skipped`; `buildSceneTree` hat kein Ergebnisobjekt dafuer,
+   * deshalb der Rueckkanal - ohne ihn verschwaenden Instanzen lautlos.
+   */
+  onSkip?: () => void
 }
 
 /** true, wenn `onlyEntityIds` benutzbar ist. */
@@ -69,6 +76,12 @@ export interface FlatEdge {
   groupName: string
   soft: boolean
   hidden: boolean
+  /**
+   * true, wenn die Kante mindestens eine Flaeche begrenzt. Formate ohne
+   * Linien (STL, DAE, glTF) verlieren genau die Kanten, bei denen das
+   * false ist - sie sind sonst nirgends in der Datei zu sehen.
+   */
+  hasFaces: boolean
 }
 
 export interface FlatDocument {
@@ -88,6 +101,7 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
   const walk = (definitionId: Id, transform: Mat4Like, name: string, depth: number, path: Id[]): void => {
     if (depth > MAX_DEPTH) {
       out.skipped++
+      opts.onSkip?.()
       return
     }
     const def = doc.definitions[definitionId]
@@ -128,6 +142,7 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
           groupName: name,
           soft: edge.soft,
           hidden: edge.hidden,
+          hasFaces: edge.faces.length > 0,
         })
       }
     }
@@ -139,6 +154,7 @@ export function flattenDocument(doc: SketchDocument, opts: TraverseOptions = {})
       if (selection !== null && depth === 0 && !selection.has(entity.id)) continue
       if (path.includes(entity.definitionId)) {
         out.skipped++
+        opts.onSkip?.()
         continue
       }
       const child = doc.definitions[entity.definitionId]
@@ -183,13 +199,20 @@ export function buildSceneTree(doc: SketchDocument, opts: TraverseOptions = {}):
   const walk = (definitionId: Id, transform: Mat4Like, name: string, materialId: Id | null, depth: number, path: Id[]): SceneNode => {
     const node: SceneNode = { name, definitionId, transform, children: [], materialId }
     const def = doc.definitions[definitionId]
-    if (!def || depth > MAX_DEPTH) return node
+    if (!def) return node
+    if (depth > MAX_DEPTH) {
+      opts.onSkip?.()
+      return node
+    }
     for (const childId of def.children) {
       const entity = doc.entities[childId]
       if (!entity || entity.type !== 'instance') continue
       if (skipHidden && entity.hidden) continue
       if (selection !== null && depth === 0 && !selection.has(entity.id)) continue
-      if (path.includes(entity.definitionId)) continue
+      if (path.includes(entity.definitionId)) {
+        opts.onSkip?.()
+        continue
+      }
       const child = doc.definitions[entity.definitionId]
       node.children.push(
         walk(

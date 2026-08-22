@@ -1,64 +1,133 @@
 /**
  * SICHTBARE TEXTE TRAGEN ECHTE UMLAUTE.
  *
- * Die Werkzeugschicht schreibt Statushinweise, Massfeld-Beschriftungen,
- * Kurzmeldungen, Operationsnamen (Rueckgaengig-Liste) und Inferenzlabels -
- * alles steht in derselben Statuszeile wie die Texte der Oberflaeche. Stuenden
- * hier Ersatzschreibungen ("Laenge", "Flaeche"), saehe der Nutzer beide
- * Schreibweisen nebeneinander.
+ * Die Werkzeugschicht schreibt Statushinweise, Beschriftungen des Massfelds,
+ * Kurzmeldungen, Operationsnamen (Rueckgaengig-Liste) und die Inferenzlabels.
+ * Alles davon steht in derselben Statuszeile wie die Texte der Oberflaeche -
+ * stuenden hier Ersatzschreibungen ("Laenge", "Flaeche"), saehe der Nutzer
+ * beide Schreibweisen nebeneinander.
  *
- * Bezeichner, Kommentare und Konsolenmeldungen bleiben ausdruecklich
- * umlautfrei - geprueft werden nur Zeichenketten im Quelltext, und
- * `console.*`-Aufrufe werden vorher entfernt.
+ * Bezeichner und Kommentare bleiben laut ARCHITECTURE.md umlautfrei und
+ * werden deshalb ausgenommen.
  *
- * Die Wortliste kommt UNVERAENDERT von `ui-dev` (`src/ui/__tests__/spelling.ts`).
- * Sie wird bewusst importiert statt kopiert: zwei Listen laufen auseinander,
- * eine nicht. Es ist ein reiner Testbezug - der Auslieferungsstand der
- * Werkzeugschicht kennt `@/ui` nicht.
+ * Zwei Dinge sind bewusst von `ui-dev` uebernommen, damit die beiden
+ * Pruefungen nicht auseinanderlaufen:
+ *  - die Wortliste (`src/ui/__tests__/spelling.ts`) wird IMPORTIERT, nicht
+ *    kopiert. Es ist ein reiner Testbezug; der Auslieferungsstand der
+ *    Werkzeugschicht kennt `@/ui` nicht.
+ *  - der Weg zu den Quelldateien: `import.meta.glob` statt `node:fs`, weil
+ *    das Projekt bewusst keine Node-Typen einbindet.
  */
 
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findSubstituteSpellings, spellingHint } from '@/ui/__tests__/spelling'
 import { INFERENCE_LABELS } from '../inference'
 import { TOOL_FACTORIES, TOOL_NAMES } from '../toolManager'
 import type { ToolId } from '@/shared/types'
 
-const TOOLS_DIR = new URL('..', import.meta.url).pathname
+/** Signatur von `import.meta.glob`; die `vite/client`-Typen sind nicht eingebunden. */
+type GlobFn = (
+  pattern: string,
+  options: { query: string; import: string; eager: true },
+) => Record<string, string>
 
-function sourceFiles(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === '__tests__') continue
-    const path = join(dir, entry.name)
-    if (entry.isDirectory()) sourceFiles(path, out)
-    else if (entry.name.endsWith('.ts')) out.push(path)
-  }
-  return out
-}
+const SOURCES = (import.meta as unknown as { glob: GlobFn }).glob('../**/*.ts', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
 
 /**
- * Zeichenketten aus dem Quelltext - ohne Kommentare und ohne
- * `console.*`-Aufrufe, denn beides ist Entwicklertext.
+ * Ersetzt Kommentare durch Leerzeichen und laesst Zeichenketten stehen.
+ *
+ * Ein blosses Streichen per regulaerem Ausdruck scheitert an Zeichenketten,
+ * die selbst eine Kommentarklammer enthalten ("https://..."), deshalb der
+ * kleine Zustandsautomat - derselbe wie in `src/ui/__tests__/spelling.test.ts`.
  */
-function stringLiterals(source: string): string[] {
-  const code = source
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
-    .replace(/console\.\w+\([\s\S]*?\)\n/g, '')
-  return code.match(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g) ?? []
+function stripComments(source: string): string {
+  const out: string[] = []
+  let index = 0
+  let mode = ''
+  while (index < source.length) {
+    const char = source[index]
+    const next = source[index + 1] ?? ''
+    if (mode === '') {
+      if (char === '/' && next === '/') {
+        mode = 'line'
+        index += 2
+        continue
+      }
+      if (char === '/' && next === '*') {
+        mode = 'block'
+        index += 2
+        continue
+      }
+      if (char === '"' || char === "'" || char === '`') mode = char
+      out.push(char)
+      index += 1
+      continue
+    }
+    if (mode === 'line') {
+      if (char === '\n') {
+        mode = ''
+        out.push('\n')
+      }
+      index += 1
+      continue
+    }
+    if (mode === 'block') {
+      if (char === '*' && next === '/') {
+        mode = ''
+        index += 2
+        continue
+      }
+      if (char === '\n') out.push('\n')
+      index += 1
+      continue
+    }
+    if (char === '\\') {
+      out.push(char, next)
+      index += 2
+      continue
+    }
+    if (char === mode) mode = ''
+    out.push(char)
+    index += 1
+  }
+  return out.join('')
 }
 
-describe('Sichtbare Texte der Werkzeugschicht', () => {
-  it('nutzt in jeder Zeichenkette echte Umlaute und Eszett', () => {
-    const offenders: string[] = []
-    for (const file of sourceFiles(TOOLS_DIR)) {
-      for (const literal of stringLiterals(readFileSync(file, 'utf8'))) {
-        const hint = spellingHint(literal)
-        if (hint) offenders.push(`${file.split('/src/')[1]}: ${literal.trim()} (${hint})`)
+/** Alle Zeichenketten einer Datei. */
+function visibleTexts(source: string): string[] {
+  const code = stripComments(source)
+  const texts: string[] = []
+  for (const pattern of [/"([^"\n]*)"/g, /'([^'\n]*)'/g, /`([^`]*)`/g]) {
+    for (const match of code.matchAll(pattern)) texts.push(match[1])
+  }
+  return texts
+}
+
+/* Geschwister im Testverzeichnis erscheinen als "./name.ts" - geprueft wird
+ * die Anwendung, nicht ihre Tests. */
+const FILES = Object.entries(SOURCES)
+  .filter(([path]) => !path.startsWith('./') && !path.includes('/__tests__/'))
+  .sort(([a], [b]) => a.localeCompare(b))
+
+describe('Rechtschreibung der Werkzeugschicht', () => {
+  it('findet überhaupt Dateien', () => {
+    // Ohne diese Zusicherung waere ein leeres Ergebnis stillschweigend gruen.
+    expect(FILES.length).toBeGreaterThan(25)
+  })
+
+  it('schreibt jeden sichtbaren Text mit echten Umlauten', () => {
+    const problems: string[] = []
+    for (const [file, source] of FILES) {
+      for (const text of visibleTexts(source)) {
+        if (findSubstituteSpellings(text).length === 0) continue
+        problems.push(`${file}: ${spellingHint(text)} in "${text.trim().slice(0, 70)}"`)
       }
     }
-    expect(offenders).toEqual([])
+    expect(problems, `Ersatzschreibungen gefunden:\n${problems.join('\n')}`).toEqual([])
   })
 
   it('beschriftet jede Inferenz richtig', () => {

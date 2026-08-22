@@ -79,4 +79,13 @@ export interface ExportResult {
    * eigenem Container (GLB, DAE, SVG) lassen das Feld leer.
    */
   files?: { blob: Blob; filename: string }[]
+  /**
+   * Was beim Export verloren ging oder nicht darstellbar war. Leer = alles drin.
+   *
+   * Jeder Exporter setzt das Feld immer - eine leere Liste ist die Aussage
+   * "nichts verloren", ein fehlendes Feld waere nicht davon zu unterscheiden.
+   * Die Texte sind fertig formulierte Saetze fuer den Nutzer (Deutsch,
+   * mit Handlungshinweis) und werden von der UI unveraendert angezeigt.
+   */
+  warnings: string[]
 }
