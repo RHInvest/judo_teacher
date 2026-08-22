@@ -45,10 +45,12 @@ glTF/GLB, SVG und Bildern, Export nach OBJ, STL, glTF/GLB, COLLADA, SVG und PNG.
 ## Loslegen
 
 ```bash
-cd opensketch
 npm install
 npm run dev        # http://localhost:5173
 ```
+
+Die Anwendung braucht kein Backend und keine Konfiguration - sie laeuft
+vollstaendig im Browser. Ein WebGL2-faehiger Browser genuegt.
 
 Weitere Befehle:
 
@@ -120,6 +122,36 @@ Kontextgrenzen hinweg.
 Die interne Arbeitseinheit ist **ein Meter**, das Koordinatensystem ist
 rechtshändig mit **Z nach oben** — wie in SketchUp. Winkel sind intern immer
 Radiant. Einheiten existieren ausschließlich in der Anzeige.
+
+---
+
+## Skript-Zugriff
+
+Die laufende Anwendung stellt `window.OpenSketch` bereit — vergleichbar mit
+SketchUps Ruby-Konsole. Damit lässt sich das Modell aus der Browserkonsole
+heraus lesen und verändern, für Automatisierung, eigene Erweiterungen und Tests:
+
+```js
+const s = OpenSketch.store.getState()
+
+// Grundriss zeichnen: geschlossener Kantenzug erzeugt automatisch eine Fläche
+s.operation('Grundriss', () => {
+  s.addPolyline([{x:0,y:0,z:0},{x:5,y:0,z:0},{x:5,y:4,z:0},{x:0,y:4,z:0}], true)
+})
+
+// Erste Fläche zwei Meter hochziehen
+const g = s.getActiveGeometry()
+const flaeche = Object.keys(g.faces)[0]
+s.operation('Wände', () => s.pushPull(flaeche, 2))
+
+// Nachmessen
+OpenSketch.core.solidVolume(s.getActiveGeometry())   // 40
+OpenSketch.viewport().zoomExtents(true)
+```
+
+Verfügbar sind `store`, `bus`, `core`, `units`, `viewport()` und `tools()`.
+Jede Änderung gehört in eine `operation(name, fn)`, sonst fehlt sie im
+Rückgängig-Verlauf.
 
 ---
 
