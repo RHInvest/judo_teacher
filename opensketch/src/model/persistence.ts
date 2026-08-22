@@ -182,6 +182,23 @@ export function resetPersistenceForTests(): void {
   cancelAutosave()
 }
 
+/**
+ * Nur fuer Tests: legt einen Slot mit beliebigem Rohinhalt ab - so entsteht
+ * ein beschaedigter Speicherstand, wie ihn ein abgebrochener Schreibvorgang
+ * hinterlaesst.
+ */
+export function saveRawForTests(id: string, data: string): void {
+  memoryStore.set(id, {
+    id,
+    name: id,
+    modifiedAt: new Date(0).toISOString(),
+    savedAt: new Date(0).toISOString(),
+    thumbnail: null,
+    size: data.length,
+    data,
+  })
+}
+
 /* ------------------------------------------------------------------ */
 /* Slots                                                               */
 /* ------------------------------------------------------------------ */

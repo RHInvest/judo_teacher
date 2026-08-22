@@ -13,6 +13,7 @@ import clsx from 'clsx'
 import { bus } from '@/shared/events'
 import { useSkin } from '@/ui/lib/theme'
 import { focusViewport } from '@/ui/lib/hooks'
+import { vcbAction, vcbInitialValue, vcbLabelText, vcbShownValue, vcbSubmitText } from '@/ui/lib/vcb'
 import { act, useAppSelector } from '@/ui/state/store'
 
 export function MeasurementBox() {
@@ -25,13 +26,13 @@ export function MeasurementBox() {
   const [focused, setFocused] = useState(false)
   const [draft, setDraft] = useState<string | null>(null)
 
-  const shown = draft ?? storeValue
+  const shown = vcbShownValue(draft, storeValue)
 
   useEffect(() => {
     const off = bus.on('vcb:focus', (payload) => {
       const input = inputRef.current
       if (!input) return
-      const initial = payload?.initial ?? ''
+      const initial = vcbInitialValue(payload?.initial)
       setDraft(initial)
       act((state) => state.setVcb({ vcbValue: initial, vcbEditing: true }))
       input.focus()
@@ -54,8 +55,8 @@ export function MeasurementBox() {
   }
 
   const submit = () => {
-    const text = (draft ?? storeValue ?? '').trim()
-    if (text.length > 0) bus.emit('vcb:submit', { text })
+    const text = vcbSubmitText(draft, storeValue)
+    if (text !== null) bus.emit('vcb:submit', { text })
     act((state) => state.setVcb({ vcbValue: '', vcbEditing: false }))
     release()
   }
@@ -68,7 +69,7 @@ export function MeasurementBox() {
   return (
     <div className="flex shrink-0 items-center gap-1.5">
       <span className={clsx('select-none text-[11px]', skin.muted)} id="vcb-label">
-        {label || 'Mass'}
+        {vcbLabelText(label)}
       </span>
       <input
         ref={inputRef}
@@ -76,8 +77,7 @@ export function MeasurementBox() {
         inputMode="text"
         autoComplete="off"
         spellCheck={false}
-        aria-labelledby="vcb-label"
-        aria-label={`Massfeld ${label}`}
+        aria-label={`Massfeld: ${vcbLabelText(label)}`}
         value={shown}
         placeholder={placeholder}
         onFocus={() => setFocused(true)}
@@ -92,10 +92,11 @@ export function MeasurementBox() {
         }}
         onKeyDown={(event) => {
           event.stopPropagation()
-          if (event.key === 'Enter') {
+          const action = vcbAction(event.key, event.nativeEvent.isComposing)
+          if (action === 'submit') {
             event.preventDefault()
             submit()
-          } else if (event.key === 'Escape') {
+          } else if (action === 'cancel') {
             event.preventDefault()
             cancel()
           }

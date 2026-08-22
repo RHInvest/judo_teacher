@@ -35,6 +35,22 @@ export function invalidateSpatialIndex(geom?: Geometry): void {
   if (geom) cache.delete(geom)
 }
 
+/**
+ * CACHE-SIGNATUR - NICHT POSITIONSABHAENGIG. Hier stehen nur die ANZAHLEN von
+ * Vertices, Kanten und Flaechen. Wer Vertices verschiebt, ohne die Anzahl zu
+ * aendern (`moveVertices`, `transformPrimitives` ohne `copy`, `pushPull` in
+ * einer bestehenden Topologie), bekommt sonst veraltete Huellboxen und damit
+ * Treffer an der alten Stelle.
+ *
+ * Das ist Absicht, keine Nachlaessigkeit: die Positionen bei jeder Abfrage zu
+ * hashen wuerde den Zweck des Index aufheben. Stattdessen ruft `core/index.ts`
+ * nach JEDER Operation `commit()` auf, und das verwirft den Index ueber
+ * `invalidateSpatialIndex(geom)`. Wer die Geometrie an der Fassade vorbei
+ * mutiert, muss `core.invalidateCaches(geom)` selbst aufrufen.
+ *
+ * Unterschied zum Flaechen-Cache in `triangulate.ts`: der ist ueber die
+ * Vertexpositionen signiert und faellt von selbst um.
+ */
 function signatureOf(geom: Geometry): string {
   return `${Object.keys(geom.vertices).length}/${Object.keys(geom.edges).length}/${Object.keys(geom.faces).length}`
 }

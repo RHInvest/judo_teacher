@@ -353,7 +353,8 @@ export const BUILDING: LibraryEntry[] = [
           { x: Math.max(outerX, innerX), y: 1.6 },
           { x: Math.min(outerX, innerX), y: 1.6 },
         ]
-        prismXZ(g, ring, -d / 2, d, PLASTER)
+        // prismXZ extrudiert entlang -Y, also bei +d/2 beginnen
+        prismXZ(g, ring, d / 2, d, PLASTER)
       }
       // Front
       box(g, -w / 2, -d / 2, 0, w / 2, -d / 2 + 0.12, 1.6, PLASTER)

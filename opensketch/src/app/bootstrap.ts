@@ -14,6 +14,7 @@
 import { bus } from '@/shared/events'
 import { store } from '@/model/store'
 import { loadAutosave, saveAutosave } from '@/model'
+import { IDENTITY_MATRIX } from '@/shared/types'
 import { getViewport } from './ViewportHost'
 
 let initialized = false
@@ -88,8 +89,7 @@ function wireImport(): void {
             for (const def of result.definitions) state.upsertDefinition(def)
             for (const material of result.materials) state.addMaterial(material)
             for (const texture of result.textures) state.addTexture(texture)
-            const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] as unknown as never
-            state.placeInstance(result.rootDefinitionId, identity)
+            state.placeInstance(result.rootDefinitionId, IDENTITY_MATRIX)
           })
           for (const warning of result.warnings) state.toast(warning, 'warn')
           state.toast(`${file.name} importiert`, 'success')
@@ -110,8 +110,7 @@ function wirePlacement(): void {
     bus.on('component:place', ({ definitionId }) => {
       safe('Komponente platzieren', () => {
         const state = store.getState()
-        const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] as unknown as never
-        const id = state.operation('Komponente platzieren', () => state.placeInstance(definitionId, identity))
+        const id = state.operation('Komponente platzieren', () => state.placeInstance(definitionId, IDENTITY_MATRIX))
         state.setSelection({ edgeIds: [], faceIds: [], vertexIds: [], entityIds: [id] })
         state.setActiveTool('move')
       })
@@ -162,13 +161,6 @@ function wireUnloadGuard(): void {
   disposers.push(() => window.removeEventListener('beforeunload', handler))
 }
 
-function wireStats(): void {
-  disposers.push(
-    bus.on('render:frame', ({ fps }) => {
-      safe('Statistik', () => store.getState().setStats({ fps: Math.round(fps) }))
-    }),
-  )
-}
 
 /** Wird einmalig aus `main.tsx` aufgerufen. */
 export function bootstrap(): void {
@@ -179,7 +171,6 @@ export function bootstrap(): void {
   wirePlacement()
   wireCamera()
   wireUnloadGuard()
-  wireStats()
   void restoreOrCreateDocument()
 }
 

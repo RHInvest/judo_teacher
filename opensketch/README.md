@@ -132,26 +132,31 @@ SketchUps Ruby-Konsole. Damit lässt sich das Modell aus der Browserkonsole
 heraus lesen und verändern, für Automatisierung, eigene Erweiterungen und Tests:
 
 ```js
-const s = OpenSketch.store.getState()
+// Immer frisch lesen - ein festgehaltener Zustand veraltet nach jeder Änderung
+const os = () => OpenSketch.store.getState()
 
 // Grundriss zeichnen: geschlossener Kantenzug erzeugt automatisch eine Fläche
-s.operation('Grundriss', () => {
-  s.addPolyline([{x:0,y:0,z:0},{x:5,y:0,z:0},{x:5,y:4,z:0},{x:0,y:4,z:0}], true)
+os().operation('Grundriss', () => {
+  os().addPolyline([{x:0,y:0,z:0},{x:5,y:0,z:0},{x:5,y:4,z:0},{x:0,y:4,z:0}], true)
 })
 
 // Erste Fläche zwei Meter hochziehen
-const g = s.getActiveGeometry()
-const flaeche = Object.keys(g.faces)[0]
-s.operation('Wände', () => s.pushPull(flaeche, 2))
+const flaeche = Object.keys(os().getActiveGeometry().faces)[0]
+os().operation('Wände', () => os().pushPull(flaeche, 2))
 
 // Nachmessen
-OpenSketch.core.solidVolume(s.getActiveGeometry())   // 40
+OpenSketch.core.solidVolume(os().getActiveGeometry())   // 40
+os().history.undoStack.map(e => e.name)                 // ['Grundriss', 'Wände']
 OpenSketch.viewport().zoomExtents(true)
 ```
 
 Verfügbar sind `store`, `bus`, `core`, `units`, `viewport()` und `tools()`.
-Jede Änderung gehört in eine `operation(name, fn)`, sonst fehlt sie im
-Rückgängig-Verlauf.
+
+Zwei Fallstricke: Jede Änderung gehört in eine `operation(name, fn)`, sonst
+fehlt sie im Rückgängig-Verlauf. Und `store.getState()` liefert eine
+**Momentaufnahme** — wer sie in einer Variablen festhält und später daraus
+liest, bekommt veraltete Werte. Aktionen daraus aufzurufen funktioniert,
+Zustand daraus zu lesen nicht.
 
 ---
 

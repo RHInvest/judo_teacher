@@ -2,16 +2,21 @@
  * 3D-Text einfuegen.
  *
  * Der Dialog sammelt nur die Parameter und schickt sie als `text3d:create`
- * ueber den Bus; die Geometrie baut das Werkzeug `text3d`.
+ * ueber den Bus; die Geometrie baut das Werkzeug `text3d` aus einem
+ * eingebauten Strichzeichensatz. Dessen Vorrat ist begrenzt (A-Z, 0-9,
+ * gaengige Satzzeichen), Kleinbuchstaben und Umlaute werden darauf
+ * abgebildet. Der Dialog weist darauf hin und markiert Zeichen, die
+ * gar nicht dargestellt werden koennen.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { bus } from '@/shared/events'
 import { useSkin } from '@/ui/lib/theme'
 import { Checkbox, IconRow, NumberInput, Row, TextInput } from '@/ui/components/controls'
 import { AlignCenter, AlignLeft, AlignRight } from 'lucide-react'
 import { setTool } from '@/ui/lib/commands'
+import { mapText3d, text3dChanges, unsupportedText3dChars } from '@/ui/lib/text3d'
 import { Dialog } from './Dialog'
 
 type Align = 'left' | 'center' | 'right'
@@ -32,9 +37,19 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
   const [filled, setFilled] = useState(true)
   const [align, setAlign] = useState<Align>('left')
 
+  const content = text.trim()
+  const preview = useMemo(() => mapText3d(content), [content])
+  const missing = useMemo(() => unsupportedText3dChars(content), [content])
+  const changed = useMemo(() => text3dChanges(content), [content])
+
+  /*
+   * Der Dialog schickt die Rohfassung; die Abbildung auf den Zeichensatz macht
+   * das Werkzeug. Was hier steht, ist nur die Vorschau darauf - der Nutzer soll
+   * vorher sehen, was aus seiner Eingabe wird, statt es hinterher im Modell zu
+   * entdecken.
+   */
   const insert = () => {
-    const content = text.trim()
-    if (content === '') return
+    if (content === '' || preview.trim() === '') return
     bus.emit('text3d:create', { text: content, height, extrude, bold, italic, filled, align })
     setTool('text3d')
     onClose()
@@ -48,7 +63,7 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
       footerNote={extrude > 0 ? 'Extrudierte Buchstaben' : 'Flache Buchstabenflaechen'}
       actions={[
         { label: 'Abbrechen', onClick: onClose },
-        { label: 'Einfuegen', variant: 'primary', onClick: insert, disabled: text.trim() === '' },
+        { label: 'Einfuegen', variant: 'primary', onClick: insert, disabled: preview.trim() === '' },
       ]}
     >
       <Row label="Text">
@@ -86,9 +101,32 @@ export function Text3dDialog({ onClose }: { onClose: () => void }) {
         <Checkbox checked={filled} label="Gefuellte Flaechen (sonst nur Umrisse)" onChange={setFilled} />
       </div>
 
-      <p className={clsx('px-3 pb-2 text-[11px] leading-relaxed', skin.dim)}>
-        Nach dem Bestaetigen den Einfuegepunkt im Modell anklicken.
-      </p>
+      <div className="px-3 pb-2 pt-1">
+        <p className={clsx('text-[11px] leading-relaxed', skin.dim)}>
+          Der 3D-Text nutzt einen eingebauten Strichzeichensatz mit begrenztem Zeichenvorrat: Grossbuchstaben A-Z,
+          Ziffern 0-9 und gaengige Satzzeichen. Kleinbuchstaben werden zu Grossbuchstaben, Umlaute zu AE/OE/UE,
+          das Eszett zu SS. Fett und Kursiv sind Naeherungen dieses Zeichensatzes, keine echten Schriftschnitte.
+        </p>
+        {changed && preview.trim() !== '' ? (
+          <p className={clsx('mt-1.5 text-[11px] leading-relaxed', skin.muted)}>
+            Wird gebaut als: <span className="font-mono">{preview}</span>
+          </p>
+        ) : null}
+        {missing.length > 0 ? (
+          <p className="mt-1.5 text-[11px] leading-relaxed text-amber-500" role="alert">
+            Ohne Entsprechung im Zeichensatz und deshalb ausgelassen:{' '}
+            <span className="font-mono">{missing.join(' ')}</span>
+          </p>
+        ) : null}
+        {content !== '' && preview.trim() === '' ? (
+          <p className="mt-1.5 text-[11px] leading-relaxed text-red-500" role="alert">
+            Kein einziges Zeichen laesst sich darstellen - bitte den Text aendern.
+          </p>
+        ) : null}
+        <p className={clsx('mt-1.5 text-[11px] leading-relaxed', skin.dim)}>
+          Nach dem Bestaetigen den Einfuegepunkt im Modell anklicken.
+        </p>
+      </div>
     </Dialog>
   )
 }

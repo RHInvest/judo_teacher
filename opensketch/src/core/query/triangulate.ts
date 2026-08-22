@@ -231,6 +231,12 @@ export interface FaceMesh {
 interface CacheEntry {
   sig: string
   mesh: FaceMesh
+  /**
+   * Vertex-Ids parallel zu den Punkten in `mesh.positions`. Damit kann
+   * `faceTriangles` die exakten float64-Positionen aus der Geometrie holen,
+   * statt die auf float32 gerundeten Werte des Render-Mesh zu benutzen.
+   */
+  vertexIds: (Id | null)[]
 }
 
 const faceCache = new Map<Id, CacheEntry>()
@@ -263,32 +269,54 @@ const EMPTY_MESH: FaceMesh = {
   indices: new Uint32Array(0),
 }
 
-/** Positions in context space, normals pointing to the front side. */
-export function triangulateFace(geom: Geometry, faceId: Id): FaceMesh {
-  const face = geom.faces[faceId]
-  if (!face) return EMPTY_MESH
-  const sig = faceSignature(geom, faceId)
-  const cached = faceCache.get(faceId)
-  if (cached && cached.sig === sig) return cached.mesh
-
-  const mesh = buildFaceMesh(geom, faceId)
-  faceCache.set(faceId, { sig, mesh })
-  return mesh
+function emptyEntry(): CacheEntry {
+  return { sig: 'x', mesh: EMPTY_MESH, vertexIds: [] }
 }
 
-function buildFaceMesh(geom: Geometry, faceId: Id): FaceMesh {
+/**
+ * Cache-Eintrag einer Flaeche: Render-Mesh plus die Vertex-Id zu jedem
+ * Mesh-Punkt.
+ *
+ * CACHE-SIGNATUR - POSITIONSABHAENGIG. `faceSignature` enthaelt neben den
+ * Kanten-Ids der Schleifen auch eine gewichtete Summe der Vertexpositionen und
+ * die Flaechennormale. Der Flaechen-Cache faellt deshalb von selbst um, sobald
+ * eine Flaeche verschoben, gedreht oder umgedreht wird; ein vergessenes
+ * `invalidateFaceCache` faellt hier nicht auf. Der raeumliche Index in
+ * `spatial.ts` ist NICHT positionsabhaengig signiert - siehe die Notiz dort.
+ */
+function faceMeshEntry(geom: Geometry, faceId: Id): CacheEntry {
   const face = geom.faces[faceId]
-  if (!face) return EMPTY_MESH
+  if (!face) return emptyEntry()
+  const sig = faceSignature(geom, faceId)
+  const cached = faceCache.get(faceId)
+  if (cached && cached.sig === sig) return cached
+
+  const entry = buildFaceMesh(geom, faceId)
+  entry.sig = sig
+  faceCache.set(faceId, entry)
+  return entry
+}
+
+/** Positions in context space, normals pointing to the front side. */
+export function triangulateFace(geom: Geometry, faceId: Id): FaceMesh {
+  return faceMeshEntry(geom, faceId).mesh
+}
+
+function buildFaceMesh(geom: Geometry, faceId: Id): CacheEntry {
+  const face = geom.faces[faceId]
+  if (!face) return emptyEntry()
   const frame = P.frame(face.plane)
   const points3d: Vec3Like[] = []
+  const vertexIds: (Id | null)[] = []
   const outer2d: Vec2Like[] = []
   for (const vId of face.outer.vertices) {
     const v = geom.vertices[vId]
     if (!v) continue
     points3d.push(v.p)
+    vertexIds.push(vId)
     outer2d.push(frame.to2d(v.p))
   }
-  if (outer2d.length < 3) return EMPTY_MESH
+  if (outer2d.length < 3) return emptyEntry()
   const holes2d: Vec2Like[][] = []
   for (const loop of face.inner) {
     const ring: Vec2Like[] = []
@@ -296,6 +324,7 @@ function buildFaceMesh(geom: Geometry, faceId: Id): FaceMesh {
       const v = geom.vertices[vId]
       if (!v) continue
       points3d.push(v.p)
+      vertexIds.push(vId)
       ring.push(frame.to2d(v.p))
     }
     if (ring.length >= 3) holes2d.push(ring)
@@ -317,18 +346,34 @@ function buildFaceMesh(geom: Geometry, faceId: Id): FaceMesh {
   }
   const indices = new Uint32Array(tris.length)
   for (let i = 0; i < tris.length; i++) indices[i] = tris[i]
-  return { positions, normals, indices }
+  return { sig: 'x', mesh: { positions, normals, indices }, vertexIds }
 }
 
-/** Triangles of a face as 3d point triples - convenient for raycast and CSG. */
+/**
+ * Dreiecke einer Flaeche als 3D-Punkttripel - fuer Strahltest, Volumen und CSG.
+ *
+ * Die Punkte kommen aus den VERTEXPOSITIONEN der Geometrie (float64), nicht aus
+ * `mesh.positions` (float32). Das ist kein Detail: bei einem Modell mit
+ * x = 1234.5678 endet das float32-Mesh bei 1234.56774902, also 0.05 mm neben
+ * der echten Kante - das Fuenffache von POINT_TOL. Wer auf dem gerundeten Mesh
+ * pickt, schneidet oder Volumen rechnet, rechnet gegen eine verschobene
+ * Flaeche. Das float32-Mesh bleibt dem Renderer vorbehalten, der es ohnehin so
+ * an die GPU gibt.
+ */
 export function faceTriangles(geom: Geometry, faceId: Id): [Vec3Like, Vec3Like, Vec3Like][] {
-  const mesh = triangulateFace(geom, faceId)
+  const entry = faceMeshEntry(geom, faceId)
+  const { mesh, vertexIds } = entry
   const out: [Vec3Like, Vec3Like, Vec3Like][] = []
-  const at = (i: number): Vec3Like => ({
-    x: mesh.positions[i * 3],
-    y: mesh.positions[i * 3 + 1],
-    z: mesh.positions[i * 3 + 2],
-  })
+  const at = (i: number): Vec3Like => {
+    const vId = vertexIds[i]
+    const v = vId === null || vId === undefined ? undefined : geom.vertices[vId]
+    if (v) return { x: v.p.x, y: v.p.y, z: v.p.z }
+    return {
+      x: mesh.positions[i * 3],
+      y: mesh.positions[i * 3 + 1],
+      z: mesh.positions[i * 3 + 2],
+    }
+  }
   for (let i = 0; i + 2 < mesh.indices.length; i += 3) {
     out.push([at(mesh.indices[i]), at(mesh.indices[i + 1]), at(mesh.indices[i + 2])])
   }

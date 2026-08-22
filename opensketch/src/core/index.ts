@@ -415,8 +415,19 @@ export interface RaycastHit {
 }
 
 /**
- * Strahltest gegen eine Geometrie. `tolerance` ist der Radius in Modell-
- * einheiten, in dem Kanten und Vertices Vorrang vor Flaechen bekommen.
+ * Strahltest gegen eine Geometrie.
+ *
+ * `tolerance` ist ein Radius in MODELLEINHEITEN. Fuer Kanten und Vertices ist er
+ * ein echter Fangradius, fuer Flaechen nicht: eine Flaeche wird dadurch nicht
+ * groesser, `tolerance` bestimmt bei ihr nur die Kandidatensuche und die
+ * Rangfolge beim Sortieren. Der Flaechenrand selbst gehoert mit POINT_TOL
+ * Randhaut zur Flaeche. Begruendung und Messwerte im Kopf von
+ * `core/query/raycast.ts`.
+ *
+ * Rueckgabe ist immer ein ARRAY, nie null. Leer heisst: kein Treffer. Sortiert
+ * ist es aufsteigend nach `distance`; bei praktisch gleicher Entfernung
+ * (Abstand <= max(tolerance, POINT_TOL)) gewinnt die Art in der Reihenfolge
+ * vertex, edge, face. Der erste Eintrag ist also der beste Treffer.
  */
 export function raycast(
   geom: Geometry,
