@@ -112,6 +112,76 @@ describe('Szenen-Randfaelle', () => {
     useStore.getState().activateScene(sceneId)
     expect(useStore.getState().getEntity(instanceId)?.hidden).toBe(true)
   })
+
+  it('reorderScene klemmt Indizes ausserhalb der Liste ab', () => {
+    const a = useStore.getState().addScene('A')
+    const b = useStore.getState().addScene('B')
+    const c = useStore.getState().addScene('C')
+    const order = () => useStore.getState().doc.scenes.map((s) => s.name)
+
+    useStore.getState().reorderScene(c, -5)
+    expect(order()).toEqual(['C', 'A', 'B'])
+
+    useStore.getState().reorderScene(c, 99)
+    expect(order()).toEqual(['A', 'B', 'C'])
+
+    useStore.getState().reorderScene(a, 1)
+    expect(order()).toEqual(['B', 'A', 'C'])
+    expect(useStore.getState().doc.scenes.map((s) => s.id).sort()).toEqual([a, b, c].sort())
+  })
+
+  it('stellt die aktive Schnittebene wieder her', () => {
+    const first = useStore.getState().addEntity({
+      id: '',
+      type: 'sectionPlane',
+      name: 'Schnitt A',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      plane: { n: { x: 0, y: 1, z: 0 }, d: 1 },
+      active: true,
+      symbolSize: 2,
+      color: '#d97706',
+    })
+    const second = useStore.getState().addEntity({
+      id: '',
+      type: 'sectionPlane',
+      name: 'Schnitt B',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      plane: { n: { x: 1, y: 0, z: 0 }, d: 2 },
+      active: false,
+      symbolSize: 2,
+      color: '#d97706',
+    })
+
+    const sceneId = useStore.getState().addScene('Mit Schnitt A')
+    const scene = useStore.getState().doc.scenes.find((s) => s.id === sceneId)
+    expect(scene?.activeSectionPlaneId).toBe(first)
+
+    // Umschalten und wieder zurueckholen
+    useStore.getState().updateEntity(first, { active: false })
+    useStore.getState().updateEntity(second, { active: true })
+    useStore.getState().activateScene(sceneId)
+
+    const a = useStore.getState().getEntity(first)
+    const b = useStore.getState().getEntity(second)
+    expect(a?.type === 'sectionPlane' && a.active).toBe(true)
+    expect(b?.type === 'sectionPlane' && b.active).toBe(false)
+  })
+
+  it('eine Szene aus einem Gruppenkontext heraus bleibt gueltig', () => {
+    const { instanceId } = boxGroup('Innenraum')
+    useStore.getState().enterContext(instanceId)
+    const sceneId = useStore.getState().addScene('Von innen')
+    useStore.getState().exitContext()
+
+    expect(useStore.getState().doc.scenes).toHaveLength(1)
+    expect(() => useStore.getState().activateScene(sceneId)).not.toThrow()
+    // Der Kontext ist Werkzeugzustand - Szenen speichern ihn nicht.
+    expect(useStore.getState().context.definitionId).toBe(useStore.getState().doc.rootId)
+  })
 })
 
 describe('purgeUnused', () => {
@@ -206,6 +276,102 @@ describe('purgeUnused', () => {
 
     useStore.getState().undo()
     expect(Object.keys(useStore.getState().doc.materials)).toHaveLength(materialCountBefore)
+  })
+
+  it('entfernt unbenutzte Texturen, behaelt aber die eines Bildes', () => {
+    const loseTexture = useStore.getState().addTexture({
+      name: 'Nie benutzt',
+      dataUrl: 'data:image/png;base64,AAAA',
+      width: 8,
+      height: 8,
+    })
+    const imageTexture = useStore.getState().addTexture({
+      name: 'Fassadenfoto',
+      dataUrl: 'data:image/png;base64,BBBB',
+      width: 16,
+      height: 16,
+    })
+    useStore.getState().addEntity({
+      id: '',
+      type: 'image',
+      name: 'Foto',
+      tagId: null,
+      hidden: false,
+      locked: false,
+      textureId: imageTexture,
+      transform: M.translation({ x: 0, y: 0, z: 0 }),
+      width: 2,
+      height: 1,
+      usage: 'model',
+    })
+
+    const removed = useStore.getState().purgeUnused()
+    expect(removed.textures).toBeGreaterThanOrEqual(1)
+    expect(useStore.getState().getTexture(loseTexture)).toBeUndefined()
+    expect(useStore.getState().getTexture(imageTexture)).toBeDefined()
+  })
+
+  it('nimmt die Textur mit, wenn nur ein unbenutztes Material sie hielt', () => {
+    const textureId = useStore.getState().addTexture({
+      name: 'Nur an einem Material',
+      dataUrl: 'data:image/png;base64,CCCC',
+      width: 4,
+      height: 4,
+    })
+    const materialId = useStore.getState().addMaterial({
+      name: 'Unbenutzt',
+      color: '#ffffff',
+      opacity: 1,
+      textureId,
+      textureWidth: 1,
+      textureHeight: 1,
+      roughness: 0.5,
+      metalness: 0,
+      category: 'Eigene',
+      colorize: false,
+    })
+
+    useStore.getState().purgeUnused()
+    expect(useStore.getState().getMaterial(materialId)).toBeUndefined()
+    expect(useStore.getState().getTexture(textureId)).toBeUndefined()
+  })
+
+  it('ein zweiter Durchgang findet nichts mehr', () => {
+    boxGroup('Bleibt')
+    const first = useStore.getState().purgeUnused()
+    expect(first.materials).toBeGreaterThan(0)
+
+    const second = useStore.getState().purgeUnused()
+    expect(second).toEqual({ definitions: 0, materials: 0, tags: 0, textures: 0 })
+    // Ein Leerlauf-Aufraeumen erzeugt keinen Undo-Schritt
+    useStore.getState().clearHistory()
+    useStore.getState().purgeUnused()
+    expect(useStore.getState().canUndo()).toBe(false)
+  })
+
+  it('raeumt eine verwaiste Kette aus Komponente und Gruppe komplett ab', () => {
+    // Komponente, die eine Gruppe enthaelt
+    installGeometry(buildQuad())
+    useStore.getState().selectAll()
+    const innerInstance = useStore.getState().makeGroup('Innen') as string
+    useStore.getState().selectAll()
+    const outerInstance = useStore.getState().makeComponent({ name: 'Aussen' }) as string
+
+    const outer = useStore.getState().getEntity(outerInstance)
+    if (outer?.type !== 'instance') throw new Error('Instanz erwartet')
+    const outerDefinition = outer.definitionId
+    const innerDefinition = useStore.getState().getDefinition(outerDefinition)?.children ?? []
+    expect(innerDefinition).toHaveLength(1)
+
+    useStore.getState().removeEntities([outerInstance])
+    // Die Komponentendefinition ueberlebt das Entfernen der Instanz ...
+    expect(useStore.getState().getDefinition(outerDefinition)).toBeDefined()
+
+    useStore.getState().purgeUnused()
+    // ... aber nicht das Aufraeumen - samt der Gruppe darin
+    expect(useStore.getState().getDefinition(outerDefinition)).toBeUndefined()
+    expect(useStore.getState().getEntity(innerInstance)).toBeUndefined()
+    expect(Object.keys(useStore.getState().doc.definitions)).toEqual([useStore.getState().doc.rootId])
   })
 })
 

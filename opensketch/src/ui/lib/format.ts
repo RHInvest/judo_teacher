@@ -8,36 +8,50 @@ export function useUnits(): UnitSettings {
   return useAppSelector((state) => state.doc?.units ?? DEFAULT_UNITS)
 }
 
-export function fmtLength(metres: number, units: UnitSettings): string {
+/**
+ * Nimmt das Ergebnis der Einheitenbibliothek an - oder die metrische
+ * Naeherung.
+ *
+ * Der `try`/`catch` allein reicht nicht: eine unbekannte Einheiteneinstellung
+ * bringt `formatArea` nicht zum Werfen, sondern liefert glatt `"NaN"`, weil
+ * der Umrechnungsfaktor `undefined` ist. Das landete ungeprueft in der
+ * Entitaetsinfo. Deshalb wird hier auch das Ergebnis geprueft, nicht nur der
+ * Weg dorthin.
+ */
+function accept(result: string, fallback: () => string): string {
+  if (typeof result !== 'string') return fallback()
+  const text = result.trim()
+  if (text === '' || /NaN|undefined|Infinity/.test(text)) return fallback()
+  return result
+}
+
+function safeFormat(value: number, format: () => string, fallback: () => string): string {
+  if (!Number.isFinite(value)) return fallback()
   try {
-    return formatLength(metres, units)
+    return accept(format(), fallback)
   } catch {
-    return `${metres.toFixed(3)} m`
+    return fallback()
   }
+}
+
+export function fmtLength(metres: number, units: UnitSettings): string {
+  const fallback = () => (Number.isFinite(metres) ? `${metres.toFixed(3)} m` : '- m')
+  return safeFormat(metres, () => formatLength(metres, units), fallback)
 }
 
 export function fmtAngle(radians: number, units: UnitSettings): string {
-  try {
-    return formatAngle(radians, units)
-  } catch {
-    return `${((radians * 180) / Math.PI).toFixed(1)}°`
-  }
+  const fallback = () => (Number.isFinite(radians) ? `${((radians * 180) / Math.PI).toFixed(1)}°` : '-°')
+  return safeFormat(radians, () => formatAngle(radians, units), fallback)
 }
 
 export function fmtArea(m2: number, units: UnitSettings): string {
-  try {
-    return formatArea(m2, units)
-  } catch {
-    return `${m2.toFixed(2)} m²`
-  }
+  const fallback = () => (Number.isFinite(m2) ? `${m2.toFixed(2)} m²` : '- m²')
+  return safeFormat(m2, () => formatArea(m2, units), fallback)
 }
 
 export function fmtVolume(m3: number, units: UnitSettings): string {
-  try {
-    return formatVolume(m3, units)
-  } catch {
-    return `${m3.toFixed(3)} m³`
-  }
+  const fallback = () => (Number.isFinite(m3) ? `${m3.toFixed(3)} m³` : '- m³')
+  return safeFormat(m3, () => formatVolume(m3, units), fallback)
 }
 
 /** Ganzzahl mit Tausenderpunkten. */

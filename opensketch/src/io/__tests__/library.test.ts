@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import type { Geometry, Id } from '@/shared/types'
 import * as core from '@/core'
 import {
   buildLibraryComponent,
@@ -55,6 +56,53 @@ export function parseSize(size: string): SizeSpec | null {
 /** Toleranz: 3 % der Kante, mindestens 1 cm - Segmentierung rundet Kreise ab. */
 function sizeTolerance(value: number): number {
   return Math.max(0.01, value * 0.03)
+}
+
+/* ------------------------------------------------------------------ */
+/* Zusammenhang                                                        */
+/* ------------------------------------------------------------------ */
+
+interface IslandBox {
+  min: number[]
+  max: number[]
+  faces: number
+}
+
+/**
+ * Zerlegt eine Geometrie in ueber Kanten zusammenhaengende Inseln.
+ * Mehrere Inseln sind bei zusammengesetzten Bauteilen normal (ein Stuhl hat
+ * vier lose Beine); interessant ist nur, ob eine davon frei im Raum haengt.
+ */
+function islands(geom: Geometry): IslandBox[] {
+  const remaining = new Set(Object.keys(geom.edges))
+  const out: IslandBox[] = []
+  while (remaining.size > 0) {
+    const seed = remaining.values().next().value as Id
+    const found = core.findConnected(geom, { edgeIds: [seed] })
+    for (const id of found.edgeIds) remaining.delete(id)
+    remaining.delete(seed)
+    const min = [Infinity, Infinity, Infinity]
+    const max = [-Infinity, -Infinity, -Infinity]
+    for (const vid of found.vertexIds) {
+      const p = geom.vertices[vid]?.p
+      if (!p) continue
+      const c = [p.x, p.y, p.z]
+      for (let i = 0; i < 3; i++) {
+        if (c[i] < min[i]) min[i] = c[i]
+        if (c[i] > max[i]) max[i] = c[i]
+      }
+    }
+    if (min[0] <= max[0]) out.push({ min, max, faces: found.faceIds.length })
+  }
+  return out
+}
+
+/** Beruehren sich zwei Inseln, mit `slack` Metern Spielraum? */
+function nearby(a: IslandBox, b: IslandBox, slack: number): boolean {
+  for (let i = 0; i < 3; i++) {
+    if (a.min[i] - slack > b.max[i] || b.min[i] - slack > a.max[i]) return false
+  }
+  return true
 }
 
 /* ------------------------------------------------------------------ */
@@ -163,6 +211,25 @@ describe.each(ALL.map((e) => [e.id, e] as [string, LibraryEntry]))(
     it('steht ohne NaN im Raum', () => {
       for (const v of Object.values(root!.geometry.vertices)) {
         expect(Number.isFinite(v.p.x) && Number.isFinite(v.p.y) && Number.isFinite(v.p.z), v.id).toBe(true)
+      }
+    })
+
+    it('haengt zusammen - keine Insel schwebt frei', () => {
+      // Ein zusammengesetztes Bauteil darf aus mehreren Inseln bestehen
+      // (Tischplatte plus vier Beine). Keine davon darf aber weiter als 5 cm
+      // von allen uebrigen entfernt liegen - das waere ein verrutschtes Teil.
+      const parts = islands(root!.geometry)
+      expect(parts.length).toBeGreaterThan(0)
+      for (const part of parts) {
+        expect(part.faces, `${entry.id}: Insel ohne Flaechen`).toBeGreaterThan(0)
+        if (parts.length === 1) continue
+        const attached = parts.some((other) => other !== part && nearby(part, other, 0.05))
+        expect(
+          attached,
+          `${entry.id}: Insel bei x[${part.min[0].toFixed(2)},${part.max[0].toFixed(2)}] ` +
+            `y[${part.min[1].toFixed(2)},${part.max[1].toFixed(2)}] ` +
+            `z[${part.min[2].toFixed(2)},${part.max[2].toFixed(2)}] haengt frei im Raum`,
+        ).toBe(true)
       }
     })
 

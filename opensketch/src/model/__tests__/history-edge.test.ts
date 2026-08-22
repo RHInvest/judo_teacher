@@ -22,6 +22,13 @@ beforeEach(() => {
 const state = () => useStore.getState()
 const edgeCount = () => Object.keys(state().getActiveGeometry().edges).length
 
+/** Definition, auf die eine Instanz zeigt. */
+function definitionIdOf(instanceId: string): string {
+  const entity = state().doc.entities[instanceId]
+  if (!entity || entity.type !== 'instance') throw new Error(`Instanz "${instanceId}" fehlt`)
+  return entity.definitionId
+}
+
 describe('Rand des Undo-Stapels', () => {
   it('Redo fuehrt nach dem Abraeumen wieder bis ganz nach vorne', () => {
     const steps = HISTORY_LIMIT + 5
@@ -132,21 +139,20 @@ describe('abortOperation bei verschachtelten Operationen', () => {
     state().selectAll()
     const instanceId = state().makeGroup('Kiste') as string
     const rootId = state().doc.rootId
+    const groupDefinitionId = definitionIdOf(instanceId)
     expect(state().context.definitionId).toBe(rootId)
 
     state().beginOperation('Rein und was tun')
     state().enterContext(instanceId)
-    expect(state().context.definitionId).not.toBe(rootId)
+    expect(state().context.definitionId).toBe(groupDefinitionId)
     state().addEdge({ x: 0, y: 0, z: 4 }, { x: 1, y: 0, z: 4 })
 
     state().abortOperation()
 
     expect(state().context.definitionId).toBe(rootId)
     expect(state().context.instancePath).toEqual([])
-    const groupGeometry = state().doc.definitions[state().doc.entities[instanceId].type === 'instance'
-      ? (state().doc.entities[instanceId] as { definitionId: string }).definitionId
-      : rootId].geometry
-    expect(Object.keys(groupGeometry.edges)).toHaveLength(4)
+    // Die im Gruppenkontext gezeichnete Kante ist ebenfalls weg
+    expect(Object.keys(state().doc.definitions[groupDefinitionId].geometry.edges)).toHaveLength(4)
   })
 
   it('abortOperation ohne laufende Operation ist ein No-Op', () => {
