@@ -15,6 +15,7 @@ import { bus } from '@/shared/events'
 import { store } from '@/model/store'
 import { loadAutosave, saveAutosave } from '@/model'
 import { IDENTITY_MATRIX } from '@/shared/types'
+import { importFile } from '@/io'
 import { getViewport } from './ViewportHost'
 
 let initialized = false
@@ -83,8 +84,13 @@ function wireImport(): void {
         const state = store.getState()
         state.setBusy(`Importiere ${file.name} ...`)
         try {
-          const io = await import('@/io')
-          const result = await io.importFile(file)
+          /*
+           * Statischer Import: die Oberflaeche laedt `@/io` ohnehin direkt
+           * (Export-/Importdialog, Komponenten- und Materialpanel), ein
+           * dynamischer Import landet also im selben Buendel und bringt nur
+           * eine Buildwarnung ein.
+           */
+          const result = await importFile(file)
           state.operation(`Import ${file.name}`, () => {
             for (const def of result.definitions) state.upsertDefinition(def)
             for (const material of result.materials) state.addMaterial(material)
