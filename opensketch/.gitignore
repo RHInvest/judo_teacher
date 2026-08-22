@@ -1,0 +1,18 @@
+# Abhaengigkeiten
+node_modules
+
+# Buildergebnisse
+dist
+dist-ssr
+*.tsbuildinfo
+
+# Protokolle
+*.log
+npm-debug.log*
+
+# Editor und Betriebssystem
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.local
