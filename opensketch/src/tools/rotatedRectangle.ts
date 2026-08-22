@@ -40,7 +40,7 @@ export class RotatedRectangleTool extends BaseTool {
       const inf = this.infer(e, { from: null })
       this.p0 = V.clone(inf.point)
       this.plane = inf.plane ?? this.workPlane(this.p0)
-      this.status('Gedrehtes Rechteck: Ende der Grundkante wählen', 'Massfeld: Länge')
+      this.status('Gedrehtes Rechteck: Ende der Grundkante wählen', 'Maßfeld: Länge')
       this.vcb('Länge', '', 'Kantenlänge')
       return
     }
@@ -49,7 +49,7 @@ export class RotatedRectangleTool extends BaseTool {
       if (V.distance(inf.point, this.p0) < POINT_TOL) return
       this.p1 = V.clone(inf.point)
       this.setupBasis()
-      this.status('Gedrehtes Rechteck: Breite wählen', 'Massfeld: Breite')
+      this.status('Gedrehtes Rechteck: Breite wählen', 'Maßfeld: Breite')
       this.vcb('Breite', '', 'Breite')
       return
     }
@@ -88,7 +88,7 @@ export class RotatedRectangleTool extends BaseTool {
         this.commit()
         return true
       }
-      this.status('Gedrehtes Rechteck: Breite wählen', 'Massfeld: Breite')
+      this.status('Gedrehtes Rechteck: Breite wählen', 'Maßfeld: Breite')
       return true
     }
     if (this.p0 && this.p1) {

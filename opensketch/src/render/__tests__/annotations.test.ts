@@ -587,9 +587,9 @@ describe('Sichtbarkeit und Auswahl', () => {
 
   it('zeichnet die Annotation einer Komponente in jeder Platzierung', () => {
     const doc = documentWithSquare(2)
-    addInstance(doc, 'fenster', squareGeometry(1), M.translation({ x: 5, y: 0, z: 0 }), 'inst-a')
+    const first = addInstance(doc, 'fenster', squareGeometry(1), M.translation({ x: 5, y: 0, z: 0 }), 'inst-a')
     // Zweite Instanz DERSELBEN Definition
-    doc.entities['inst-b'] = { ...doc.entities['inst-a'], id: 'inst-b', transform: M.translation({ x: 9, y: 0, z: 0 }) }
+    doc.entities['inst-b'] = { ...first, id: 'inst-b', transform: M.translation({ x: 9, y: 0, z: 0 }) }
     doc.definitions.root.children.push('inst-b')
     doc.entities['gp-fenster'] = guidePoint({ id: 'gp-fenster', position: { x: 0, y: 0, z: 0 } })
     doc.definitions.fenster.children.push('gp-fenster')

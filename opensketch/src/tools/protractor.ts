@@ -88,7 +88,7 @@ export class ProtractorTool extends BaseTool {
       }
       this.baseDir = dir
       this.phase = 'angle'
-      this.status('Winkelmesser: zweiten Schenkel wählen', 'Strg = nur messen, Massfeld: Winkel')
+      this.status('Winkelmesser: zweiten Schenkel wählen', 'Strg = nur messen, Maßfeld: Winkel')
       this.vcb('Winkel', '', 'Winkel')
       return
     }

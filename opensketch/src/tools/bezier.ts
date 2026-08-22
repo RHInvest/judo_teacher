@@ -47,7 +47,7 @@ export class BezierTool extends BaseTool {
       this.commit()
       return
     }
-    this.status(HINTS[Math.min(this.pts.length, HINTS.length - 1)], 'Massfeld: 24s = Segmente')
+    this.status(HINTS[Math.min(this.pts.length, HINTS.length - 1)], 'Maßfeld: 24s = Segmente')
   }
 
   onPointerMove(e: PointerInfo): void {

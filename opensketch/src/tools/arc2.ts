@@ -45,7 +45,7 @@ export class Arc2Tool extends BaseTool {
       const inf = this.infer(e, { from: null })
       this.start = V.clone(inf.point)
       this.plane = inf.plane ?? this.workPlane(this.start)
-      this.status('Bogen: Endpunkt der Sehne wählen', 'Massfeld: Sehnenlänge')
+      this.status('Bogen: Endpunkt der Sehne wählen', 'Maßfeld: Sehnenlänge')
       this.vcb('Länge', '', 'Sehnenlänge')
       return
     }
@@ -53,7 +53,7 @@ export class Arc2Tool extends BaseTool {
       const inf = this.infer(e, { from: this.start })
       if (V.distance(inf.point, this.start) < POINT_TOL) return
       this.end = V.clone(inf.point)
-      this.status('Bogen: Bogenhöhe festlegen', 'Massfeld: Bogenhöhe, r… = Radius, 12s = Segmente')
+      this.status('Bogen: Bogenhöhe festlegen', 'Maßfeld: Bogenhöhe, r… = Radius, 12s = Segmente')
       this.vcb('Bogenhöhe', '', 'Bogenhöhe')
       return
     }

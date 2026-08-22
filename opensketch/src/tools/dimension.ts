@@ -111,7 +111,7 @@ export class DimensionTool extends BaseTool {
         return
       }
       this.phase = 'offset'
-      this.status('Bemaßung: Masslinie absetzen', 'Strg = Radius/Durchmesser')
+      this.status('Bemaßung: Maßlinie absetzen', 'Strg = Radius/Durchmesser')
       return
     }
 
@@ -197,7 +197,7 @@ export class DimensionTool extends BaseTool {
     this.start = points[0]
     this.end = points[1]
     this.phase = 'offset'
-    this.status('Bemaßung: Masslinie absetzen')
+    this.status('Bemaßung: Maßlinie absetzen')
     return true
   }
 

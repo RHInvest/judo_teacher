@@ -44,7 +44,7 @@ export class ArcTool extends BaseTool {
       const inf = this.infer(e, { from: null })
       this.center = V.clone(inf.point)
       this.plane = inf.plane ?? this.workPlane(this.center)
-      this.status(`${this.name}: Radius und Startwinkel wählen`, 'Massfeld: Radius')
+      this.status(`${this.name}: Radius und Startwinkel wählen`, 'Maßfeld: Radius')
       this.vcb('Radius', '', 'Radius')
       return
     }
@@ -54,7 +54,7 @@ export class ArcTool extends BaseTool {
       if (V.length(rel) < POINT_TOL) return
       this.radius = V.length(rel)
       this.startDir = V.normalize(rel)
-      this.status(`${this.name}: Winkel wählen`, 'Massfeld: Winkel')
+      this.status(`${this.name}: Winkel wählen`, 'Maßfeld: Winkel')
       this.vcb('Winkel', '', 'Winkel')
       return
     }

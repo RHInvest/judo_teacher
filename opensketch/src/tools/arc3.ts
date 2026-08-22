@@ -44,7 +44,7 @@ export class Arc3Tool extends BaseTool {
     }
     this.status(
       this.points.length === 1 ? '3-Punkt-Bogen: zweiten Punkt auf dem Bogen wählen' : '3-Punkt-Bogen: Endpunkt wählen',
-      'Massfeld: 12s = Segmente',
+      'Maßfeld: 12s = Segmente',
     )
   }
 

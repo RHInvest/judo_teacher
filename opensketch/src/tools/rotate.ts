@@ -76,7 +76,7 @@ export class RotateTool extends BaseTool {
       if (!dir) return
       this.startDir = dir
       this.phase = 'angle'
-      this.status('Drehen: Winkel wählen', 'Strg = Kopie, Massfeld: Winkel')
+      this.status('Drehen: Winkel wählen', 'Strg = Kopie, Maßfeld: Winkel')
       return
     }
 

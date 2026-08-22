@@ -95,7 +95,7 @@ describe('Statusleiste bei 1280 px', () => {
     }
   })
 
-  it('laesst dem Werkzeughinweis auch im ungünstigsten Fall Platz', () => {
+  it('laesst dem Werkzeughinweis auch im unguenstigsten Fall Platz', () => {
     /*
      * Grobe Abschaetzung bei 11 px Schriftgroesse: rund 6 px je Zeichen,
      * Ziffern in `tabular-nums` etwas schmaler. Sie muss nicht exakt sein -

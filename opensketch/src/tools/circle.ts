@@ -46,7 +46,7 @@ export class CircleTool extends BaseTool {
       const inf = this.infer(e, { from: null })
       this.center = V.clone(inf.point)
       this.plane = inf.plane ?? this.workPlane(this.center)
-      this.status(`${this.name}: Radius wählen`, 'Massfeld: Radius oder Segmentzahl (24s)')
+      this.status(`${this.name}: Radius wählen`, 'Maßfeld: Radius oder Segmentzahl (24s)')
       this.updateVcb()
       return
     }

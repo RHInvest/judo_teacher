@@ -49,7 +49,7 @@ export class RectangleTool extends BaseTool {
     this.u = basis.u
     this.v = basis.v
     this.started = true
-    this.status('Rechteck: gegenüberliegende Ecke wählen', 'Massfeld: Breite;Höhe')
+    this.status('Rechteck: gegenüberliegende Ecke wählen', 'Maßfeld: Breite;Höhe')
   }
 
   onPointerMove(e: PointerInfo): void {
