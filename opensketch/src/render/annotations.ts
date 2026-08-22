@@ -1203,6 +1203,71 @@ function quantizeDash(dashSize: number): number {
   return Math.max(Math.round(dashSize / step) * step, step)
 }
 
+/**
+ * Bildschirmmitte eines Bildschirmtexts.
+ *
+ * Ein Masstext wird von der Masslinie weggeschoben, damit er nicht auf ihr
+ * liegt; ein freier Text (`away === null`) sitzt genau auf seinem Punkt.
+ */
+function screenLabelCenter(
+  host: AnnotationHost,
+  label: LabelCommand,
+  screen: { x: number; y: number },
+): { x: number; y: number } {
+  if (!label.away) return { x: screen.x, y: screen.y }
+  const shifted = host.worldToScreen(V.addScaled(label.anchor, label.away, referenceStep(host, label.anchor)))
+  const dx = shifted.x - screen.x
+  const dy = shifted.y - screen.y
+  const length = Math.hypot(dx, dy)
+  const push = label.size * 0.85
+  if (length <= 1e-6) return { x: screen.x, y: screen.y - push }
+  return { x: screen.x + (dx / length) * push, y: screen.y + (dy / length) * push }
+}
+
+/**
+ * Affine Abbildung, die einen Ebenentext in seine Ebene legt: beide
+ * Ebenenachsen werden projiziert und als Leinwandtransformation benutzt.
+ * Liefert null, wenn der Text entartet oder unbrauchbar gross/klein waere.
+ */
+function planeLabelAxes(
+  host: AnnotationHost,
+  label: LabelCommand,
+  screen: { x: number; y: number },
+): { ax: number; ay: number; cx: number; cy: number; scale: number } | null {
+  const step = Math.max(label.size, 1e-6)
+  const alongU = host.worldToScreen(V.addScaled(label.anchor, label.u, step))
+  const alongV = host.worldToScreen(V.addScaled(label.anchor, label.v, step))
+  if (!Number.isFinite(alongU.x) || !Number.isFinite(alongV.x)) return null
+
+  let ax = (alongU.x - screen.x) / PLANE_FONT_PX
+  let ay = (alongU.y - screen.y) / PLANE_FONT_PX
+  // Die Ebenenachse `v` zeigt nach oben, die Leinwandachse nach unten.
+  const cx = -(alongV.x - screen.x) / PLANE_FONT_PX
+  const cy = -(alongV.y - screen.y) / PLANE_FONT_PX
+
+  const scale = Math.hypot(ax, ay) * PLANE_FONT_PX
+  if (!Number.isFinite(scale) || scale < MIN_PLANE_TEXT_PX || scale > MAX_PLANE_TEXT_PX) return null
+
+  // Von hinten betrachtet stuende der Text spiegelverkehrt - dann die
+  // Leserichtung umdrehen, wie bei einer beidseitig lesbaren Bemassung.
+  if (ax * cy - ay * cx < 0) {
+    ax = -ax
+    ay = -ay
+  }
+  return { ax, ay, cx, cy, scale }
+}
+
+/**
+ * Halbe Textbreite in Pixeln, geschaetzt.
+ *
+ * Fuer eine exakte Breite braeuchte es `measureText` und damit einen
+ * 2D-Kontext - den hat das Picking nicht. Eine mittlere Zeichenbreite von
+ * 0,55 em trifft fuer Ziffern und kurze Beschriftungen gut genug.
+ */
+function textHalfWidth(text: string, sizePx: number): number {
+  return Math.max(text.length * 0.55 * sizePx * 0.5, sizePx * 0.5)
+}
+
 function pointOnArc(center: Vec3Like, u: Vec3Like, v: Vec3Like, radius: number, angle: number): Vec3Like {
   const cos = Math.cos(angle) * radius
   const sin = Math.sin(angle) * radius

@@ -171,7 +171,6 @@ function host(): AnnotationHost {
   return {
     worldToScreen: (p) => ({ x: 400 + p.x * scale, y: 300 - p.y * scale, depth: 0, visible: true }),
     pixelsPerUnit: () => scale,
-    getSize: () => ({ width: 800, height: 600 }),
   }
 }
 

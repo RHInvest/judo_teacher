@@ -9,8 +9,17 @@
 
 import type { SketchDocument, Vec3Like } from '@/shared/types'
 import type { ExportOptions, ExportResult } from '../api-types'
-import { flattenDocument, triangulateFlatFace } from '../common/scene'
+import { flattenDocument, triangulateFlatFace, usedMaterials, type FlatDocument } from '../common/scene'
 import { binaryBlob, num, sanitizeFilename, textBlob } from '../common/util'
+import {
+  STL_HINT,
+  WarningList,
+  emptyExportWarning,
+  facelessEdgesWarning,
+  flatLoss,
+  skippedInstancesWarning,
+  stlMaterialsWarning,
+} from '../common/warnings'
 import { V } from '@/core/math'
 
 export interface StlTriangle {
@@ -22,10 +31,17 @@ export interface StlTriangle {
 
 /** Alle Dreiecke des Dokuments in Weltkoordinaten. */
 export function collectTriangles(doc: SketchDocument, opts: ExportOptions = {}): StlTriangle[] {
-  const flat = flattenDocument(doc, {
+  return trianglesOf(flattenFor(doc, opts))
+}
+
+function flattenFor(doc: SketchDocument, opts: ExportOptions): FlatDocument {
+  return flattenDocument(doc, {
     unitScale: opts.unitScale ?? 1,
     onlyEntityIds: opts.selectionOnly ? opts.selectedEntityIds : undefined,
   })
+}
+
+function trianglesOf(flat: FlatDocument): StlTriangle[] {
   const out: StlTriangle[] = []
   for (const poly of flat.faces) {
     for (const tri of triangulateFlatFace(poly)) {
@@ -51,11 +67,13 @@ export function collectTriangles(doc: SketchDocument, opts: ExportOptions = {}):
 /* ------------------------------------------------------------------ */
 
 export function exportStlBinary(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
-  const triangles = collectTriangles(doc, opts)
+  const flat = flattenFor(doc, opts)
+  const triangles = trianglesOf(flat)
   const bytes = writeStlBinary(triangles, `OpenSketch Studio - ${doc.meta.name}`)
   return {
     blob: binaryBlob(bytes, 'model/stl'),
     filename: `${sanitizeFilename(opts.filename ?? doc.meta.name)}.stl`,
+    warnings: stlWarnings(doc, opts, flat, triangles.length),
   }
 }
 
@@ -95,11 +113,13 @@ export function writeStlBinary(triangles: readonly StlTriangle[], header: string
 /* ------------------------------------------------------------------ */
 
 export function exportStlAscii(doc: SketchDocument, opts: ExportOptions = {}): ExportResult {
-  const triangles = collectTriangles(doc, opts)
+  const flat = flattenFor(doc, opts)
+  const triangles = trianglesOf(flat)
   const name = sanitizeFilename(opts.filename ?? doc.meta.name)
   return {
     blob: textBlob(writeStlAscii(triangles, name), 'model/stl'),
     filename: `${name}.stl`,
+    warnings: stlWarnings(doc, opts, flat, triangles.length),
   }
 }
 
@@ -117,4 +137,31 @@ export function writeStlAscii(triangles: readonly StlTriangle[], name: string): 
   lines.push(`endsolid ${name}`)
   lines.push('')
   return lines.join('\n')
+}
+
+/* ------------------------------------------------------------------ */
+/* Warnungen                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Beide STL-Varianten schreiben dieselben Dreiecke und verlieren deshalb
+ * dasselbe: Kanten, Materialien, Hierarchie.
+ */
+function stlWarnings(
+  doc: SketchDocument,
+  opts: ExportOptions,
+  flat: FlatDocument,
+  triangleCount: number,
+): string[] {
+  const warnings = new WarningList()
+  const loss = flatLoss(flat)
+
+  if (triangleCount === 0) {
+    warnings.add(emptyExportWarning('STL', opts.selectionOnly === true, STL_HINT))
+  } else {
+    warnings.add(facelessEdgesWarning(loss.facelessEdges, 'STL'))
+  }
+  warnings.add(stlMaterialsWarning(usedMaterials(doc, flat).length))
+  warnings.add(skippedInstancesWarning(flat.skipped))
+  return warnings.list()
 }

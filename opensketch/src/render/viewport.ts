@@ -465,7 +465,6 @@ export class Viewport implements ViewportApi {
     return {
       worldToScreen: (p) => this.cameraController.worldToScreen(p),
       pixelsPerUnit: (p) => this.cameraController.pixelsPerUnit(p),
-      getSize: () => this.getSize(),
     }
   }
 

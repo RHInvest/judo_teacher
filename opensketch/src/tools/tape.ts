@@ -42,6 +42,16 @@ export class TapeTool extends BaseTool {
   readonly cursor: Cursor = 'crosshair'
   readonly hint: string = 'Maßband: Startpunkt wählen'
 
+  /**
+   * `start` = Startpunkt setzen, `end` = Endpunkt abgreifen, `done` = gemessen.
+   *
+   * `done` ist ein eigener Zustand und kein blosses "start ist gesetzt":
+   * nach der Messung bleiben Strecke und Beschriftung stehen, damit der Nutzer
+   * das Ergebnis liest und im Massfeld ein Zielmass eintippen kann. Der
+   * naechste Klick beginnt dann eine NEUE Messung, statt vom alten Startpunkt
+   * aus weiterzumessen.
+   */
+  private phase: 'start' | 'end' | 'done' = 'start'
   private start: Vec3Like | null = null
   private end: Vec3Like | null = null
   /** Kante, auf der die Messung begonnen hat - Grundlage der Parallelen. */
@@ -63,7 +73,7 @@ export class TapeTool extends BaseTool {
   onPointerMove(e: PointerInfo): void {
     this.pointer = e
     this.guideMode = !(e.ctrl || e.meta)
-    if (!this.start) {
+    if (this.phase !== 'end' || !this.start) {
       this.infer(e, { from: null })
       return
     }
@@ -77,16 +87,15 @@ export class TapeTool extends BaseTool {
     if (e.button !== 0) return
     this.guideMode = !(e.ctrl || e.meta)
 
-    if (!this.start) {
+    if (this.phase !== 'end') {
       const inf = this.infer(e, { from: null })
+      this.phase = 'end'
       this.start = V.clone(inf.point)
       this.end = null
       this.measured = null
       this.reference = this.referenceEdge(inf.hit ?? null)
       this.status(
-        this.reference
-          ? 'Maßband: Abstand zur Kante abgreifen'
-          : 'Maßband: Endpunkt wählen',
+        this.reference ? 'Maßband: Abstand zur Kante abgreifen' : 'Maßband: Endpunkt wählen',
         'Strg = nur messen',
       )
       return
@@ -216,6 +225,7 @@ export class TapeTool extends BaseTool {
     }
 
     this.measured = { start: V.clone(start), end: V.clone(end), length }
+    this.phase = 'done'
     this.reference = null
     this.updateVcb(length)
     this.status(
@@ -274,6 +284,7 @@ export class TapeTool extends BaseTool {
   }
 
   private reset(): void {
+    this.phase = 'start'
     this.start = null
     this.end = null
     this.reference = null

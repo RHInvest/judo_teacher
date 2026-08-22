@@ -18,6 +18,17 @@ import type { ExportOptions, ExportResult } from '../api-types'
 import { flattenDocument, usedMaterials, type FacePolygon } from '../common/scene'
 import { triangulatePolygon3 } from '../common/triangulate'
 import { hexToRgb01, num, sanitizeFilename, textBlob } from '../common/util'
+import {
+  WarningList,
+  backMaterialWarning,
+  edgesDisabledWarning,
+  emptyExportWarning,
+  flatLoss,
+  objTexturesReferencedWarning,
+  skippedInstancesWarning,
+  texturesDisabledWarning,
+  usedTextures,
+} from '../common/warnings'
 import { P, POINT_TOL } from '@/core/math'
 
 const DEFAULT_MATERIAL = 'OpenSketch_Standard'
@@ -83,6 +94,7 @@ export function exportObj(doc: SketchDocument, opts: ExportOptions = {}): Export
   }
   const groups = new Map<string, Map<string, FaceRecord[]>>()
   const groupOrder: string[] = []
+  let writtenFaces = 0
 
   for (const poly of flat.faces) {
     const groupName = objName(poly.groupName)
