@@ -338,7 +338,7 @@ export const BUILDING: LibraryEntry[] = [
     name: 'Schleppgaube',
     category: CATEGORY_BUILDING,
     description: 'Gaubenkörper 180 × 150 cm mit Fensteröffnung, Pultdach.',
-    size: '180 × 150 × 190 cm',
+    size: '196 × 160 × 190 cm',
     geometry(g) {
       const w = 1.8
       const d = 1.5

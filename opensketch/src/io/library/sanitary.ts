@@ -92,7 +92,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Waschbecken',
     category: CATEGORY_SANITARY,
     description: 'Waschtisch 60 × 48 cm, Oberkante 85 cm, mit Einhebelmischer und Siphon. Wandseite in +Y.',
-    size: '60 × 48 × 85 cm',
+    size: '60 × 50 × 41 cm',
     geometry(g) {
       const outer = roundedRectProfile(0, 0, 0.6, 0.48, 0.03)
       const bowl = roundedRectProfile(0, -0.03, 0.42, 0.3, 0.06)
@@ -112,7 +112,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Waschtisch mit Unterschrank',
     category: CATEGORY_SANITARY,
     description: 'Waschtisch 80 × 46 cm auf zweitürigem Unterschrank, Oberkante 85 cm.',
-    size: '80 × 46 × 85 cm',
+    size: '80 × 50 × 103 cm',
     geometry(g) {
       // Unterschrank
       boxAt(g, 0, 0.02, 0.12, 0.8, 0.42, 0.58, WHITE)
@@ -161,7 +161,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Wand-WC',
     category: CATEGORY_SANITARY,
     description: 'Wandhängendes WC 36 × 54 cm, Sitzhöhe 42 cm, Vorwandinstallation in +Y.',
-    size: '36 × 54 × 42 cm',
+    size: '37 × 58 × 20 cm',
     geometry(g) {
       const outer = roundedRectProfile(0, -0.04, 0.36, 0.5, 0.14)
       const bowl = roundedRectProfile(0, -0.05, 0.26, 0.38, 0.11)
@@ -179,7 +179,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Dusche 90 × 90',
     category: CATEGORY_SANITARY,
     description: 'Eckdusche 90 × 90 cm mit flacher Wanne, zwei Glaswänden und Kopfbrause. Ecke in +X/+Y.',
-    size: '90 × 90 × 200 cm',
+    size: '90 × 90 × 212 cm',
     geometry(g) {
       const s = 0.9
       const h = 2.0
@@ -215,7 +215,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Badewanne',
     category: CATEGORY_SANITARY,
     description: 'Rechteck-Badewanne 170 × 75 cm, Einbauhöhe 58 cm, mit Wannenrandarmatur.',
-    size: '170 × 75 × 58 cm',
+    size: '170 × 75 × 73 cm',
     geometry(g) {
       const outer = roundedRectProfile(0, 0, 1.7, 0.75, 0.05)
       const bowl = roundedRectProfile(0, 0, 1.52, 0.6, 0.12)
@@ -231,7 +231,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Spüle',
     category: CATEGORY_SANITARY,
     description: 'Einbauspüle aus Edelstahl mit Becken und Abtropffläche, Oberkante 86 cm (passt auf den Küchen-Unterschrank).',
-    size: '86 × 50 × 20 cm',
+    size: '86 × 53 × 49 cm',
     geometry(g) {
       const outer = roundedRectProfile(0, 0, 0.86, 0.5, 0.02)
       const bowl = roundedRectProfile(-0.19, -0.01, 0.4, 0.36, 0.04)
@@ -250,7 +250,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Herd mit Backofen',
     category: CATEGORY_SANITARY,
     description: 'Standherd 60 × 60 cm mit vier Kochzonen, Backofentür und Bedienblende. Front in -Y.',
-    size: '60 × 60 × 88 cm',
+    size: '60 × 65 × 86 cm',
     geometry(g) {
       const w = 0.6
       const d = 0.6
@@ -288,7 +288,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Kühl-Gefrierkombination',
     category: CATEGORY_SANITARY,
     description: 'Standgerät 60 × 65 cm, 185 cm hoch, zwei Türen mit Stangengriffen. Front in -Y.',
-    size: '60 × 65 × 185 cm',
+    size: '60 × 69 × 185 cm',
     geometry(g) {
       const w = 0.6
       const d = 0.65
@@ -316,7 +316,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Küchen-Oberschrank',
     category: CATEGORY_SANITARY,
     description: 'Hängeschrank 60 × 35 cm, Unterkante üblicherweise 145 cm über dem Boden. Front in -Y.',
-    size: '60 × 35 × 72 cm',
+    size: '60 × 37 × 72 cm',
     geometry(g) {
       const w = 0.6
       const d = 0.35
@@ -331,7 +331,7 @@ export const SANITARY: LibraryEntry[] = [
     name: 'Heizkörper',
     category: CATEGORY_SANITARY,
     description: 'Flachheizkörper 120 × 60 cm mit Thermostatventil, Wandseite in +Y.',
-    size: '120 × 10 × 60 cm',
+    size: '125 × 8 × 75 cm',
     geometry(g) {
       const w = 1.2
       const h = 0.6

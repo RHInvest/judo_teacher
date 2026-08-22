@@ -14,7 +14,25 @@ export interface LibraryEntry {
   description: string
   /** erzeugt die Definition(en) beim ersten Einfuegen */
   build(): { definitions: Definition[]; rootId: Id }
-  /** Groessenangabe fuer die Kachel, z.B. "80 x 80 x 75 cm" */
+  /**
+   * Abmessungen fuer die Kachel, in Zentimetern.
+   *
+   * VERBINDLICH: `size` nennt die BOUNDING BOX des gebauten Bauteils als
+   * "B × T × H cm" - nicht das Nennmass des Produkts. Der Nutzer skaliert nach
+   * dieser Zahl; eine Angabe, die in Wahrheit eine Montagehoehe oder ein
+   * Katalogmass ist, fuehrt direkt zu falschen Modellen. Montagehoehen
+   * ("Oberkante 85 cm", "Sitzhoehe 42 cm") und Nennmasse gehoeren in
+   * `description`.
+   *
+   * Genau zwei Sonderformen sind erlaubt:
+   *  - `"Ø 100 × 100 cm"`   Rotationskoerper: Durchmesser (= X = Y) und Hoehe.
+   *    `"Ø 100 cm"` ist die Kugel.
+   *  - `"88,5 × 201 cm (Öffnung)"`  Tueren und Fenster: das Rohbaumass der
+   *    Oeffnung. Das Bauteil selbst darf groesser sein (Zarge, Fensterbank),
+   *    niemals kleiner.
+   *
+   * `library.test.ts` prueft das fuer jeden Eintrag gegen die echte Geometrie.
+   */
   size?: string
 }
 

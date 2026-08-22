@@ -71,7 +71,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Stuhl',
     category: CATEGORY_FURNITURE,
     description: 'Klassischer Holzstuhl mit gerader Rueckenlehne, Sitzhoehe 45 cm.',
-    size: '45 × 48 × 88 cm',
+    size: '45 × 45 × 88 cm',
     geometry(g) {
       const w = 0.45
       const d = 0.45
@@ -98,7 +98,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Bürostuhl',
     category: CATEGORY_FURNITURE,
     description: 'Drehstuhl mit Fünffußkreuz, Gasfeder, Armlehnen und Netzrücken.',
-    size: '65 × 65 × 100 cm',
+    size: '63 × 65 × 102 cm',
     geometry(g) {
       // Fusskreuz
       for (let i = 0; i < 5; i++) {
@@ -197,7 +197,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Sofa 2-Sitzer',
     category: CATEGORY_FURNITURE,
     description: 'Zweisitzer mit Armlehnen und losen Sitzkissen.',
-    size: '160 × 90 × 85 cm',
+    size: '160 × 90 × 88 cm',
     geometry(g) {
       buildSofa(g, 1.6, 2)
     },
@@ -208,7 +208,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Sofa 3-Sitzer',
     category: CATEGORY_FURNITURE,
     description: 'Dreisitzer mit Armlehnen und losen Sitzkissen.',
-    size: '210 × 90 × 85 cm',
+    size: '210 × 90 × 88 cm',
     geometry(g) {
       buildSofa(g, 2.1, 3)
     },
@@ -219,7 +219,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Sessel',
     category: CATEGORY_FURNITURE,
     description: 'Gepolsterter Sessel passend zur Sofagarnitur.',
-    size: '90 × 85 × 85 cm',
+    size: '90 × 90 × 88 cm',
     geometry(g) {
       buildSofa(g, 0.9, 1)
     },
@@ -252,7 +252,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Nachttisch',
     category: CATEGORY_FURNITURE,
     description: 'Nachtkonsole mit zwei Schubladen, Front in -Y.',
-    size: '45 × 40 × 55 cm',
+    size: '45 × 45 × 55 cm',
     geometry(g) {
       const w = 0.45
       const d = 0.4
@@ -268,7 +268,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Kleiderschrank',
     category: CATEGORY_FURNITURE,
     description: 'Zweitüriger Kleiderschrank, Türen in -Y.',
-    size: '150 × 60 × 200 cm',
+    size: '150 × 62 × 200 cm',
     geometry(g) {
       const w = 1.5
       const d = 0.6
@@ -316,7 +316,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Kommode',
     category: CATEGORY_FURNITURE,
     description: 'Sideboard mit drei Schubladen, Front in -Y.',
-    size: '100 × 45 × 80 cm',
+    size: '100 × 50 × 80 cm',
     geometry(g) {
       const w = 1.0
       const d = 0.45
@@ -334,7 +334,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'Küchen-Unterschrank',
     category: CATEGORY_FURNITURE,
     description: 'Unterschrankelement 60 cm mit Arbeitsplatte, Front in -Y.',
-    size: '60 × 60 × 86 cm',
+    size: '60 × 64 × 86 cm',
     geometry(g) {
       const w = 0.6
       const d = 0.58
@@ -421,7 +421,7 @@ export const FURNITURE: LibraryEntry[] = [
     name: 'TV-Lowboard',
     category: CATEGORY_FURNITURE,
     description: 'Flaches Sideboard mit zwei Klappen, Front in -Y.',
-    size: '180 × 40 × 45 cm',
+    size: '180 × 44 × 42 cm',
     geometry(g) {
       const w = 1.8
       const d = 0.4

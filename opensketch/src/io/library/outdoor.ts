@@ -112,7 +112,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Laubbaum',
     category: CATEGORY_OUTDOOR,
     description: 'Ausgewachsener Laubbaum, rund 7 m hoch, mit verzweigtem Stamm und breiter Krone.',
-    size: '520 × 520 × 700 cm',
+    size: '455 × 455 × 635 cm',
     geometry(g) {
       // Stamm mit Wurzelanlauf
       frustumZ(g, 0, 0, 0, 0.28, 0.17, 0.5, 12, BARK)
@@ -132,7 +132,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Jungbaum',
     category: CATEGORY_OUTDOOR,
     description: 'Frisch gepflanzter Straßenbaum, 4 m hoch, mit schmaler Krone.',
-    size: '260 × 260 × 400 cm',
+    size: '230 × 230 × 395 cm',
     geometry(g) {
       frustumZ(g, 0, 0, 0, 0.09, 0.06, 2.0, 10, BARK)
       for (let i = 0; i < 3; i++) {
@@ -161,7 +161,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Strauch',
     category: CATEGORY_OUTDOOR,
     description: 'Runder Zierstrauch, 120 cm breit und 110 cm hoch.',
-    size: '120 × 120 × 110 cm',
+    size: '118 × 115 × 115 cm',
     geometry(g) {
       sphere(g, p3(0, 0, 0.6), 0.6, 14, 9, LEAF, { x: 1, y: 1, z: 0.92 })
       sphere(g, p3(0.24, 0.12, 0.42), 0.34, 10, 7, LEAF)
@@ -201,7 +201,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Zaunelement',
     category: CATEGORY_OUTDOOR,
     description: 'Lattenzaun 200 cm lang, 120 cm hoch, mit zwei Pfosten und Querriegeln. Ab Ursprung nach +X.',
-    size: '200 × 9 × 120 cm',
+    size: '203 × 12,4 × 125 cm',
     geometry(g) {
       const length = 2.0
       const height = 1.2
@@ -229,7 +229,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Gartenbank',
     category: CATEGORY_OUTDOOR,
     description: 'Parkbank 180 cm mit Holzlatten und Stahlwangen, Sitzhöhe 45 cm.',
-    size: '180 × 62 × 85 cm',
+    size: '180 × 60 × 90 cm',
     geometry(g) {
       const w = 1.8
       // Wangen
@@ -259,7 +259,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Abfallbehälter',
     category: CATEGORY_OUTDOOR,
     description: 'Öffentlicher Abfallbehälter Ø 40 cm auf Standrohr, 95 cm hoch.',
-    size: '40 × 40 × 95 cm',
+    size: '42 × 42 × 95 cm',
     geometry(g) {
       cylinderZ(g, 0, 0, 0, 0.09, 0.02, 16, STEEL)
       cylinderZ(g, 0, 0, 0.02, 0.035, 0.42, 12, STEEL)
@@ -274,7 +274,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Straßenlaterne',
     category: CATEGORY_OUTDOOR,
     description: 'Mastleuchte 5 m hoch mit auskragendem Leuchtenkopf.',
-    size: '110 × 30 × 500 cm',
+    size: '124 × 28 × 490 cm',
     geometry(g) {
       cylinderZ(g, 0, 0, 0, 0.14, 0.06, 16, CONCRETE)
       frustumZ(g, 0, 0, 0.06, 0.09, 0.055, 4.54, 14, GALV)
@@ -289,7 +289,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Auto (Kompaktklasse)',
     category: CATEGORY_OUTDOOR,
     description: 'Vereinfachter PKW 425 × 180 × 148 cm als Maßstabs- und Stellplatzreferenz. Front in -Y.',
-    size: '180 × 425 × 148 cm',
+    size: '196 × 428 × 146 cm',
     geometry(g) {
       const halfW = 0.87
       const wheelR = 0.32
@@ -337,7 +337,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Fahrradständer',
     category: CATEGORY_OUTDOOR,
     description: 'Anlehnbügel aus Stahlrohr, 90 cm breit, 80 cm hoch.',
-    size: '90 × 6 × 80 cm',
+    size: '95 × 4,8 × 87 cm',
     geometry(g) {
       const w = 0.9
       const h = 0.8
@@ -366,7 +366,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Person stehend',
     category: CATEGORY_OUTDOOR,
     description: 'Maßstabsfigur 175 cm, stehend. Blickrichtung -Y.',
-    size: '50 × 30 × 175 cm',
+    size: '51 × 33 × 174 cm',
     geometry(g) {
       buildPerson(g)
     },
@@ -377,7 +377,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Terrassenfeld',
     category: CATEGORY_OUTDOOR,
     description: 'Holzdeck 300 × 200 cm aus Dielen mit Fugen, Oberkante auf z = 0.',
-    size: '300 × 200 × 4 cm',
+    size: '300 × 200 × 8,6 cm',
     geometry(g) {
       const w = 3.0
       const d = 2.0
@@ -401,7 +401,7 @@ export const OUTDOOR: LibraryEntry[] = [
     name: 'Kiesbeet',
     category: CATEGORY_OUTDOOR,
     description: 'Kiesfläche 200 × 150 cm mit Randeinfassung, Oberkante auf z = 0.',
-    size: '200 × 150 × 8 cm',
+    size: '206 × 156 × 10 cm',
     geometry(g) {
       slab(g, 0, 0, -0.05, 2.0, 1.5, 0.05, 0.03, GRAVEL)
       prismZ(g, roundedRectProfile(0, 0, 2.06, 1.56, 0.04), -0.08, 0.1, CONCRETE, [
